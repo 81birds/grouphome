@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="css/common.css">
   <style>
     /* スマホでは横スクロールにして、入力欄がつぶれないようにする */
-    #staffTable { min-width: 760px; }
+    #staffTable { min-width: 840px; }
     #staffTable .col-name { width: 20%; }
     #staffTable .col-house { width: 20%; }
     #staffTable .col-job { width: 18%; }
@@ -96,6 +96,7 @@
               <th class="col-job">職種</th>
               <th class="col-phone">電話番号</th>
               <th class="col-center">在籍中</th>
+              <th class="col-center">勤務</th>
             </tr>
           </thead>
           <tbody id="staffRows"></tbody>
@@ -172,6 +173,7 @@
         '<td><input type="text" class="autosave" data-field="job_title" list="jobTitles" value="' + esc(s.job_title) + '"></td>' +
         '<td><input type="tel" class="autosave" data-field="phone" value="' + esc(s.phone) + '"></td>' +
         '<td class="col-center"><input type="checkbox" data-field="is_active"' + (s.is_active ? ' checked' : '') + '></td>' +
+        '<td class="col-center"><a class="btn btn-ghost btn-sm" href="myshift.html?staff=' + encodeURIComponent(s.id) + '" title="個人の勤務を開く"><i class="ti ti-calendar-time"></i>勤務</a></td>' +
         '</tr>';
     }).join('');
 

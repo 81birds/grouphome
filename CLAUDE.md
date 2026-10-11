@@ -20,6 +20,7 @@ residents.html    利用者(新しい画面を作るときのお手本)
 staff.html        スタッフ(所属施設をプルダウンで選ぶ例)
 houses.html       施設
 shifts.html       勤務表(月の表・ダイアログでの入力・勤務区分タブ)
+myshift.html      個人の勤務(縦=時間・横=施設のマスを選んで登録。勤務の入力はここが基本)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
@@ -71,6 +72,8 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - `work_date` は勤務が始まる日。`end_time <= start_time` なら翌日に終わる(夜勤 22:00〜翌10:00)
 - 時間の重なりは `public.shift_range()` で判定し、同じスタッフの重なる勤務は `save_shift` が保存を拒む
 - ある日・ある施設に「誰がいるか」を出すときは、前日に始まった夜勤も含める(`get_shifts` は前日分も返す)
+- 同じ時間・同じ施設に複数のスタッフが入るのは正常(配膳スタッフと看護師など)。止めるのは同じスタッフの重なりだけ
+- 個人の勤務ページは 1 時間単位で選ぶ。選んだ範囲にかかる勤務だけを作り直し、ほかの勤務(9:30 始まりなど)は触らない
 
 ## 個人情報の扱い
 

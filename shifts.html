@@ -45,6 +45,8 @@
       font-size: 12px; font-weight: 600; text-align: left;
       padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    .roster .name-col a { color: var(--color-text); text-decoration: none; }
+    .roster .name-col a:hover { color: var(--color-primary-dark); text-decoration: underline; }
     .roster .name-col .sub { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
     .roster thead th.name-col { z-index: 3; background: var(--color-surface-alt); }
     .roster .total-col { min-width: 58px; text-align: right; white-space: nowrap; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px; }
@@ -110,7 +112,7 @@
         <span class="page-icon"><i class="ti ti-calendar-time"></i></span>
         勤務表
       </h1>
-      <p>マスを押すと、その日の勤務を追加・変更できます</p>
+      <p>スタッフ別ではマスを押すと、その人の個人ページが開きます。施設別ではここで直接入力できます</p>
     </div>
 
     <div class="tabs">
@@ -300,6 +302,15 @@
     return shortHm(s.start_time) + '-' + shortHm(s.end_time);
   }
 
+  // 個人の勤務ページの URL。日付がなければ、今月なら今日、ほかの月なら 1 日
+  function personalUrl(staffId, date) {
+    if (!date) {
+      const t = todayStr();
+      date = t.startsWith(state.year + '-' + pad(state.month) + '-') ? t : ymd(state.year, state.month, 1);
+    }
+    return 'myshift.html?staff=' + encodeURIComponent(staffId) + '&date=' + date;
+  }
+
   // ===== 読み込み =====
   async function loadMasters() {
     const r = await Promise.all([App.rpc('get_staff'), App.rpc('get_houses'), App.rpc('get_shift_types')]);
@@ -351,7 +362,7 @@
       const mine = map[row.id] || {};
       let totalMin = 0, nights = 0;
       const label = state.view === 'staff'
-        ? esc(row.name) + '<span class="sub">' + esc(row.job_title || '') + '</span>'
+        ? '<a href="' + personalUrl(row.id, null) + '">' + esc(row.name) + '</a><span class="sub">' + esc(row.job_title || '') + '</span>'
         : esc(row.name);
       html += '<tr><th class="name-col" title="' + esc(row.name) + '">' + label + '</th>';
 
@@ -718,7 +729,10 @@
       // マスを押したらダイアログ
       document.getElementById('roster').addEventListener('click', function (e) {
         const td = e.target.closest('td.day');
-        if (td) openModal(td.dataset.row, td.dataset.date);
+        if (!td) return;
+        // スタッフ別はその人の個人ページへ、施設別はここで入力する
+        if (state.view === 'staff') location.href = personalUrl(td.dataset.row, td.dataset.date);
+        else openModal(td.dataset.row, td.dataset.date);
       });
       document.getElementById('modalClose').onclick = closeModal;
       document.getElementById('shiftModal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
