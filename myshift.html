@@ -10,83 +10,73 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <link rel="stylesheet" href="css/common.css">
   <style>
-    /* ----- 上の操作欄 ----- */
-    .pick-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
-    .pick-bar .field { flex: 1 1 200px; }
-    .pick-bar select { width: 100%; font-size: 14px; padding: 8px; }
-    .date-nav { display: flex; align-items: center; gap: 6px; }
-    .date-nav .date-label { font-size: 16px; font-weight: 700; min-width: 112px; text-align: center; }
-    .date-nav .date-label.sat { color: var(--color-sat); }
-    .date-nav .date-label.sun { color: var(--color-danger); }
-    .date-nav input[type="date"] { width: 40px; padding: 6px 4px; color: transparent; }
-    .date-nav input[type="date"]::-webkit-datetime-edit { display: none; }
+    /* スマホで使う前提。上下の余白を詰める */
+    body { padding-top: calc(8px + var(--gtool-h)); padding-bottom: 90px; }
+    .wrap { max-width: 640px; }
 
-    .hint {
-      font-size: 12px; color: var(--color-text-muted);
-      background: var(--color-surface-alt); border-radius: var(--radius-sm);
-      padding: 8px 10px; margin-bottom: 10px; line-height: 1.6;
-    }
-    .hint.active { background: var(--color-primary-soft); color: var(--color-primary-dark); font-weight: 700; }
+    /* ----- 上の帯: 日付(左)とスタッフ(右) ----- */
+    .top-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .top-bar .date-label { font-size: 17px; font-weight: 700; white-space: nowrap; }
+    .top-bar .date-label.sat { color: var(--color-sat); }
+    .top-bar .date-label.sun { color: var(--color-danger); }
+    .top-bar .icon-btn { font-size: 20px; padding: 4px; }
+    .top-bar .date-wrap { position: relative; width: 30px; height: 30px; }
+    .top-bar .date-wrap i { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--color-text-muted); pointer-events: none; }
+    .top-bar .date-wrap input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; }
+    .top-bar .today-btn { font-size: 11px; padding: 3px 8px; }
+    .top-bar .spacer { flex: 1; }
+    .top-bar select { max-width: 130px; font-size: 12px; padding: 5px 4px; }
 
-    /* ----- 時間 × 施設 の表 ----- */
-    .grid-box {
-      overflow: auto;
-      max-height: 70vh;
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
-      background: var(--color-surface);
-    }
-    .day-grid { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; user-select: none; -webkit-user-select: none; }
-    .day-grid th, .day-grid td { border-right: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
+    .note { font-size: 11px; color: var(--color-text-muted); margin: 0 0 6px; }
+
+    /* ----- 時間 × 施設 のチェック表 ----- */
+    /* overflow を付けると見出しの固定がずれるので付けない(表は幅いっぱいに縮む) */
+    .grid-box { border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
+    .day-grid { border-collapse: collapse; width: 100%; font-size: 12px; table-layout: fixed; }
+    .day-grid th, .day-grid td { border-bottom: 1px solid var(--color-border); border-right: 1px solid var(--color-border); padding: 0; }
     .day-grid thead th {
-      position: sticky; top: 0; z-index: 2;
-      background: var(--color-surface-alt);
-      padding: 6px 4px; font-weight: 700; text-align: center; white-space: nowrap;
+      position: sticky; top: var(--gtool-h); z-index: 2;
+      background: var(--color-surface-alt); font-weight: 700; font-size: 12px; padding: 5px 2px;
+      text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .day-grid thead th small { display: block; font-weight: 400; font-size: 10px; color: var(--color-text-muted); }
-    .day-grid .time-col {
-      position: sticky; left: 0; z-index: 1;
-      background: var(--color-surface);
-      width: 56px; min-width: 56px;
-      text-align: right; padding: 0 6px; font-weight: 600; color: var(--color-text-muted);
-      white-space: nowrap; vertical-align: top; font-size: 11px; line-height: 30px;
+    .day-grid .t { width: 46px; text-align: right; padding-right: 6px; color: var(--color-text-muted); font-weight: 600; font-size: 11px; white-space: nowrap; background: var(--color-surface); }
+    .day-grid thead th.t { background: var(--color-surface-alt); }
+    .day-grid tr.night .t { color: var(--color-night); }
+    .day-grid tr.next-start th, .day-grid tr.next-start td { border-top: 2px solid var(--color-night); }
+
+    .day-grid td.c { height: 32px; text-align: center; }
+    .day-grid td.c label { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; cursor: pointer; }
+    .day-grid td.c input { width: 18px; height: 18px; margin: 0; }
+    .day-grid tr.night td.c { background: var(--color-surface-alt); }
+    .day-grid td.c.on { background: var(--color-primary-soft); }
+    .day-grid td.c.on.changed { background: var(--color-primary); }
+    .day-grid td.c.changed:not(.on) { background: var(--color-danger-soft); }
+    .day-grid td.c.on.changed input { accent-color: var(--color-primary-dark); }
+    .day-grid td.c.locked { background: repeating-linear-gradient(135deg, var(--color-night-soft), var(--color-night-soft) 4px, var(--color-surface) 4px, var(--color-surface) 8px); }
+    .day-grid td.c.locked label { cursor: not-allowed; }
+
+    /* ----- 下に固定の保存バー ----- */
+    .save-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+      background: var(--color-surface); border-top: 1px solid var(--color-border);
+      box-shadow: 0 -4px 14px rgba(30, 30, 20, 0.08);
+      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
     }
-    .day-grid thead th.time-col { z-index: 3; background: var(--color-surface-alt); line-height: 1.3; }
-    .day-grid tr.next .time-col { color: var(--color-night); }
-    .day-grid tr.day-start td, .day-grid tr.day-start th { border-top: 2px solid var(--color-night); }
-
-    .day-grid td.slot { height: 30px; min-width: 64px; cursor: pointer; position: relative; padding: 0 4px; font-size: 10px; font-weight: 700; }
-    .day-grid td.slot:hover { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-    .day-grid tr.night td.slot { background: var(--color-surface-alt); }
-
-    .day-grid td.slot.mine { background: var(--color-primary); color: #fff; }
-    .day-grid td.slot.mine.night-shift { background: var(--color-night); }
-    .day-grid td.slot.mine.top { border-top-left-radius: 6px; border-top-right-radius: 6px; }
-    .day-grid td.slot.locked {
-      background: repeating-linear-gradient(135deg, var(--color-night-soft), var(--color-night-soft) 4px, var(--color-surface) 4px, var(--color-surface) 8px);
-      color: var(--color-night); cursor: not-allowed;
-    }
-    .day-grid td.slot.busy { background: var(--color-surface-alt); color: var(--color-text-muted); cursor: not-allowed; }
-    .day-grid td.slot.busy::after { content: "—"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: .4; }
-
-    .day-grid td.slot.anchor { outline: 3px solid var(--color-primary-dark); outline-offset: -3px; }
-    .day-grid td.slot.preview-fill { background: var(--color-primary-soft); color: var(--color-primary-dark); }
-    .day-grid td.slot.preview-clear { background: var(--color-danger-soft); color: var(--color-danger); }
-    .grid-box.saving { opacity: .6; pointer-events: none; }
+    .save-bar .inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 8px; }
+    .save-bar .msg { flex: 1; font-size: 12px; min-width: 0; }
+    .save-bar .msg.ok { color: var(--color-primary-dark); }
+    .save-bar .msg.err { color: var(--color-danger); }
+    .save-bar .btn { padding: 9px 16px; }
 
     /* ----- その日の勤務 ----- */
     .day-list { list-style: none; margin: 0; padding: 0; }
-    .day-list li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-border); font-size: 13px; }
+    .day-list li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 13px; }
     .day-list li:last-child { border-bottom: none; }
-    .day-list .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--color-primary); flex: 0 0 auto; }
-    .day-list .dot.night { background: var(--color-night); }
-    .day-list .what { flex: 1; }
-    .day-list .what small { display: block; color: var(--color-text-muted); font-size: 11px; }
-    .day-total { font-size: 13px; font-weight: 700; text-align: right; margin-top: 8px; }
-
-    @media (min-width: 900px) {
-      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
-    }
+    .day-list .time { font-weight: 700; white-space: nowrap; min-width: 108px; }
+    .day-list .time.night { color: var(--color-night); }
+    .day-list small { color: var(--color-text-muted); }
+    .card.compact { padding: 12px; margin-top: 12px; }
+    .card.compact h2 { font-size: 14px; margin-bottom: 6px; }
   </style>
 </head>
 <body>
@@ -99,50 +89,38 @@
 </div>
 
 <div id="mainContent" hidden>
-  <div class="wrap wide">
-    <div class="page-header">
-      <h1>
-        <span class="page-icon"><i class="ti ti-user-check"></i></span>
-        個人の勤務
-      </h1>
-      <p>スタッフと日付を選んで、時間と施設が交わるマスを選びます。変更はすぐに保存されます</p>
+  <div class="wrap">
+    <div class="top-bar">
+      <button type="button" class="icon-btn" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
+      <div class="date-label" id="dateLabel"></div>
+      <button type="button" class="icon-btn" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
+      <span class="date-wrap" title="日付を選ぶ"><i class="ti ti-calendar"></i><input type="date" id="datePick" aria-label="日付を選ぶ"></span>
+      <button type="button" class="btn btn-ghost today-btn" id="todayBtn">今日</button>
+      <span class="spacer"></span>
+      <select id="staffSel" aria-label="スタッフ"></select>
     </div>
 
-    <div class="card">
-      <div class="pick-bar">
-        <div class="field">
-          <label for="staffSel">スタッフ</label>
-          <select id="staffSel"></select>
-        </div>
-        <div class="date-nav">
-          <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
-          <div class="date-label" id="dateLabel"></div>
-          <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
-          <input type="date" id="datePick" aria-label="日付を選ぶ" title="日付を選ぶ">
-          <button type="button" class="btn btn-ghost btn-sm" id="todayBtn">今日</button>
-        </div>
-      </div>
-      <div id="emptyMsg" class="empty-msg" hidden></div>
-    </div>
+    <div id="emptyMsg" class="empty-msg card" hidden></div>
 
-    <div class="layout" id="layout">
-      <div class="card">
-        <div class="hint" id="hint"></div>
-        <div class="grid-box" id="gridBox">
-          <table class="day-grid" id="dayGrid"></table>
-        </div>
-        <div id="saveStatus" class="status-msg"></div>
+    <div id="mainArea">
+      <p class="note">勤務する時間にチェックを入れて、下の「保存」を押します。斜線は前日・翌日の勤務です。</p>
+      <div class="grid-box">
+        <table class="day-grid" id="dayGrid"></table>
       </div>
 
-      <div class="card">
-        <h2><i class="ti ti-list-check"></i>この日の勤務</h2>
+      <div class="card compact">
+        <h2><i class="ti ti-list-check"></i>この日の勤務(保存ずみ)</h2>
         <ul class="day-list" id="dayList"></ul>
-        <div class="day-total" id="dayTotal"></div>
-        <p class="text-sm muted" style="margin:12px 0 0;">
-          <a href="shifts.html">1か月の勤務表を見る</a>
-        </p>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="save-bar" id="saveBar" hidden>
+  <div class="inner">
+    <div class="msg" id="saveMsg"></div>
+    <button type="button" class="btn btn-ghost" id="undoBtn" disabled>戻す</button>
+    <button type="button" class="btn" id="saveBtn" disabled><i class="ti ti-device-floppy"></i>保存</button>
   </div>
 </div>
 
@@ -156,10 +134,10 @@
   const DAY = 24 * 60;
 
   const state = { staffId: null, date: null, staff: [], houses: [], types: [], shifts: [] };
-  // 選択中: { houseId, row, mode: 'fill'|'clear' }
-  let anchor = null;
-  let drag = null;              // マウスでなぞっている途中 { houseId, from, to, mode }
-  let saving = false;
+  // チェックの状態: saved[houseId][row] = 保存ずみ / now[houseId][row] = 画面上
+  let saved = {}, now = {};
+  let locked = {};              // locked[houseId][row] = 前日・翌日の勤務がある
+  let lockedAny = [];           // lockedAny[row] = どこかの施設で前日・翌日の勤務がある(その時間は他の施設も選べない)
 
   // ===== 日付・時間の道具 =====
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -174,8 +152,6 @@
   function crosses(s) { return minOf(s.end_time) <= minOf(s.start_time); }
   function timeText(s) { return hm(s.start_time) + '〜' + (crosses(s) ? '翌' : '') + hm(s.end_time); }
   function rowLabel(r) { return (r >= 24 ? '翌' : '') + (r % 24) + ':00'; }
-
-  // 選んだ日の 0:00 を 0 分としたときの、勤務の [始まり, 終わり)
   function absRange(s) {
     const start = dayDiff(s.work_date, state.date) * DAY + minOf(s.start_time);
     return [start, start + durationOf(s)];
@@ -186,6 +162,7 @@
   function activeHouses() { return state.houses.filter(function (h) { return h.is_active; }); }
   function houseLabel(h) { return h.short_name || h.name.replace(/の家$|ホーム$/, '').slice(0, 4); }
   function myShifts() { return state.shifts.filter(function (s) { return s.staff_id === state.staffId; }); }
+  function todaysAt(houseId) { return myShifts().filter(function (s) { return s.house_id === houseId && s.work_date === state.date; }); }
   function typeFor(start, end) {
     return state.types.find(function (t) { return t.is_active && hm(t.start_time) === start && hm(t.end_time) === end; });
   }
@@ -196,327 +173,231 @@
     state.staff = r[0]; state.houses = r[1]; state.types = r[2];
   }
   async function loadShifts() {
-    // 前日(夜勤の続き)〜翌日(翌朝の勤務)まで
     state.shifts = await App.rpc('get_shifts', { p_from: state.date, p_to: addDays(state.date, 1) });
   }
 
-  // ===== マスの状態 =====
-  // 戻り値: { kind: 'mine'|'locked'|'busy'|'', shift }
-  function cellState(houseId, row) {
-    const c0 = row * 60, c1 = c0 + 60;
-    let result = { kind: '', shift: null };
-    myShifts().forEach(function (s) {
-      const r = absRange(s);
-      if (!overlaps(c0, c1, r[0], r[1])) return;
-      if (s.house_id !== houseId) { if (!result.kind) result = { kind: 'busy', shift: s }; return; }
-      result = { kind: s.work_date === state.date ? 'mine' : 'locked', shift: s };
+  // 保存ずみの勤務から、チェックの状態を作る
+  function buildState() {
+    saved = {}; now = {}; locked = {}; lockedAny = new Array(ROWS).fill(false);
+    activeHouses().forEach(function (h) {
+      saved[h.id] = new Array(ROWS).fill(false);
+      locked[h.id] = new Array(ROWS).fill(false);
     });
-    return result;
+    myShifts().forEach(function (s) {
+      if (!saved[s.house_id]) return;           // 休止中の施設の勤務は表に出さない
+      const r = absRange(s);
+      for (let i = 0; i < ROWS; i++) {
+        if (!overlaps(i * 60, i * 60 + 60, r[0], r[1])) continue;
+        if (s.work_date === state.date) saved[s.house_id][i] = true;
+        else { locked[s.house_id][i] = true; lockedAny[i] = true; }
+      }
+    });
+    Object.keys(saved).forEach(function (id) { now[id] = saved[id].slice(); });
+  }
+
+  function changeCount() {
+    let n = 0;
+    Object.keys(now).forEach(function (id) { for (let i = 0; i < ROWS; i++) if (now[id][i] !== saved[id][i]) n++; });
+    return n;
   }
 
   // ===== 描く =====
-  function render() {
-    renderGrid();
-    renderList();
-    renderHint();
-  }
-
-  function renderGrid() {
-    const houses = activeHouses();
-    const d = parseDate(state.date);
-    const w = d.getDay();
+  function renderHeader() {
+    const d = parseDate(state.date), w = d.getDay();
     const lbl = document.getElementById('dateLabel');
     lbl.textContent = (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[w] + ')';
     lbl.className = 'date-label' + (w === 0 ? ' sun' : w === 6 ? ' sat' : '');
     document.getElementById('datePick').value = state.date;
+  }
 
-    const next = parseDate(addDays(state.date, 1));
-    let html = '<thead><tr><th class="time-col">時間</th>';
-    houses.forEach(function (h) {
-      html += '<th title="' + esc(h.name) + '">' + esc(houseLabel(h)) + '<small>' + esc(h.name) + '</small></th>';
-    });
-    html += '</tr></thead><tbody>';
-
+  function renderGrid() {
+    const houses = activeHouses();
+    let html = '<colgroup><col style="width:46px">' + houses.map(function () { return '<col>'; }).join('') + '</colgroup>';
+    html += '<thead><tr><th class="t">時間</th>' + houses.map(function (h) {
+      return '<th title="' + esc(h.name) + '">' + esc(houseLabel(h)) + '</th>';
+    }).join('') + '</tr></thead><tbody>';
     for (let r = 0; r < ROWS; r++) {
       const cls = [];
-      if (r >= 24) cls.push('next');
-      if (r === 24) cls.push('day-start');
       if (r % 24 >= 22 || r % 24 < 6) cls.push('night');
-      let label = rowLabel(r);
-      if (r === 24) label = '<span title="' + (next.getMonth() + 1) + '/' + next.getDate() + '">翌0:00</span>';
-      html += '<tr class="' + cls.join(' ') + '"><th class="time-col">' + label + '</th>';
+      if (r === 24) cls.push('next-start');
+      html += '<tr class="' + cls.join(' ') + '"><th class="t">' + rowLabel(r) + '</th>';
       houses.forEach(function (h) {
-        const st = cellState(h.id, r);
-        const c = ['slot'];
-        let text = '';
-        if (st.kind) c.push(st.kind);
-        if (st.kind === 'mine') {
-          if (crosses(st.shift)) c.push('night-shift');
-          const r0 = absRange(st.shift)[0];
-          if (r0 >= r * 60 && r0 < r * 60 + 60) { c.push('top'); text = timeText(st.shift); }
-        } else if (st.kind === 'locked') {
-          const r0 = absRange(st.shift)[0];
-          if (r === Math.max(0, Math.floor(r0 / 60))) text = r0 < 0 ? '前日から' : '翌日の勤務';
-        }
-        html += '<td class="' + c.join(' ') + '" data-house="' + esc(h.id) + '" data-row="' + r + '">' + esc(text) + '</td>';
+        const isLocked = locked[h.id][r];
+        const on = now[h.id][r];
+        const c = 'c' + (isLocked ? ' locked' : '') + (on ? ' on' : '');
+        html += '<td class="' + c + '"><label>' +
+          '<input type="checkbox" data-h="' + esc(h.id) + '" data-r="' + r + '"' +
+          (on || isLocked ? ' checked' : '') + (isLocked ? ' disabled' : '') +
+          ' aria-label="' + esc(h.name) + ' ' + rowLabel(r) + '"></label></td>';
       });
       html += '</tr>';
     }
     html += '</tbody>';
     document.getElementById('dayGrid').innerHTML = html;
-    paintSelection();
   }
 
   function renderList() {
     const list = myShifts().filter(function (s) {
       const r = absRange(s);
-      return overlaps(0, DAY, r[0], r[1]);          // この日にかかる勤務(前日からの夜勤を含む)
+      return overlaps(0, DAY, r[0], r[1]);
     }).sort(function (a, b) { return absRange(a)[0] - absRange(b)[0]; });
-    let total = 0;
     document.getElementById('dayList').innerHTML = list.length ? list.map(function (s) {
       const h = byId(state.houses, s.house_id);
       const t = s.shift_type_id ? byId(state.types, s.shift_type_id) : null;
-      const fromPrev = s.work_date !== state.date;
-      if (!fromPrev) total += durationOf(s);
-      return '<li><span class="dot' + (crosses(s) ? ' night' : '') + '"></span><div class="what">' +
-        esc(h ? h.name : '?') + '<small>' + (fromPrev ? '前日 ' : '') + esc(timeText(s)) + (t ? ' / ' + esc(t.name) : '') + '</small></div></li>';
-    }).join('') : '<li class="muted">この日の勤務はまだありません</li>';
-    const hh = Math.floor(total / 60), mm = total % 60;
-    document.getElementById('dayTotal').textContent = total ? 'この日に始まる勤務: ' + hh + '時間' + (mm ? mm + '分' : '') : '';
+      const prev = s.work_date !== state.date;
+      return '<li><span class="time' + (crosses(s) ? ' night' : '') + '">' + (prev ? '前日 ' : '') + esc(timeText(s)) + '</span>' +
+        '<span>' + esc(h ? h.name : '?') + (t ? ' <small>' + esc(t.name) + '</small>' : '') + '</span></li>';
+    }).join('') : '<li class="muted">まだありません</li>';
   }
 
-  function renderHint() {
-    const el = document.getElementById('hint');
-    if (anchor) {
-      const h = byId(state.houses, anchor.houseId);
-      el.className = 'hint active';
-      el.textContent = (h ? h.name : '') + ' ' + rowLabel(anchor.row) + ' から' +
-        (anchor.mode === 'fill' ? '入れます' : '消します') + '。終わりのマスを押してください(同じマスをもう一度押すと1時間だけ)';
-    } else {
-      el.className = 'hint';
-      el.innerHTML = '始まりのマスを押してから、終わりのマスを押すと、その間が勤務になります。パソコンでは縦になぞっても選べます。' +
-        '<br>色のついたマスから選ぶと、その時間を消します。斜線は前日・翌日の勤務、「—」は別の施設に入っている時間です。';
-    }
+  function updateSaveBar(message, kind) {
+    const n = changeCount();
+    document.getElementById('saveBtn').disabled = n === 0;
+    document.getElementById('undoBtn').disabled = n === 0;
+    const el = document.getElementById('saveMsg');
+    if (message) { el.textContent = message; el.className = 'msg' + (kind ? ' ' + kind : ''); return; }
+    el.className = 'msg';
+    el.textContent = n ? '変更 ' + n + ' マス(まだ保存していません)' : '変更はありません';
   }
 
-  // 選択中のマスの見た目
-  function paintSelection() {
-    document.querySelectorAll('#dayGrid td.slot').forEach(function (td) {
-      td.classList.remove('anchor', 'preview-fill', 'preview-clear');
-    });
-    const sel = drag || (anchor ? { houseId: anchor.houseId, from: anchor.row, to: anchor.row, mode: anchor.mode } : null);
-    if (!sel) return;
-    const lo = Math.min(sel.from, sel.to), hi = Math.max(sel.from, sel.to);
-    for (let r = lo; r <= hi; r++) {
-      const td = document.querySelector('#dayGrid td.slot[data-house="' + CSS.escape(sel.houseId) + '"][data-row="' + r + '"]');
-      if (td) td.classList.add(sel.mode === 'fill' ? 'preview-fill' : 'preview-clear');
-    }
-    if (anchor) {
-      const a = document.querySelector('#dayGrid td.slot[data-house="' + CSS.escape(anchor.houseId) + '"][data-row="' + anchor.row + '"]');
-      if (a) a.classList.add('anchor');
-    }
+  function renderAll() {
+    buildState();
+    renderHeader();
+    renderGrid();
+    renderList();
+    updateSaveBar();
   }
 
-  // ===== 選んだ範囲を勤務にする / 消す =====
-  async function applyRange(houseId, from, to, mode) {
-    const lo = Math.min(from, to), hi = Math.max(from, to);
-    const status = document.getElementById('saveStatus');
+  // ===== チェックを変えたとき(画面だけ。保存はしない) =====
+  function onCheck(e) {
+    const input = e.target;
+    if (!input.matches('input[type="checkbox"]')) return;
+    const h = input.dataset.h, r = +input.dataset.r;
+    const td = input.closest('td');
 
-    // 入れられるかの確認
-    for (let r = lo; r <= hi; r++) {
-      const st = cellState(houseId, r);
-      if (st.kind === 'locked') return App.setStatus(status, '前日・翌日の勤務と重なる時間があります。その日のページで変えてください', 'err');
-      if (mode === 'fill' && st.kind === 'busy') {
-        const h = byId(state.houses, st.shift.house_id);
-        return App.setStatus(status, (h ? h.name : '別の施設') + 'の勤務(' + timeText(st.shift) + ')と重なります', 'err');
+    if (input.checked) {
+      // 同じ時間に別の施設へ入っていないか
+      const other = Object.keys(now).find(function (id) { return id !== h && (now[id][r] || locked[id][r]); });
+      if (other) {
+        input.checked = false;
+        const oh = byId(state.houses, other);
+        return updateSaveBar(rowLabel(r) + ' は ' + (oh ? oh.name : '別の施設') + ' に入っています', 'err');
+      }
+      if (lockedAny[r]) {
+        input.checked = false;
+        return updateSaveBar(rowLabel(r) + ' は前日・翌日の勤務と重なります', 'err');
       }
     }
+    now[h][r] = input.checked;
+    td.classList.toggle('on', input.checked);
+    td.classList.toggle('changed', now[h][r] !== saved[h][r]);
+    updateSaveBar();
+  }
 
-    // この施設の、この日に始まる勤務のうち、選んだ範囲の前後 1 時間にかかるもの
-    const involved = myShifts().filter(function (s) {
-      if (s.house_id !== houseId || s.work_date !== state.date) return false;
-      const r = absRange(s);
-      return overlaps((lo - 1) * 60, (hi + 2) * 60, r[0], r[1]);
-    });
+  // ===== 保存: チェックの状態を勤務の形にして、変わった施設だけ作り直す =====
+  function planHouse(houseId) {
+    const before = saved[houseId], after = now[houseId];
+    let changed = false;
+    for (let i = 0; i < ROWS; i++) if (before[i] !== after[i]) { changed = true; break; }
+    if (!changed) return { toVoid: [], toCreate: [] };
 
-    // 1 時間ごとの入っている/いないを作り、選んだ範囲を書き換える
-    const slots = new Array(ROWS + 1).fill(false);
-    const owner = new Array(ROWS + 1).fill(null);
-    involved.forEach(function (s) {
-      const r = absRange(s);
-      for (let i = 0; i < ROWS; i++) {
-        if (overlaps(i * 60, i * 60 + 60, r[0], r[1])) { slots[i] = true; owner[i] = s; }
-      }
-    });
-    for (let i = lo; i <= hi; i++) { slots[i] = mode === 'fill'; owner[i] = null; }
-
-    // つながった時間をまとめて、勤務の形にする(元の勤務の端の分はそのまま残す)
+    const existing = todaysAt(houseId);
+    // 変えていない端の時間は、元の勤務の分(9:30 など)をそのまま残す
+    function ownerAt(i) {
+      return existing.find(function (s) { const r = absRange(s); return overlaps(i * 60, i * 60 + 60, r[0], r[1]); });
+    }
     const blocks = [];
     for (let i = 0; i < ROWS; i++) {
-      if (!slots[i]) continue;
+      if (!after[i]) continue;
       let j = i;
-      while (j + 1 < ROWS && slots[j + 1]) j++;
+      while (j + 1 < ROWS && after[j + 1]) j++;
       let start = i * 60, end = (j + 1) * 60;
-      if (owner[i]) start = Math.max(start, absRange(owner[i])[0]);
-      if (owner[j]) end = Math.min(end, absRange(owner[j])[1]);
-      const note = (owner[i] || owner[j] || {}).note || null;
-      blocks.push({ start: start, end: end, note: note });
+      // 始まり: そのマスを変えておらず、元の勤務がそのマスの途中から始まっていたら、その時刻を使う
+      const oi = before[i] === after[i] ? ownerAt(i) : null;
+      if (oi) {
+        const s0 = absRange(oi)[0];
+        if (s0 >= i * 60 && s0 < (i + 1) * 60) start = s0;
+      }
+      // 終わり: そのマスを変えておらず、元の勤務がそのマスの途中で終わっていたら、その時刻を使う
+      // (表の最後の行なら、翌10時より後まで続く勤務もそのまま)
+      const oj = before[j] === after[j] ? ownerAt(j) : null;
+      if (oj) {
+        const e0 = absRange(oj)[1];
+        if ((e0 > j * 60 && e0 <= (j + 1) * 60) || (j === ROWS - 1 && e0 > ROWS * 60)) end = e0;
+      }
+      blocks.push({ start: start, end: end, note: ((oi || oj) || {}).note || null, firstRow: i });
       i = j;
     }
-
-    for (const b of blocks) {
-      if (b.end - b.start >= DAY) return App.setStatus(status, '24時間以上の勤務は入れられません', 'err');
-    }
-
-    // 変わらない勤務はそのまま、変わったものは消して作り直す
     const keep = new Set();
     const toCreate = [];
     blocks.forEach(function (b) {
-      const same = involved.find(function (s) { const r = absRange(s); return r[0] === b.start && r[1] === b.end; });
+      const same = existing.find(function (s) { const r = absRange(s); return r[0] === b.start && r[1] === b.end; });
       if (same) keep.add(same.id); else toCreate.push(b);
     });
-    const toVoid = involved.filter(function (s) { return !keep.has(s.id); });
-    if (!toCreate.length && !toVoid.length) return;
+    return { toVoid: existing.filter(function (s) { return !keep.has(s.id); }), toCreate: toCreate };
+  }
 
-    saving = true;
-    document.getElementById('gridBox').classList.add('saving');
-    App.setStatus(status, '保存しています...');
-    try {
-      for (const s of toVoid) await App.rpc('void_shift', { p_id: s.id });
-      for (const b of toCreate) {
-        const startT = toTime(b.start), endT = toTime(b.end);
-        const t = typeFor(startT, endT);
-        await App.rpc('save_shift', {
-          p_id: null,
-          p_work_date: addDays(state.date, Math.floor(b.start / DAY)),
-          p_staff_id: state.staffId,
-          p_house_id: houseId,
-          p_shift_type_id: t ? t.id : null,
-          p_start_time: startT,
-          p_end_time: endT,
-          p_note: b.note,
-        });
+  async function onSave() {
+    const plans = Object.keys(now).map(function (id) { return { houseId: id, plan: planHouse(id) }; });
+
+    // 入れられない形がないか先に確認する
+    for (const p of plans) {
+      for (const b of p.plan.toCreate) {
+        if (b.end - b.start >= DAY) return updateSaveBar('24時間以上つづく勤務は入れられません', 'err');
+        if (b.start >= DAY && now[p.houseId][b.firstRow] !== saved[p.houseId][b.firstRow]) {
+          return updateSaveBar('翌日に始まる勤務は、次の日のページで入れてください', 'err');
+        }
       }
-      App.setStatus(status, '保存しました', 'ok');
+    }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    document.getElementById('undoBtn').disabled = true;
+    updateSaveBar('保存しています...');
+    let error = null;
+    try {
+      // 先に消してから作る(自分の勤務どうしが重ならないように)
+      for (const p of plans) for (const s of p.plan.toVoid) await App.rpc('void_shift', { p_id: s.id });
+      for (const p of plans) {
+        for (const b of p.plan.toCreate) {
+          const startT = toTime(b.start), endT = toTime(b.end);
+          const t = typeFor(startT, endT);
+          await App.rpc('save_shift', {
+            p_id: null,
+            p_work_date: addDays(state.date, Math.floor(b.start / DAY)),
+            p_staff_id: state.staffId,
+            p_house_id: p.houseId,
+            p_shift_type_id: t ? t.id : null,
+            p_start_time: startT,
+            p_end_time: endT,
+            p_note: b.note,
+          });
+        }
+      }
     } catch (err) {
       console.error(err);
-      const m = err && err.message ? err.message : '';
-      App.setStatus(status, /重なる/.test(m) ? m : '保存できませんでした。表を読み込み直しました', 'err');
-    } finally {
-      saving = false;
-      document.getElementById('gridBox').classList.remove('saving');
-      await loadShifts();
-      render();
+      error = err && err.message && /重なる/.test(err.message) ? err.message : '保存できませんでした。読み込み直しました';
     }
+    await loadShifts();
+    renderAll();
+    if (error) updateSaveBar(error, 'err'); else updateSaveBar('保存しました', 'ok');
   }
 
-  // ===== マスの操作 =====
-  function cellFromEvent(e) {
-    const td = e.target.closest ? e.target.closest('td.slot') : null;
-    return td ? { houseId: td.dataset.house, row: +td.dataset.row, td: td } : null;
-  }
-  function modeFor(houseId, row) {
-    const k = cellState(houseId, row).kind;
-    if (k === 'locked' || k === 'busy') return null;
-    return k === 'mine' ? 'clear' : 'fill';
-  }
-
-  // 2 回押す方式(スマホ・パソコン共通)
-  function onTap(c) {
-    const status = document.getElementById('saveStatus');
-    App.setStatus(status, '');
-    if (!anchor || anchor.houseId !== c.houseId) {
-      const mode = modeFor(c.houseId, c.row);
-      if (!mode) {
-        const st = cellState(c.houseId, c.row);
-        App.setStatus(status, st.kind === 'locked' ? '前日・翌日の勤務です。その日のページで変えてください' : 'この時間は別の施設に入っています', 'err');
-        return;
-      }
-      if (mode === 'fill' && c.row >= 24) {
-        App.setStatus(status, '翌日に始まる勤務は、次の日のページで入れてください', 'err');
-        return;
-      }
-      anchor = { houseId: c.houseId, row: c.row, mode: mode };
-      renderHint(); paintSelection();
-      return;
-    }
-    const a = anchor;
-    anchor = null;
-    renderHint();
-    applyRange(a.houseId, a.row, c.row, a.mode);
-  }
-
-  function setupGrid() {
-    const grid = document.getElementById('dayGrid');
-
-    // マウス: なぞって選ぶ。動かさずに離したら「押した」扱い
-    grid.addEventListener('mousedown', function (e) {
-      if (saving || e.button !== 0) return;
-      const c = cellFromEvent(e);
-      if (!c) return;
-      e.preventDefault();
-      const mode = anchor && anchor.houseId === c.houseId ? anchor.mode : modeFor(c.houseId, c.row);
-      drag = { houseId: c.houseId, from: anchor && anchor.houseId === c.houseId ? anchor.row : c.row, to: c.row, mode: mode, moved: false, start: c.row };
-    });
-    grid.addEventListener('mouseover', function (e) {
-      if (!drag) return;
-      const c = cellFromEvent(e);
-      if (!c || c.houseId !== drag.houseId || c.row === drag.to) return;
-      drag.to = c.row; drag.moved = true;
-      if (drag.mode) paintSelection();
-    });
-    document.addEventListener('mouseup', function (e) {
-      if (!drag) return;
-      const d = drag;
-      drag = null;
-      if (!d.moved) {
-        const c = cellFromEvent(e);
-        if (c) onTap(c);
-        return;
-      }
-      anchor = null;
-      renderHint();
-      if (!d.mode) { paintSelection(); return; }
-      if (d.mode === 'fill' && Math.min(d.from, d.to) >= 24) {
-        paintSelection();
-        App.setStatus(document.getElementById('saveStatus'), '翌日に始まる勤務は、次の日のページで入れてください', 'err');
-        return;
-      }
-      applyRange(d.houseId, d.from, d.to, d.mode);
-    });
-
-    // タッチ: 押すだけ(なぞるとスクロールになるので)
-    let touchStart = null;
-    grid.addEventListener('touchstart', function (e) {
-      const t = e.touches[0];
-      touchStart = t ? { x: t.clientX, y: t.clientY } : null;
-    }, { passive: true });
-    grid.addEventListener('touchend', function (e) {
-      if (saving) return;
-      const t = e.changedTouches[0];
-      if (!t) return;
-      // スクロールしたときは押した扱いにしない
-      if (touchStart && (Math.abs(t.clientX - touchStart.x) > 10 || Math.abs(t.clientY - touchStart.y) > 10)) return;
-      const el = document.elementFromPoint(t.clientX, t.clientY);
-      const c = el ? cellFromEvent({ target: el }) : null;
-      if (!c) return;
-      e.preventDefault();           // このあとのマウス操作を出さない
-      onTap(c);
-    }, { passive: false });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && anchor) { anchor = null; renderHint(); paintSelection(); }
-    });
+  function onUndo() {
+    Object.keys(saved).forEach(function (id) { now[id] = saved[id].slice(); });
+    renderGrid();
+    updateSaveBar();
   }
 
   // ===== スタッフ・日付の切り替え =====
+  function confirmLeave() {
+    return changeCount() === 0 || confirm('保存していない変更があります。破棄して移動しますか?');
+  }
+
   function renderStaffOptions() {
-    const sel = document.getElementById('staffSel');
     const list = state.staff.filter(function (s) { return s.is_active || s.id === state.staffId; });
-    sel.innerHTML = list.map(function (s) {
-      const h = s.house_id ? byId(state.houses, s.house_id) : null;
-      return '<option value="' + esc(s.id) + '"' + (s.id === state.staffId ? ' selected' : '') + '>' +
-        esc(s.name) + (s.job_title ? '(' + esc(s.job_title) + ')' : '') + (h ? ' ・' + esc(h.name) : '') + '</option>';
+    document.getElementById('staffSel').innerHTML = list.map(function (s) {
+      return '<option value="' + esc(s.id) + '"' + (s.id === state.staffId ? ' selected' : '') + '>' + esc(s.name) + '</option>';
     }).join('');
   }
 
@@ -529,20 +410,11 @@
   }
 
   async function goDate(dateStr) {
+    if (!confirmLeave()) { document.getElementById('datePick').value = state.date; return; }
     state.date = dateStr;
-    anchor = null;
-    App.setStatus(document.getElementById('saveStatus'), '');
     saveUrl();
     await loadShifts();
-    render();
-    scrollToMorning();
-  }
-
-  // 最初は 6 時あたりが上に来るようにする
-  function scrollToMorning() {
-    const box = document.getElementById('gridBox');
-    const tr = document.querySelectorAll('#dayGrid tbody tr')[6];
-    if (box && tr) box.scrollTop = tr.offsetTop - 34;
+    renderAll();
   }
 
   App.boot({
@@ -550,42 +422,46 @@
     onReady: async function () {
       await loadMasters();
       const q = new URLSearchParams(location.search);
-      let saved = null;
-      try { saved = localStorage.getItem('gh_my_staff'); } catch (e) { /* noop */ }
-      const want = q.get('staff') || saved;
+      let remembered = null;
+      try { remembered = localStorage.getItem('gh_my_staff'); } catch (e) { /* noop */ }
+      const want = q.get('staff') || remembered;
       const active = state.staff.filter(function (s) { return s.is_active; });
       state.staffId = byId(state.staff, want) ? want : (active[0] ? active[0].id : null);
       state.date = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : App.todayJST();
 
-      const noStaff = !state.staffId, noHouse = !activeHouses().length;
-      if (noStaff || noHouse) {
+      if (!state.staffId || !activeHouses().length) {
         const msg = document.getElementById('emptyMsg');
         msg.hidden = false;
-        msg.innerHTML = noStaff
+        msg.innerHTML = !state.staffId
           ? 'スタッフがまだ登録されていません。<a href="staff.html">スタッフ画面</a>から追加してください'
           : '施設がまだ登録されていません。<a href="houses.html">施設画面</a>から追加してください';
-        document.getElementById('layout').hidden = true;
-        document.querySelector('.pick-bar').hidden = true;
+        document.getElementById('mainArea').hidden = true;
+        document.querySelector('.top-bar').hidden = true;
         return;
       }
 
       renderStaffOptions();
-      setupGrid();
+      document.getElementById('saveBar').hidden = false;
+      document.getElementById('dayGrid').addEventListener('change', onCheck);
+      document.getElementById('saveBtn').onclick = onSave;
+      document.getElementById('undoBtn').onclick = onUndo;
       document.getElementById('staffSel').addEventListener('change', function () {
+        if (!confirmLeave()) { this.value = state.staffId; return; }
         state.staffId = this.value;
-        anchor = null;
         saveUrl();
-        render();
+        renderAll();
       });
       document.getElementById('prevDay').onclick = function () { goDate(addDays(state.date, -1)); };
       document.getElementById('nextDay').onclick = function () { goDate(addDays(state.date, 1)); };
       document.getElementById('todayBtn').onclick = function () { goDate(App.todayJST()); };
       document.getElementById('datePick').addEventListener('change', function () { if (this.value) goDate(this.value); });
+      window.addEventListener('beforeunload', function (e) {
+        if (changeCount() > 0) { e.preventDefault(); e.returnValue = ''; }
+      });
 
       saveUrl();
       await loadShifts();
-      render();
-      setTimeout(scrollToMorning, 0);
+      renderAll();
     },
   });
 </script>
