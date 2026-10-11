@@ -21,10 +21,11 @@ staff.html        スタッフ(所属施設をプルダウンで選ぶ例)
 houses.html       施設(上の施設ボタンで「来る人」と「部屋と入居者」を切り替え)
 shifts.html       勤務表(月の表・ダイアログでの入力・勤務区分タブ)
 myshift.html      個人の勤務(縦=時間・横=施設のチェック表。勤務の入力はここが基本。スマホ向け)
+records.html      日々の記録(施設→利用者→時刻ホイール→内容チップで記録。スマホ向け)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
-js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html と residents.html で使う
+js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html・residents.html・records.html で使う
 sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ```
 
@@ -85,6 +86,15 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 入居中の人を別の部屋に入居させると、前の部屋はその日で退居になる(部屋の移動)
 - 記録は消さない。間違いは `void_room_assignment` で取り消す(voided_at)
 - `residents.room` / `residents.move_in_date` は使わない(入居の記録に移った)
+
+## 日々の記録のルール
+
+- 記録 1 件は `daily_records` の 1 行(resident_id・house_id・record_date・record_time・kind)。チップを複数選ぶと内容ごとに 1 行ずつ作る(`add_daily_records`)
+- 内容の種類は `records.html` の `KINDS` で決める(名前とアイコン)。増やすときは DB の変更はいらない。名前を変えると過去の記録とは別の内容として扱われる
+- 利用者のボタンには、その日その施設の部屋に入居している人を出す(`Rooms.occupantOf`)
+- `house_id` は記録したときの施設。部屋を移っても過去の記録の施設は変えない
+- 時刻はスクロール式のホイール(時 0〜23・分 0〜59)。記録したあとも時刻と内容は残す(次の利用者にすぐ同じ内容を記録できるように)
+- 記録は消さない。間違いは `void_daily_record` で取り消す(voided_at)
 
 ## 個人情報の扱い
 
