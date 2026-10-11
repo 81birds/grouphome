@@ -132,7 +132,7 @@
         <span class="page-icon"><i class="ti ti-notebook"></i></span>
         日々の記録
       </h1>
-      <p>施設と利用者を選び、時刻と内容を選んで記録します</p>
+      <p>施設と利用者さんを選び、時刻と内容を選んで記録します</p>
     </div>
 
     <!-- 施設と日にち -->
@@ -149,7 +149,7 @@
 
     <!-- 利用者 -->
     <div class="card" id="personCard" hidden>
-      <h2><i class="ti ti-users"></i>利用者</h2>
+      <h2><i class="ti ti-users"></i>利用者さん</h2>
       <div class="person-grid" id="personGrid"></div>
       <div id="personMsg" class="empty-msg" hidden></div>
     </div>
@@ -315,7 +315,7 @@
     }).join('');
     const msg = $('personMsg');
     msg.hidden = people.length > 0;
-    msg.textContent = 'この日、この施設に入居している利用者がいません。利用者の画面で入居を登録してください';
+    msg.textContent = 'この日、この施設に入居している利用者さんがいません。利用者さんの画面で入居を登録してください';
   }
 
   // ===== 入力と一覧 =====
