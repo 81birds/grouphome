@@ -1,0 +1,317 @@
+/* =====================================================
+   共通スタイル(全画面で読み込む)
+   デザインは「流通ポータル」と同じトークン・部品を使う。
+   色や角丸は必ずここの変数を使い、ページ側で直接色を書かない。
+   ===================================================== */
+
+:root {
+  --color-bg: #f9f6ee;
+  --color-surface: #fffdfb;
+  --color-surface-alt: #eef4ee;
+
+  --color-primary: #6c8f78;
+  --color-primary-dark: #486954;
+  --color-primary-soft: #dcebe3;
+
+  --color-text: #31413d;
+  --color-text-muted: #716d73;
+  --color-border: #d7d5c7;
+
+  --color-danger: #b5573f;
+  --color-danger-dark: #954a35;
+  --color-danger-soft: #fbeae4;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+
+  --shadow-sm: 0 1px 2px rgba(30, 30, 20, 0.06);
+  --shadow-md: 0 6px 20px rgba(30, 30, 20, 0.10);
+
+  --font-base: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+
+  --gtool-h: 46px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-base);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  padding: calc(20px + var(--gtool-h)) 10px 60px;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+body.no-nav { padding-top: 20px; }
+
+[hidden] { display: none !important; }
+
+/* ===== 共通ツールバー(Chromeのタブ風) ===== */
+.gtool-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  height: var(--gtool-h);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px 6px 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+.gtool-bar::-webkit-scrollbar { display: none; }
+.gtool-tab {
+  flex: 1 1 100px;
+  min-width: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 8px;
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.gtool-tab span { overflow: hidden; text-overflow: ellipsis; }
+.gtool-tab i { font-size: 14px; flex: 0 0 auto; }
+.gtool-tab:hover:not(.active) { background: var(--color-surface); color: var(--color-text); }
+.gtool-tab.active {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* ===== レイアウト ===== */
+.wrap { max-width: 720px; margin: 0 auto; }
+.wrap.wide { max-width: 1100px; }
+
+.page-header { text-align: center; margin-bottom: 24px; }
+.page-header h1 {
+  font-size: 20px;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.page-header p { font-size: 13px; color: var(--color-text-muted); margin: 0; }
+.page-icon {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.page-icon i { font-size: 18px; color: var(--color-primary-dark); }
+
+/* ===== 読み込み中 ===== */
+.loading-screen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 60vh; gap: 12px;
+  font-size: 13px; color: var(--color-text-muted);
+  text-align: center;
+}
+.loading-screen > i { font-size: 28px; color: var(--color-primary); }
+.spin { animation: spin 1s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== ポータルのアイコンタイル ===== */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (min-width: 520px) {
+  .icon-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.icon-tile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: box-shadow 0.15s ease, transform 0.08s ease, background-color 0.15s ease;
+}
+.icon-tile:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.icon-tile .icon-circle {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: var(--color-primary-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+.icon-tile .icon-circle i { font-size: 26px; color: var(--color-primary-dark); }
+.icon-tile .tile-label { font-size: 14px; font-weight: 700; text-align: center; }
+.icon-tile .tile-sub { font-size: 11px; color: var(--color-text-muted); text-align: center; }
+
+.icon-tile.disabled { cursor: default; opacity: 0.55; pointer-events: none; }
+.icon-tile.disabled .icon-circle { background: var(--color-surface-alt); }
+.icon-tile.disabled .icon-circle i { color: var(--color-text-muted); }
+.badge-soon {
+  display: inline-block;
+  font-size: 10px; font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-top: 2px;
+}
+
+/* ===== カード ===== */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 16px;
+  margin-bottom: 18px;
+}
+.card h2 {
+  font-size: 15px; margin: 0 0 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card h2 i { color: var(--color-primary-dark); }
+
+/* ===== タブ(ページ内の切り替え) ===== */
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; }
+.tab-btn {
+  font-family: var(--font-base);
+  font-size: 13px; font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.tab-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ===== 絞り込みチップ ===== */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chips button {
+  font-family: var(--font-base);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.chips button:hover { background: var(--color-primary-soft); color: var(--color-primary-dark); }
+.chips button.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+/* ===== 表 ===== */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--color-border); }
+th { color: var(--color-text-muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr.row-inactive td { background: #eeeeee; color: #858585; }
+.compact-table th, .compact-table td { padding: 3px 4px; }
+.compact-table input { padding: 4px 6px; }
+.col-narrow { width: 80px; }
+.col-center { text-align: center; }
+
+/* ===== 入力 ===== */
+input[type="text"], input[type="number"], input[type="email"], input[type="password"],
+input[type="date"], input[type="time"], input[type="tel"], textarea {
+  font-family: var(--font-base);
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  width: 100%;
+}
+textarea { min-height: 80px; resize: vertical; line-height: 1.6; }
+select {
+  font-family: var(--font-base);
+  font-size: 12px;
+  padding: 5px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height: 16px; }
+
+/* 自動保存の結果を知らせる(成功は一瞬緑、失敗は赤) */
+.autosave { transition: background 0.8s, border-color 0.8s; }
+.autosave.saved { border-color: var(--color-primary); background: var(--color-primary-soft); transition: none; }
+.autosave.save-error { border-color: var(--color-danger); background: var(--color-danger-soft); }
+
+.field label, .field-label {
+  font-size: 12px; color: var(--color-text-muted);
+  display: block; margin-bottom: 4px;
+}
+.form-stack { display: flex; flex-direction: column; gap: 12px; }
+.add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.add-row .field { flex: 1 1 140px; }
+.add-row .field.narrow { flex: 0 1 90px; }
+
+/* ===== ボタン ===== */
+.btn {
+  font-family: var(--font-base);
+  font-size: 13px; font-weight: 700;
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:hover { background: var(--color-primary-dark); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn-ghost { background: var(--color-surface-alt); color: var(--color-text); border: 1px solid var(--color-border); }
+.btn-ghost:hover { background: var(--color-surface); }
+.btn-danger { background: var(--color-danger); }
+.btn-danger:hover { background: var(--color-danger-dark); }
+.btn-sm { padding: 5px 9px; font-size: 12px; }
+.btn-block { width: 100%; padding: 11px 14px; font-size: 14px; }
+
+.icon-btn {
+  border: none; background: transparent; cursor: pointer;
+  color: var(--color-text-muted); font-size: 16px; padding: 4px 6px;
+}
+.icon-btn:hover { color: var(--color-primary-dark); }
+.icon-btn.danger:hover { color: var(--color-danger); }
+
+/* ===== メッセージ ===== */
+.loading-msg, .empty-msg { text-align: center; color: var(--color-text-muted); font-size: 13px; padding: 24px 10px; }
+.status-msg { font-size: 12px; margin-top: 8px; min-height: 1em; }
+.status-msg.ok { color: var(--color-primary-dark); }
+.status-msg.err { color: var(--color-danger); }
+
+.muted { color: var(--color-text-muted); }
+.text-sm { font-size: 12px; }
+.center { text-align: center; }

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ポータル</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-home-heart"></i></span>
+        <span id="appName"></span>
+      </h1>
+      <p>使いたい機能のアイコンを選んでください</p>
+    </div>
+
+    <div id="iconGrid" class="icon-grid"></div>
+
+    <p class="center" style="margin-top:28px;">
+      <button id="logoutBtn" class="btn btn-ghost btn-sm"><i class="ti ti-logout"></i>ログアウト</button>
+    </p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+  App.boot({
+    active: 'index',
+    onReady: function () {
+      document.title = App.config.APP_NAME + ' ポータル';
+      document.getElementById('appName').textContent = App.config.APP_NAME + ' ポータル';
+      document.getElementById('logoutBtn').onclick = App.logout;
+
+      document.getElementById('iconGrid').innerHTML = App.PAGES
+        .filter(function (p) { return p.portal !== false; })
+        .map(function (p) {
+          const disabled = p.ready ? '' : ' disabled';
+          const soon = p.ready ? '' : '<span class="badge-soon">準備中</span>';
+          return '<a href="' + p.file + '" class="icon-tile' + disabled + '">' +
+            '<div class="icon-circle"><i class="ti ' + p.icon + '"></i></div>' +
+            '<div class="tile-label">' + App.escapeHtml(p.label) + '</div>' +
+            '<div class="tile-sub">' + App.escapeHtml(p.sub) + '</div>' + soon +
+            '</a>';
+        }).join('');
+    },
+  });
+</script>
+
+</body>
+</html>

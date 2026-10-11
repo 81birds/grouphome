@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>利用者</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    /* スマホでは横スクロールにして、氏名欄がつぶれないようにする */
+    #residentTable { min-width: 600px; }
+    #residentTable .col-name { width: 30%; }
+    #residentTable .col-date { width: 150px; }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-users"></i></span>
+        利用者
+      </h1>
+      <p>利用者の追加と基本情報の編集ができます。変更はすぐに保存されます</p>
+    </div>
+
+    <!-- 追加 -->
+    <form id="addForm" class="card" novalidate>
+      <h2><i class="ti ti-user-plus"></i>利用者を追加</h2>
+      <div class="add-row">
+        <div class="field">
+          <label for="newName">氏名 *</label>
+          <input type="text" id="newName" required>
+        </div>
+        <div class="field">
+          <label for="newKana">ふりがな</label>
+          <input type="text" id="newKana">
+        </div>
+        <div class="field narrow">
+          <label for="newRoom">部屋</label>
+          <input type="text" id="newRoom">
+        </div>
+        <div class="field">
+          <label for="newMoveIn">入居日</label>
+          <input type="date" id="newMoveIn">
+        </div>
+        <button type="submit" id="addBtn" class="btn"><i class="ti ti-plus"></i>追加</button>
+      </div>
+      <div id="addStatus" class="status-msg"></div>
+    </form>
+
+    <!-- 一覧 -->
+    <div class="card">
+      <h2><i class="ti ti-list"></i>利用者一覧</h2>
+      <div class="chips" id="filterChips">
+        <button type="button" data-filter="active" class="active">入居中</button>
+        <button type="button" data-filter="inactive">退居</button>
+        <button type="button" data-filter="all">すべて</button>
+      </div>
+      <div class="table-scroll">
+        <table class="compact-table" id="residentTable">
+          <thead>
+            <tr>
+              <th class="col-name">氏名</th>
+              <th class="col-name">ふりがな</th>
+              <th class="col-narrow">部屋</th>
+              <th class="col-date">入居日</th>
+              <th class="col-center">入居中</th>
+            </tr>
+          </thead>
+          <tbody id="residentRows"></tbody>
+        </table>
+      </div>
+      <div id="listMsg" class="empty-msg" hidden></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+  let residents = [];
+  let currentFilter = 'active';
+
+  async function loadResidents() {
+    residents = await App.rpc('get_residents');
+    renderList();
+  }
+
+  function renderList() {
+    const rows = residents.filter(function (r) {
+      if (currentFilter === 'active') return r.is_active;
+      if (currentFilter === 'inactive') return !r.is_active;
+      return true;
+    });
+    const esc = App.escapeHtml;
+    document.getElementById('residentRows').innerHTML = rows.map(function (r) {
+      return '<tr data-id="' + esc(r.id) + '"' + (r.is_active ? '' : ' class="row-inactive"') + '>' +
+        '<td><input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '"></td>' +
+        '<td><input type="text" class="autosave" data-field="kana" value="' + esc(r.kana) + '"></td>' +
+        '<td><input type="text" class="autosave" data-field="room" value="' + esc(r.room) + '"></td>' +
+        '<td><input type="date" class="autosave" data-field="move_in_date" value="' + esc(r.move_in_date) + '"></td>' +
+        '<td class="col-center"><input type="checkbox" data-field="is_active"' + (r.is_active ? ' checked' : '') + '></td>' +
+        '</tr>';
+    }).join('');
+
+    const msg = document.getElementById('listMsg');
+    msg.hidden = rows.length > 0;
+    msg.textContent = '該当する利用者はいません';
+  }
+
+  // 一覧の入力が変わったら、その項目だけ保存する
+  async function onRowChange(e) {
+    const input = e.target;
+    const field = input.dataset.field;
+    const tr = input.closest('tr');
+    if (!field || !tr) return;
+    const r = residents.find(function (x) { return x.id === tr.dataset.id; });
+
+    let value;
+    if (field === 'is_active') value = input.checked;
+    else value = input.value.trim() || null;
+
+    if (field === 'name' && !value) {
+      alert('氏名は空にできません');
+      input.value = r ? r.name : '';
+      return;
+    }
+
+    try {
+      await App.rpc('update_resident_field', {
+        p_id: tr.dataset.id,
+        p_field: field,
+        p_value: value == null ? null : String(value),
+      });
+    } catch (err) {
+      console.error(err);
+      if (field === 'is_active') { input.checked = !input.checked; alert('保存できませんでした'); }
+      else App.flashSaved(input, false);
+      return;
+    }
+    if (r) r[field] = value;
+    if (field === 'is_active') renderList();
+    else App.flashSaved(input, true);
+  }
+
+  async function onAdd(e) {
+    e.preventDefault();
+    const status = document.getElementById('addStatus');
+    const name = document.getElementById('newName').value.trim();
+    if (!name) {
+      App.setStatus(status, '氏名を入力してください', 'err');
+      return;
+    }
+    const btn = document.getElementById('addBtn');
+    btn.disabled = true;
+    try {
+      await App.rpc('add_resident', {
+        p_name: name,
+        p_kana: document.getElementById('newKana').value.trim() || null,
+        p_room: document.getElementById('newRoom').value.trim() || null,
+        p_move_in_date: document.getElementById('newMoveIn').value || null,
+      });
+    } catch (err) {
+      console.error(err);
+      App.setStatus(status, '追加できませんでした', 'err');
+      return;
+    } finally {
+      btn.disabled = false;
+    }
+    e.target.reset();
+    App.setStatus(status, name + ' さんを追加しました', 'ok');
+    await loadResidents();
+  }
+
+  App.boot({
+    active: 'residents',
+    onReady: async function () {
+      document.getElementById('addForm').addEventListener('submit', onAdd);
+      document.getElementById('residentRows').addEventListener('change', onRowChange);
+      document.getElementById('filterChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-filter]');
+        if (!b) return;
+        currentFilter = b.dataset.filter;
+        this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+        renderList();
+      });
+      await loadResidents();
+    },
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ログイン</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    #passcode { font-size: 22px; letter-spacing: 0.4em; text-align: center; padding: 10px; }
+  </style>
+</head>
+<body class="no-nav">
+
+<div class="wrap" style="max-width:340px; margin-top:8vh;">
+  <div class="page-header">
+    <h1>
+      <span class="page-icon"><i class="ti ti-home-heart"></i></span>
+      <span id="appName"></span>
+    </h1>
+    <p>合言葉を入力してください</p>
+  </div>
+
+  <form id="loginForm" class="card form-stack" novalidate>
+    <div class="field">
+      <label for="passcode">合言葉</label>
+      <input type="password" id="passcode" inputmode="numeric" autocomplete="current-password" autofocus>
+    </div>
+    <button type="submit" id="loginBtn" class="btn btn-block"><i class="ti ti-login"></i>はじめる</button>
+    <div id="status" class="status-msg"></div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+  (function () {
+    const appName = App.config.APP_NAME;
+    document.title = appName + ' ログイン';
+    document.getElementById('appName').textContent = appName;
+
+    // ログイン後の戻り先(同じフォルダの .html だけ許可)
+    function nextPage() {
+      const n = new URLSearchParams(location.search).get('next') || '';
+      return /^[a-z0-9_-]+\.html(\?.*)?$/i.test(n) && !/^login\.html/i.test(n) ? n : 'index.html';
+    }
+
+    const form = document.getElementById('loginForm');
+    const input = document.getElementById('passcode');
+    const status = document.getElementById('status');
+    const btn = document.getElementById('loginBtn');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const code = input.value.trim();
+      if (!code) {
+        App.setStatus(status, '合言葉を入力してください', 'err');
+        return;
+      }
+      btn.disabled = true;
+      App.setStatus(status, '確認しています...');
+      try {
+        const ok = await App.checkPasscode(code);
+        if (!ok) {
+          App.setStatus(status, '合言葉が違います', 'err');
+          input.select();
+          return;
+        }
+        App.savePasscode(code);
+        location.replace(nextPage());
+      } catch (err) {
+        console.error(err);
+        App.setStatus(status, '通信できませんでした。config.js の設定と通信状況を確認してください', 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>
