@@ -21,7 +21,7 @@
   // ready: false の画面はポータルに「準備中」で表示され、タブには出ない。
   const PAGES = [
     { key: 'index',      file: 'index.html',      icon: 'ti-home-heart', label: 'ポータル',   sub: '',                       ready: true, portal: false },
-    { key: 'residents',  file: 'residents.html',  icon: 'ti-users',      label: '利用者',     sub: '利用者一覧・基本情報',   ready: true },
+    { key: 'residents',  file: 'residents.html',  icon: 'ti-users',      label: '利用者さん',     sub: '利用者さん一覧・基本情報',   ready: true },
     { key: 'staff',      file: 'staff.html',      icon: 'ti-id-badge-2', label: 'スタッフ',   sub: 'スタッフ一覧・所属施設', ready: true },
     { key: 'houses',     file: 'houses.html',     icon: 'ti-building-community', label: '施設', sub: '施設一覧・住所・定員', ready: true },
     { key: 'shifts',     file: 'shifts.html',     icon: 'ti-calendar-time', label: '勤務表',  sub: '1か月のシフト・夜勤',    ready: true },

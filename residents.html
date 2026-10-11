@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>利用者</title>
+  <title>利用者さん</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,14 +54,14 @@
     <div class="page-header">
       <h1>
         <span class="page-icon"><i class="ti ti-users"></i></span>
-        利用者
+        利用者さん
       </h1>
-      <p>利用者の追加と編集ができます。「施設・部屋」を押すと、入居・部屋の移動・退居ができます</p>
+      <p>利用者さんの追加と編集ができます。「施設・部屋」を押すと、入居・部屋の移動・退居ができます</p>
     </div>
 
     <!-- 追加 -->
     <form id="addForm" class="card" novalidate>
-      <h2><i class="ti ti-user-plus"></i>利用者を追加</h2>
+      <h2><i class="ti ti-user-plus"></i>利用者さんを追加</h2>
       <div class="add-row">
         <div class="field">
           <label for="newName">氏名 *</label>
@@ -92,7 +92,7 @@
 
     <!-- 一覧 -->
     <div class="card">
-      <h2><i class="ti ti-list"></i>利用者一覧</h2>
+      <h2><i class="ti ti-list"></i>利用者さん一覧</h2>
       <div class="chips" id="filterChips">
         <button type="button" data-filter="active" class="active">入居中</button>
         <button type="button" data-filter="inactive">退居</button>
@@ -227,7 +227,7 @@
 
     const msg = document.getElementById('listMsg');
     msg.hidden = rows.length > 0;
-    msg.textContent = Rooms.residents.length ? '該当する利用者はいません' : 'まだ利用者が登録されていません。上のフォームから追加してください';
+    msg.textContent = Rooms.residents.length ? '該当する利用者さんはいません' : 'まだ利用者さんが登録されていません。上のフォームから追加してください';
   }
 
   // 一覧の入力が変わったら、その項目だけ保存する

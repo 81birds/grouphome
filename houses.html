@@ -497,12 +497,12 @@
       '<i class="ti ti-door-enter"></i>' + esc(h ? h.name : '') + ' ' + esc(Rooms.roomName(r)) + ' に入居',
       people.length
         ? '<div class="form-stack">' +
-            '<div class="field"><label for="mResident">利用者</label><select id="mResident"><option value="">選んでください</option>' + opts + '</select></div>' +
+            '<div class="field"><label for="mResident">利用者さん</label><select id="mResident"><option value="">選んでください</option>' + opts + '</select></div>' +
             '<div class="field"><label for="mDate">入居日</label><input type="date" id="mDate" value="' + today + '"></div>' +
             '<div class="field"><label for="mNote">メモ</label><input type="text" id="mNote"></div>' +
             '<div class="muted-box">いま別の部屋にいる人を選ぶと、前の部屋は入居日で退居になります(部屋の移動)</div>' +
           '</div>'
-        : '<div class="muted-box">入居中の利用者がいません。<a href="residents.html">利用者画面</a>から追加してください</div>',
+        : '<div class="muted-box">入居中の利用者さんがいません。<a href="residents.html">利用者さんの画面</a>から追加してください</div>',
       '<button type="button" class="btn btn-ghost" data-m="close">やめる</button>' +
       (people.length ? '<button type="button" class="btn" data-m="save-in" data-room="' + esc(roomId) + '"><i class="ti ti-check"></i>入居する</button>' : '')
     );
@@ -566,7 +566,7 @@
     if (m === 'close') return closeRoomModal();
     if (m === 'save-in') {
       const rid = document.getElementById('mResident').value, d = document.getElementById('mDate').value;
-      if (!rid) return modalStatus('利用者を選んでください', 'err');
+      if (!rid) return modalStatus('利用者さんを選んでください', 'err');
       if (!d) return modalStatus('入居日を入れてください', 'err');
       const p = Rooms.resident(rid);
       return runModal(function () {
