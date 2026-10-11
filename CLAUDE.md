@@ -59,6 +59,10 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 物理削除はせず `is_active` や `voided_at` などで論理削除する
 - `updated_at` は共通関数 `public.set_updated_at()` のトリガーで更新する
 - 変更は `sql/YYYY-MM-DD_内容.sql` を追加し、Supabase の SQL Editor で実行してからコミットする。過去の SQL ファイルは書き換えない
+- Claude がコネクタ(apply_migration)で実行する SQL には、削除の命令(`drop`)を書かない。コメントの中にも書かない。確認画面が出せずキャンセルになるため
+  - トリガーは `create or replace trigger` を使う
+  - 関数の引数を変えるときは、古い関数を `alter function ... rename to xxx_unused_日付` にして権限を外す
+  - どうしても削除が必要なときは、SQL を渡して SQL Editor で実行してもらう
 - 合言葉そのもの、service_role / secret key は、コード・SQL ファイル・コミットに絶対に書かない。`config.js` に書くのは publishable key だけ
 
 ## 勤務(シフト)のルール

@@ -12,7 +12,17 @@
 alter table public.houses add column if not exists short_name text;
 comment on column public.houses.short_name is '略称(勤務表のマスに出す。例: みどり)';
 
-drop function if exists public.add_house(text, text, text, text, integer);
+-- 引数が増えるので新しい add_house を作る。古い版(引数 5 つ)は消さずに名前を変えて、呼べないようにする
+-- (削除の命令を使わないのは、Supabase のコネクタが削除を含む SQL を実行できないため)
+do $$
+begin
+  if to_regprocedure('public.add_house(text, text, text, text, integer)') is not null then
+    alter function public.add_house(text, text, text, text, integer) rename to add_house_unused_20261011;
+    revoke all on function public.add_house_unused_20261011(text, text, text, text, integer) from public, anon, authenticated;
+  end if;
+end;
+$$;
+
 create or replace function public.add_house(
   input_passcode text,
   p_name text,
@@ -91,8 +101,7 @@ comment on column public.shift_types.short_label is '勤務表に出す 1〜2 �
 comment on column public.shift_types.start_time  is '開始時刻の初期値';
 comment on column public.shift_types.end_time    is '終了時刻の初期値(開始より前なら翌日)';
 
-drop trigger if exists shift_types_set_updated_at on public.shift_types;
-create trigger shift_types_set_updated_at
+create or replace trigger shift_types_set_updated_at
   before update on public.shift_types
   for each row execute function public.set_updated_at();
 
@@ -128,8 +137,7 @@ comment on column public.shifts.work_date is '勤務が始まる日';
 comment on column public.shifts.end_time  is '終了時刻。開始時刻より前なら翌日に終わる';
 comment on column public.shifts.voided_at is '削除した日時(論理削除)';
 
-drop trigger if exists shifts_set_updated_at on public.shifts;
-create trigger shifts_set_updated_at
+create or replace trigger shifts_set_updated_at
   before update on public.shifts
   for each row execute function public.set_updated_at();
 
