@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>勤務表</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    /* ----- 月の切り替え ----- */
+    .month-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .month-bar .month-label { font-size: 16px; font-weight: 700; min-width: 110px; text-align: center; }
+    .month-bar .spacer { flex: 1; }
+    .month-bar .chips { margin-bottom: 0; }
+
+    /* ----- 勤務表 ----- */
+    .roster-scroll {
+      overflow: auto;
+      max-height: 72vh;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+    }
+    .roster { border-collapse: separate; border-spacing: 0; font-size: 11px; width: max-content; min-width: 100%; }
+    .roster th, .roster td {
+      border-right: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      padding: 3px;
+      vertical-align: top;
+    }
+    .roster thead th {
+      position: sticky; top: 0; z-index: 2;
+      background: var(--color-surface-alt);
+      text-align: center; font-weight: 700; color: var(--color-text);
+      padding: 4px 2px; line-height: 1.3;
+    }
+    .roster thead th .dow { display: block; font-size: 10px; font-weight: 500; color: var(--color-text-muted); }
+    .roster .name-col {
+      position: sticky; left: 0; z-index: 1;
+      background: var(--color-surface);
+      min-width: 92px; max-width: 120px;
+      font-size: 12px; font-weight: 600; text-align: left;
+      padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .roster .name-col .sub { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .roster thead th.name-col { z-index: 3; background: var(--color-surface-alt); }
+    .roster .total-col { min-width: 58px; text-align: right; white-space: nowrap; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px; }
+    .roster .total-col b { color: var(--color-text); font-size: 12px; }
+
+    .roster td.day { min-width: 46px; height: 40px; cursor: pointer; }
+    .roster td.day:hover { background: var(--color-primary-soft); }
+    .roster .sat { background: var(--color-sat-soft); }
+    .roster .sun { background: var(--color-danger-soft); }
+    .roster thead th.sat { color: var(--color-sat); }
+    .roster thead th.sun { color: var(--color-danger); }
+    .roster thead th.today { background: var(--color-primary); color: #fff; }
+    .roster thead th.today .dow { color: #fff; }
+
+    .shift-chip {
+      display: block;
+      margin: 0 0 2px;
+      padding: 1px 3px;
+      border-radius: 4px;
+      background: var(--color-primary-soft);
+      color: var(--color-primary-dark);
+      font-weight: 700; font-size: 10px; line-height: 1.35;
+      white-space: nowrap;
+    }
+    .shift-chip.night { background: var(--color-night-soft); color: var(--color-night); }
+    .shift-chip.carry { background: transparent; color: var(--color-text-muted); font-weight: 500; border: 1px dashed var(--color-border); }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--color-text-muted); margin-top: 10px; }
+    .legend .shift-chip { display: inline-block; margin-right: 4px; }
+
+    /* ----- ダイアログの中 ----- */
+    .day-shifts { list-style: none; margin: 0 0 12px; padding: 0; }
+    .day-shifts li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 13px;
+    }
+    .day-shifts li .what { flex: 1; }
+    .day-shifts li .what small { color: var(--color-text-muted); display: block; font-size: 11px; }
+    .day-shifts li.editing { background: var(--color-primary-soft); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-grid select { width: 100%; font-size: 13px; padding: 7px 6px; }
+    .next-day { font-size: 11px; color: var(--color-night); font-weight: 700; margin-left: 4px; }
+
+    /* ----- 勤務区分 ----- */
+    #typeTable { min-width: 520px; }
+    #typeTable input[type="time"] { min-width: 96px; }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap wide">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-calendar-time"></i></span>
+        勤務表
+      </h1>
+      <p>マスを押すと、その日の勤務を追加・変更できます</p>
+    </div>
+
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-panel="panel-roster"><i class="ti ti-calendar-month"></i>勤務表</button>
+      <button type="button" class="tab-btn" data-panel="panel-types"><i class="ti ti-clock-hour-4"></i>勤務区分</button>
+    </div>
+
+    <!-- 勤務表 -->
+    <div id="panel-roster" class="tab-panel active">
+      <div class="card">
+        <div class="month-bar">
+          <button type="button" class="btn btn-ghost btn-sm" id="prevMonth" aria-label="前の月"><i class="ti ti-chevron-left"></i></button>
+          <div class="month-label" id="monthLabel"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="nextMonth" aria-label="次の月"><i class="ti ti-chevron-right"></i></button>
+          <button type="button" class="btn btn-ghost btn-sm" id="thisMonth">今月</button>
+          <div class="spacer"></div>
+          <div class="chips" id="viewChips">
+            <button type="button" data-view="staff" class="active">スタッフ別</button>
+            <button type="button" data-view="house">施設別</button>
+          </div>
+        </div>
+        <div class="roster-scroll">
+          <table class="roster" id="roster"></table>
+        </div>
+        <div id="rosterMsg" class="empty-msg" hidden></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <!-- 勤務区分 -->
+    <div id="panel-types" class="tab-panel">
+      <form id="typeForm" class="card" novalidate style="max-width:720px;">
+        <h2><i class="ti ti-circle-plus"></i>勤務区分を追加</h2>
+        <div class="add-row">
+          <div class="field">
+            <label for="typeName">区分名 *</label>
+            <input type="text" id="typeName" placeholder="例: 日勤">
+          </div>
+          <div class="field narrow">
+            <label for="typeShort">表示</label>
+            <input type="text" id="typeShort" maxlength="2" placeholder="日">
+          </div>
+          <div class="field narrow">
+            <label for="typeStart">開始 *</label>
+            <input type="time" id="typeStart">
+          </div>
+          <div class="field narrow">
+            <label for="typeEnd">終了 *</label>
+            <input type="time" id="typeEnd">
+          </div>
+          <button type="submit" id="typeAddBtn" class="btn"><i class="ti ti-plus"></i>追加</button>
+        </div>
+        <div id="typeStatus" class="status-msg"></div>
+      </form>
+
+      <div class="card" style="max-width:720px;">
+        <h2><i class="ti ti-list"></i>勤務区分の一覧</h2>
+        <p class="text-sm muted" style="margin:-6px 0 10px;">終了が開始より前の時刻なら、翌日に終わる勤務になります(夜勤 22:00〜10:00 など)。変更はすぐに保存されます</p>
+        <div class="table-scroll">
+          <table class="compact-table" id="typeTable">
+            <thead>
+              <tr>
+                <th>区分名</th>
+                <th class="col-narrow">表示</th>
+                <th>開始</th>
+                <th>終了</th>
+                <th class="col-center">使う</th>
+              </tr>
+            </thead>
+            <tbody id="typeRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 勤務の入力ダイアログ -->
+<div id="shiftModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <h2 id="modalTitle"></h2>
+      <button type="button" class="icon-btn" id="modalClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    </div>
+
+    <ul class="day-shifts" id="dayShifts"></ul>
+
+    <form id="shiftForm" novalidate>
+      <div class="field-label" id="formTitle" style="font-weight:700; color:var(--color-text); margin-bottom:8px;"></div>
+      <div class="form-grid">
+        <div class="field full" id="pickStaffField">
+          <label for="fStaff">スタッフ</label>
+          <select id="fStaff"></select>
+        </div>
+        <div class="field full" id="pickHouseField">
+          <label for="fHouse">施設</label>
+          <select id="fHouse"></select>
+        </div>
+        <div class="field full">
+          <label for="fType">勤務区分</label>
+          <select id="fType"></select>
+        </div>
+        <div class="field">
+          <label for="fStart">開始</label>
+          <input type="time" id="fStart">
+        </div>
+        <div class="field">
+          <label for="fEnd">終了<span class="next-day" id="nextDayMark" hidden>翌日</span></label>
+          <input type="time" id="fEnd">
+        </div>
+        <div class="field full">
+          <label for="fNote">メモ</label>
+          <input type="text" id="fNote">
+        </div>
+      </div>
+      <div id="formStatus" class="status-msg"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="formReset" hidden>新しく追加に戻す</button>
+        <button type="submit" class="btn" id="formSave"><i class="ti ti-device-floppy"></i>保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+  const esc = App.escapeHtml;
+  const DOW = ['日', '月', '火', '水', '木', '金', '土'];
+
+  const state = {
+    year: 0, month: 0,     // month は 1〜12
+    view: 'staff',         // 'staff' / 'house'
+    staff: [], houses: [], types: [], shifts: [],
+  };
+
+  // ===== 日付・時間の道具 =====
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function ymd(y, m, d) { return y + '-' + pad(m) + '-' + pad(d); }
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  function dowOf(dateStr) { const p = dateStr.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).getDay(); }
+  function hm(t) { return t ? t.slice(0, 5) : ''; }                 // '22:00:00' → '22:00'
+  function shortHm(t) { const s = hm(t); return s.endsWith(':00') ? String(+s.slice(0, 2)) : s; } // '09:00' → '9'
+  function minutesOf(t) { const p = hm(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
+  function crossesMidnight(start, end) { return minutesOf(end) <= minutesOf(start); }
+  function durationMin(s) {
+    let m = minutesOf(s.end_time) - minutesOf(s.start_time);
+    if (m <= 0) m += 24 * 60;
+    return m;
+  }
+  function timeText(s) {
+    return hm(s.start_time) + '〜' + (crossesMidnight(s.start_time, s.end_time) ? '翌' : '') + hm(s.end_time);
+  }
+  function dateLabel(dateStr) {
+    const p = dateStr.split('-');
+    return (+p[1]) + '/' + (+p[2]) + '(' + DOW[dowOf(dateStr)] + ')';
+  }
+  function addDays(dateStr, n) {
+    const p = dateStr.split('-');
+    const d = new Date(+p[0], +p[1] - 1, +p[2] + n);
+    return ymd(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  function todayStr() { return App.todayJST(); }
+
+  // ===== 名前の表示 =====
+  function byId(list, id) { return list.find(function (x) { return x.id === id; }); }
+  function houseShort(id) {
+    const h = byId(state.houses, id);
+    if (!h) return '?';
+    return h.short_name || h.name.replace(/の家$|ホーム$/, '').slice(0, 4);
+  }
+  function staffShort(id) {
+    const s = byId(state.staff, id);
+    if (!s) return '?';
+    return s.name.split(/[\s　]+/)[0].slice(0, 4);   // 姓だけ
+  }
+  function typeOf(s) { return s.shift_type_id ? byId(state.types, s.shift_type_id) : null; }
+  function isNight(s) {
+    const t = typeOf(s);
+    if (t && /夜/.test(t.name)) return true;
+    return crossesMidnight(s.start_time, s.end_time);
+  }
+  function kindLabel(s) {
+    const t = typeOf(s);
+    if (t && t.short_label) return t.short_label;
+    return shortHm(s.start_time) + '-' + shortHm(s.end_time);
+  }
+
+  // ===== 読み込み =====
+  async function loadMasters() {
+    const r = await Promise.all([App.rpc('get_staff'), App.rpc('get_houses'), App.rpc('get_shift_types')]);
+    state.staff = r[0]; state.houses = r[1]; state.types = r[2];
+  }
+  async function loadShifts() {
+    const from = ymd(state.year, state.month, 1);
+    const to = ymd(state.year, state.month, daysInMonth(state.year, state.month));
+    state.shifts = await App.rpc('get_shifts', { p_from: from, p_to: to });
+  }
+
+  // ===== 勤務表を描く =====
+  function rosterRows() {
+    const monthPrefix = state.year + '-' + pad(state.month) + '-';
+    const used = new Set(state.shifts.filter(function (s) { return s.work_date.startsWith(monthPrefix); })
+      .map(function (s) { return state.view === 'staff' ? s.staff_id : s.house_id; }));
+    const list = state.view === 'staff' ? state.staff : state.houses;
+    // 在籍中・運営中のものと、退職・休止していてもこの月に勤務があるもの
+    return list.filter(function (x) { return x.is_active || used.has(x.id); });
+  }
+
+  function renderRoster() {
+    const y = state.year, m = state.month, n = daysInMonth(y, m);
+    const today = todayStr();
+    document.getElementById('monthLabel').textContent = y + '年' + m + '月';
+
+    const days = [];
+    for (let d = 1; d <= n; d++) {
+      const ds = ymd(y, m, d), w = dowOf(ds);
+      days.push({ d: d, ds: ds, cls: (w === 0 ? 'sun' : w === 6 ? 'sat' : ''), today: ds === today, w: w });
+    }
+
+    let html = '<thead><tr><th class="name-col">' + (state.view === 'staff' ? 'スタッフ' : '施設') + '</th>';
+    days.forEach(function (x) {
+      html += '<th class="' + x.cls + (x.today ? ' today' : '') + '">' + x.d + '<span class="dow">' + DOW[x.w] + '</span></th>';
+    });
+    html += '<th class="total-col">' + (state.view === 'staff' ? '合計' : '') + '</th></tr></thead><tbody>';
+
+    const rows = rosterRows();
+    // 日付ごと・行ごとに勤務をまとめておく
+    const map = {};
+    state.shifts.forEach(function (s) {
+      const key = (state.view === 'staff' ? s.staff_id : s.house_id);
+      (map[key] = map[key] || {});
+      (map[key][s.work_date] = map[key][s.work_date] || []).push(s);
+    });
+
+    rows.forEach(function (row) {
+      const mine = map[row.id] || {};
+      let totalMin = 0, nights = 0;
+      const label = state.view === 'staff'
+        ? esc(row.name) + '<span class="sub">' + esc(row.job_title || '') + '</span>'
+        : esc(row.name);
+      html += '<tr><th class="name-col" title="' + esc(row.name) + '">' + label + '</th>';
+
+      days.forEach(function (x) {
+        const list = (mine[x.ds] || []).slice().sort(function (a, b) { return minutesOf(a.start_time) - minutesOf(b.start_time); });
+        // 前日から続いている夜勤は、薄く「〜10」と出す
+        const carry = (mine[addDays(x.ds, -1)] || []).filter(function (s) { return crossesMidnight(s.start_time, s.end_time); });
+        let cell = '';
+        carry.forEach(function (s) {
+          const who = state.view === 'staff' ? houseShort(s.house_id) : staffShort(s.staff_id);
+          cell += '<span class="shift-chip carry" title="前日からの勤務">' + esc(who) + ' 〜' + esc(shortHm(s.end_time)) + '</span>';
+        });
+        list.forEach(function (s) {
+          totalMin += durationMin(s);
+          if (isNight(s)) nights++;
+          const who = state.view === 'staff' ? houseShort(s.house_id) : staffShort(s.staff_id);
+          const tip = (state.view === 'staff' ? (byId(state.houses, s.house_id) || {}).name : (byId(state.staff, s.staff_id) || {}).name) + ' ' + timeText(s) + (s.note ? ' / ' + s.note : '');
+          cell += '<span class="shift-chip' + (isNight(s) ? ' night' : '') + '" title="' + esc(tip) + '">' + esc(who) + ' ' + esc(kindLabel(s)) + '</span>';
+        });
+        html += '<td class="day ' + x.cls + '" data-row="' + esc(row.id) + '" data-date="' + x.ds + '">' + cell + '</td>';
+      });
+
+      if (state.view === 'staff') {
+        const h = Math.floor(totalMin / 60), mm = totalMin % 60;
+        html += '<td class="total-col"><b>' + h + (mm ? ':' + pad(mm) : '') + 'h</b>' + (nights ? '<br>夜勤 ' + nights : '') + '</td>';
+      } else {
+        html += '<td class="total-col"></td>';
+      }
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    document.getElementById('roster').innerHTML = html;
+
+    const msg = document.getElementById('rosterMsg');
+    msg.hidden = rows.length > 0;
+    msg.textContent = state.view === 'staff'
+      ? 'スタッフがまだ登録されていません。スタッフ画面から追加してください'
+      : '施設がまだ登録されていません。施設画面から追加してください';
+
+    renderLegend();
+  }
+
+  function renderLegend() {
+    const active = state.types.filter(function (t) { return t.is_active; });
+    let html = active.map(function (t) {
+      const night = /夜/.test(t.name) || crossesMidnight(t.start_time, t.end_time);
+      return '<span><span class="shift-chip' + (night ? ' night' : '') + '">' + esc(t.short_label || t.name) + '</span>' +
+        esc(t.name) + ' ' + esc(timeText(t)) + '</span>';
+    }).join('');
+    html += '<span><span class="shift-chip carry">〜10</span>前日からの夜勤</span>';
+    html += '<span>区分なしの勤務は時間(例: 9-13)で表示</span>';
+    document.getElementById('legend').innerHTML = html;
+  }
+
+  // ===== 入力ダイアログ =====
+  const modal = { rowId: null, date: null, editingId: null };
+
+  function optionList(list, selectedId, labelFn, includeInactiveId) {
+    return list.filter(function (x) { return x.is_active || x.id === includeInactiveId; })
+      .map(function (x) {
+        return '<option value="' + esc(x.id) + '"' + (x.id === selectedId ? ' selected' : '') + '>' + esc(labelFn(x)) + '</option>';
+      }).join('');
+  }
+
+  function typeOptions(selectedId) {
+    let html = '<option value="">時間を指定する</option>';
+    html += optionList(state.types, selectedId, function (t) { return t.name + '(' + timeText(t) + ')'; }, selectedId);
+    return html;
+  }
+
+  function dayShiftsFor(rowId, date) {
+    return state.shifts.filter(function (s) {
+      return s.work_date === date && (state.view === 'staff' ? s.staff_id === rowId : s.house_id === rowId);
+    }).sort(function (a, b) { return minutesOf(a.start_time) - minutesOf(b.start_time); });
+  }
+
+  function openModal(rowId, date) {
+    modal.rowId = rowId; modal.date = date; modal.editingId = null;
+    const row = byId(state.view === 'staff' ? state.staff : state.houses, rowId);
+    document.getElementById('modalTitle').innerHTML =
+      '<i class="ti ti-calendar-event"></i>' + esc(dateLabel(date)) + ' ' + esc(row ? row.name : '');
+    document.getElementById('pickStaffField').hidden = state.view === 'staff';
+    document.getElementById('pickHouseField').hidden = state.view === 'house';
+    renderDayShifts();
+    resetForm();
+    document.getElementById('shiftModal').hidden = false;
+  }
+
+  function closeModal() {
+    document.getElementById('shiftModal').hidden = true;
+  }
+
+  function renderDayShifts() {
+    const list = dayShiftsFor(modal.rowId, modal.date);
+    const ul = document.getElementById('dayShifts');
+    if (!list.length) {
+      ul.innerHTML = '<li class="muted">この日の勤務はまだありません</li>';
+      return;
+    }
+    ul.innerHTML = list.map(function (s) {
+      const t = typeOf(s);
+      const who = state.view === 'staff' ? (byId(state.houses, s.house_id) || {}).name : (byId(state.staff, s.staff_id) || {}).name;
+      return '<li data-id="' + esc(s.id) + '"' + (s.id === modal.editingId ? ' class="editing"' : '') + '>' +
+        '<div class="what">' + esc(who || '?') + ' ' + esc(timeText(s)) +
+        '<small>' + esc(t ? t.name : '時間指定') + (s.note ? ' / ' + esc(s.note) : '') + '</small></div>' +
+        '<button type="button" class="icon-btn" data-act="edit" aria-label="変更"><i class="ti ti-pencil"></i></button>' +
+        '<button type="button" class="icon-btn danger" data-act="void" aria-label="削除"><i class="ti ti-trash"></i></button>' +
+        '</li>';
+    }).join('');
+  }
+
+  function fillForm(s) {
+    const staffSel = s ? s.staff_id : (state.view === 'staff' ? modal.rowId : null);
+    const houseSel = s ? s.house_id : (state.view === 'house' ? modal.rowId : null);
+    document.getElementById('fStaff').innerHTML = '<option value="">選んでください</option>' + optionList(state.staff, staffSel, function (x) { return x.name; }, staffSel);
+    // 新しく追加するときは、そのスタッフの所属施設を最初から選んでおく
+    let houseDefault = houseSel;
+    if (!s && state.view === 'staff') {
+      const me = byId(state.staff, modal.rowId);
+      houseDefault = me && me.house_id ? me.house_id : null;
+    }
+    document.getElementById('fHouse').innerHTML = '<option value="">選んでください</option>' + optionList(state.houses, houseDefault, function (x) { return x.name; }, houseDefault);
+    document.getElementById('fType').innerHTML = typeOptions(s ? s.shift_type_id : null);
+    document.getElementById('fStart').value = s ? hm(s.start_time) : '';
+    document.getElementById('fEnd').value = s ? hm(s.end_time) : '';
+    document.getElementById('fNote').value = s ? (s.note || '') : '';
+    updateNextDayMark();
+  }
+
+  function resetForm() {
+    modal.editingId = null;
+    document.getElementById('formTitle').textContent = '勤務を追加';
+    document.getElementById('formReset').hidden = true;
+    App.setStatus(document.getElementById('formStatus'), '');
+    fillForm(null);
+    renderDayShifts();
+  }
+
+  function startEdit(id) {
+    const s = byId(state.shifts, id);
+    if (!s) return;
+    modal.editingId = id;
+    document.getElementById('formTitle').textContent = '勤務を変更';
+    document.getElementById('formReset').hidden = false;
+    App.setStatus(document.getElementById('formStatus'), '');
+    fillForm(s);
+    renderDayShifts();
+  }
+
+  function updateNextDayMark() {
+    const st = document.getElementById('fStart').value, en = document.getElementById('fEnd').value;
+    document.getElementById('nextDayMark').hidden = !(st && en && crossesMidnight(st, en));
+  }
+
+  function onTypeChange() {
+    const t = byId(state.types, document.getElementById('fType').value);
+    if (t) {
+      document.getElementById('fStart').value = hm(t.start_time);
+      document.getElementById('fEnd').value = hm(t.end_time);
+    }
+    updateNextDayMark();
+  }
+
+  async function onSave(e) {
+    e.preventDefault();
+    const status = document.getElementById('formStatus');
+    const staffId = state.view === 'staff' ? modal.rowId : document.getElementById('fStaff').value;
+    const houseId = state.view === 'house' ? modal.rowId : document.getElementById('fHouse').value;
+    const typeId = document.getElementById('fType').value || null;
+    const start = document.getElementById('fStart').value;
+    const end = document.getElementById('fEnd').value;
+
+    if (!staffId) return App.setStatus(status, 'スタッフを選んでください', 'err');
+    if (!houseId) return App.setStatus(status, '施設を選んでください', 'err');
+    if (!start || !end) return App.setStatus(status, '開始と終了の時刻を入れてください', 'err');
+    if (start === end) return App.setStatus(status, '開始と終了が同じ時刻です', 'err');
+
+    const btn = document.getElementById('formSave');
+    btn.disabled = true;
+    App.setStatus(status, '保存しています...');
+    try {
+      await App.rpc('save_shift', {
+        p_id: modal.editingId,
+        p_work_date: modal.date,
+        p_staff_id: staffId,
+        p_house_id: houseId,
+        p_shift_type_id: typeId,
+        p_start_time: start,
+        p_end_time: end,
+        p_note: document.getElementById('fNote').value.trim() || null,
+      });
+    } catch (err) {
+      console.error(err);
+      // 重なりなど、DB からの説明はそのまま見せる
+      const m = err && err.message ? err.message : '';
+      App.setStatus(status, /重なる|入れてください|同じ時刻/.test(m) ? m : '保存できませんでした', 'err');
+      return;
+    } finally {
+      btn.disabled = false;
+    }
+    await loadShifts();
+    renderRoster();
+    resetForm();
+    App.setStatus(status, '保存しました', 'ok');
+  }
+
+  async function onDayListClick(e) {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const id = b.closest('li').dataset.id;
+    if (b.dataset.act === 'edit') return startEdit(id);
+    if (b.dataset.act === 'void') {
+      const s = byId(state.shifts, id);
+      if (!confirm('この勤務を削除しますか?\n' + timeText(s))) return;
+      try {
+        await App.rpc('void_shift', { p_id: id });
+      } catch (err) {
+        console.error(err);
+        alert('削除できませんでした');
+        return;
+      }
+      await loadShifts();
+      renderRoster();
+      resetForm();
+      App.setStatus(document.getElementById('formStatus'), '削除しました', 'ok');
+    }
+  }
+
+  // ===== 勤務区分 =====
+  function renderTypes() {
+    document.getElementById('typeRows').innerHTML = state.types.map(function (t) {
+      return '<tr data-id="' + esc(t.id) + '"' + (t.is_active ? '' : ' class="row-inactive"') + '>' +
+        '<td><input type="text" class="autosave" data-field="name" value="' + esc(t.name) + '"></td>' +
+        '<td><input type="text" class="autosave" data-field="short_label" maxlength="2" value="' + esc(t.short_label) + '"></td>' +
+        '<td><input type="time" class="autosave" data-field="start_time" value="' + esc(hm(t.start_time)) + '"></td>' +
+        '<td><input type="time" class="autosave" data-field="end_time" value="' + esc(hm(t.end_time)) + '"></td>' +
+        '<td class="col-center"><input type="checkbox" data-field="is_active"' + (t.is_active ? ' checked' : '') + '></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  async function onTypeRowChange(e) {
+    const input = e.target, field = input.dataset.field, tr = input.closest('tr');
+    if (!field || !tr) return;
+    const t = byId(state.types, tr.dataset.id);
+    let value = field === 'is_active' ? input.checked : (input.value.trim() || null);
+
+    if ((field === 'name' || field === 'start_time' || field === 'end_time') && !value) {
+      alert('空にはできません');
+      input.value = field === 'name' ? t.name : hm(t[field]);
+      return;
+    }
+    const st = field === 'start_time' ? value : hm(t.start_time);
+    const en = field === 'end_time' ? value : hm(t.end_time);
+    if (st === en) {
+      alert('開始と終了が同じ時刻です');
+      input.value = hm(t[field]);
+      return;
+    }
+    try {
+      await App.rpc('update_shift_type_field', { p_id: t.id, p_field: field, p_value: value == null ? null : String(value) });
+    } catch (err) {
+      console.error(err);
+      if (field === 'is_active') { input.checked = !input.checked; alert('保存できませんでした'); }
+      else App.flashSaved(input, false);
+      return;
+    }
+    t[field] = value;
+    if (field === 'is_active') renderTypes(); else App.flashSaved(input, true);
+    renderRoster();
+  }
+
+  async function onTypeAdd(e) {
+    e.preventDefault();
+    const status = document.getElementById('typeStatus');
+    const name = document.getElementById('typeName').value.trim();
+    const st = document.getElementById('typeStart').value, en = document.getElementById('typeEnd').value;
+    if (!name) return App.setStatus(status, '区分名を入れてください', 'err');
+    if (!st || !en) return App.setStatus(status, '開始と終了の時刻を入れてください', 'err');
+    if (st === en) return App.setStatus(status, '開始と終了が同じ時刻です', 'err');
+    const btn = document.getElementById('typeAddBtn');
+    btn.disabled = true;
+    try {
+      await App.rpc('add_shift_type', {
+        p_name: name,
+        p_short_label: document.getElementById('typeShort').value.trim() || null,
+        p_start_time: st, p_end_time: en,
+      });
+    } catch (err) {
+      console.error(err);
+      App.setStatus(status, '追加できませんでした', 'err');
+      return;
+    } finally {
+      btn.disabled = false;
+    }
+    e.target.reset();
+    App.setStatus(status, name + ' を追加しました', 'ok');
+    state.types = await App.rpc('get_shift_types');
+    renderTypes();
+    renderRoster();
+  }
+
+  // 今日の列が見えるように横にずらす(スマホで 1 日から始まらないように)
+  function scrollToToday() {
+    const th = document.querySelector('#roster thead th.today');
+    const box = document.querySelector('.roster-scroll');
+    const nameCol = document.querySelector('#roster thead th.name-col');
+    if (!th || !box) return;
+    box.scrollLeft = Math.max(0, th.offsetLeft - (nameCol ? nameCol.offsetWidth : 0) - th.offsetWidth * 2);
+  }
+
+  // ===== 月の移動 =====
+  async function moveMonth(delta) {
+    let y = state.year, m = state.month + delta;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    state.year = y; state.month = m;
+    await loadShifts();
+    renderRoster();
+    scrollToToday();
+  }
+
+  App.boot({
+    active: 'shifts',
+    onReady: async function () {
+      const t = todayStr().split('-');
+      state.year = +t[0]; state.month = +t[1];
+      try {
+        const v = localStorage.getItem('gh_shift_view');
+        if (v === 'house' || v === 'staff') state.view = v;
+      } catch (e) { /* noop */ }
+      document.querySelectorAll('#viewChips button').forEach(function (b) { b.classList.toggle('active', b.dataset.view === state.view); });
+
+      await loadMasters();
+      await loadShifts();
+      renderRoster();
+      renderTypes();
+      // 読み込み中の画面が消えてから位置を合わせる
+      setTimeout(scrollToToday, 0);
+
+      // タブ
+      document.querySelectorAll('.tab-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+          document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === b.dataset.panel); });
+        });
+      });
+      // 月
+      document.getElementById('prevMonth').onclick = function () { moveMonth(-1); };
+      document.getElementById('nextMonth').onclick = function () { moveMonth(1); };
+      document.getElementById('thisMonth').onclick = function () {
+        const t2 = todayStr().split('-');
+        moveMonth((+t2[0] - state.year) * 12 + (+t2[1] - state.month));
+      };
+      // 表示の切り替え
+      document.getElementById('viewChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-view]');
+        if (!b) return;
+        state.view = b.dataset.view;
+        try { localStorage.setItem('gh_shift_view', state.view); } catch (e2) { /* noop */ }
+        this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+        renderRoster();
+      });
+      // マスを押したらダイアログ
+      document.getElementById('roster').addEventListener('click', function (e) {
+        const td = e.target.closest('td.day');
+        if (td) openModal(td.dataset.row, td.dataset.date);
+      });
+      document.getElementById('modalClose').onclick = closeModal;
+      document.getElementById('shiftModal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+      document.getElementById('dayShifts').addEventListener('click', onDayListClick);
+      document.getElementById('fType').addEventListener('change', onTypeChange);
+      document.getElementById('fStart').addEventListener('input', updateNextDayMark);
+      document.getElementById('fEnd').addEventListener('input', updateNextDayMark);
+      document.getElementById('formReset').onclick = resetForm;
+      document.getElementById('shiftForm').addEventListener('submit', onSave);
+      // 勤務区分
+      document.getElementById('typeForm').addEventListener('submit', onTypeAdd);
+      document.getElementById('typeRows').addEventListener('change', onTypeRowChange);
+    },
+  });
+</script>
+
+</body>
+</html>

@@ -11,9 +11,10 @@
   <link rel="stylesheet" href="css/common.css">
   <style>
     /* スマホでは横スクロールにして、入力欄がつぶれないようにする */
-    #houseTable { min-width: 680px; }
-    #houseTable .col-name { width: 24%; }
-    #houseTable .col-address { width: 38%; }
+    #houseTable { min-width: 760px; }
+    #houseTable .col-name { width: 22%; }
+    #houseTable .col-short { width: 100px; }
+    #houseTable .col-address { width: 34%; }
     #houseTable .col-phone { width: 140px; }
   </style>
 </head>
@@ -33,7 +34,7 @@
         <span class="page-icon"><i class="ti ti-building-community"></i></span>
         施設
       </h1>
-      <p>施設の追加と情報の編集ができます。変更はすぐに保存されます</p>
+      <p>施設の追加と情報の編集ができます。変更はすぐに保存されます。略称は勤務表のマスに表示されます</p>
     </div>
 
     <!-- 追加 -->
@@ -43,6 +44,10 @@
         <div class="field">
           <label for="newName">施設名 *</label>
           <input type="text" id="newName" required>
+        </div>
+        <div class="field narrow">
+          <label for="newShort">略称</label>
+          <input type="text" id="newShort" maxlength="6" placeholder="例: みどり">
         </div>
         <div class="field">
           <label for="newAddress">住所</label>
@@ -74,6 +79,7 @@
           <thead>
             <tr>
               <th class="col-name">施設名</th>
+              <th class="col-short">略称</th>
               <th class="col-address">住所</th>
               <th class="col-phone">電話番号</th>
               <th class="col-narrow">定員</th>
@@ -110,6 +116,7 @@
     document.getElementById('houseRows').innerHTML = rows.map(function (h) {
       return '<tr data-id="' + esc(h.id) + '"' + (h.is_active ? '' : ' class="row-inactive"') + '>' +
         '<td><input type="text" class="autosave" data-field="name" value="' + esc(h.name) + '"></td>' +
+        '<td><input type="text" class="autosave" data-field="short_name" maxlength="6" value="' + esc(h.short_name) + '"></td>' +
         '<td><input type="text" class="autosave" data-field="address" value="' + esc(h.address) + '"></td>' +
         '<td><input type="tel" class="autosave" data-field="phone" value="' + esc(h.phone) + '"></td>' +
         '<td><input type="number" min="0" inputmode="numeric" class="autosave" data-field="capacity" value="' + esc(h.capacity) + '"></td>' +
@@ -182,6 +189,7 @@
     try {
       await App.rpc('add_house', {
         p_name: name,
+        p_short_name: document.getElementById('newShort').value.trim() || null,
         p_address: document.getElementById('newAddress').value.trim() || null,
         p_phone: document.getElementById('newPhone').value.trim() || null,
         p_capacity: capacity,

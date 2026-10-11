@@ -21,6 +21,12 @@
   --color-danger-dark: #954a35;
   --color-danger-soft: #fbeae4;
 
+  /* 勤務表: 土曜・夜勤の色(日曜は danger を使う) */
+  --color-sat: #3f6c96;
+  --color-sat-soft: #e9f0f7;
+  --color-night: #4a4677;
+  --color-night-soft: #e6e4f2;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -315,3 +321,24 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
 .muted { color: var(--color-text-muted); }
 .text-sm { font-size: 12px; }
 .center { text-align: center; }
+
+/* ===== ダイアログ(モーダル) ===== */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(30, 30, 20, 0.35);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 8vh 12px 12px;
+  overflow-y: auto;
+}
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  width: 100%; max-width: 460px;
+  padding: 18px 16px;
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.modal-head h2 { font-size: 15px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.modal-head h2 i { color: var(--color-primary-dark); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }

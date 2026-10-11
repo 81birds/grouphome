@@ -19,6 +19,7 @@ login.html        合言葉の入力画面
 residents.html    利用者(新しい画面を作るときのお手本)
 staff.html        スタッフ(所属施設をプルダウンで選ぶ例)
 houses.html       施設
+shifts.html       勤務表(月の表・ダイアログでの入力・勤務区分タブ)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
@@ -59,6 +60,13 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - `updated_at` は共通関数 `public.set_updated_at()` のトリガーで更新する
 - 変更は `sql/YYYY-MM-DD_内容.sql` を追加し、Supabase の SQL Editor で実行してからコミットする。過去の SQL ファイルは書き換えない
 - 合言葉そのもの、service_role / secret key は、コード・SQL ファイル・コミットに絶対に書かない。`config.js` に書くのは publishable key だけ
+
+## 勤務(シフト)のルール
+
+- 勤務 1 件は `shifts` の 1 行(work_date・staff_id・house_id・start_time・end_time)
+- `work_date` は勤務が始まる日。`end_time <= start_time` なら翌日に終わる(夜勤 22:00〜翌10:00)
+- 時間の重なりは `public.shift_range()` で判定し、同じスタッフの重なる勤務は `save_shift` が保存を拒む
+- ある日・ある施設に「誰がいるか」を出すときは、前日に始まった夜勤も含める(`get_shifts` は前日分も返す)
 
 ## 個人情報の扱い
 

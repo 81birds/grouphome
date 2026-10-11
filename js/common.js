@@ -24,6 +24,7 @@
     { key: 'residents',  file: 'residents.html',  icon: 'ti-users',      label: '利用者',     sub: '利用者一覧・基本情報',   ready: true },
     { key: 'staff',      file: 'staff.html',      icon: 'ti-id-badge-2', label: 'スタッフ',   sub: 'スタッフ一覧・所属施設', ready: true },
     { key: 'houses',     file: 'houses.html',     icon: 'ti-building-community', label: '施設', sub: '施設一覧・住所・定員', ready: true },
+    { key: 'shifts',     file: 'shifts.html',     icon: 'ti-calendar-time', label: '勤務表',  sub: '1か月のシフト・夜勤',    ready: true },
     { key: 'records',    file: 'records.html',    icon: 'ti-notebook',   label: '日々の記録', sub: 'ケース記録・様子のメモ', ready: false },
     { key: 'vitals',     file: 'vitals.html',     icon: 'ti-heartbeat',  label: 'バイタル',   sub: '体温・血圧・食事量など', ready: false },
     { key: 'medication', file: 'medication.html', icon: 'ti-pill',       label: '服薬',       sub: '服薬チェック',           ready: false },
