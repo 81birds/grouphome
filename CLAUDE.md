@@ -16,14 +16,15 @@
 ```
 index.html        ポータル(アイコンタイルのメニュー)
 login.html        合言葉の入力画面
-residents.html    利用者(新しい画面を作るときのお手本)
+residents.html    利用者(いまの施設・部屋を表示。押すと入居・部屋の移動・退居のダイアログ)
 staff.html        スタッフ(所属施設をプルダウンで選ぶ例)
-houses.html       施設(上に「来る人」: 施設×日付で来るスタッフを時間の帯で表示)
+houses.html       施設(上の施設ボタンで「来る人」と「部屋と入居者」を切り替え)
 shifts.html       勤務表(月の表・ダイアログでの入力・勤務区分タブ)
 myshift.html      個人の勤務(縦=時間・横=施設のチェック表。勤務の入力はここが基本。スマホ向け)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
+js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html と residents.html で使う
 sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ```
 
@@ -45,7 +46,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 
 ## 新しい画面の作り方
 
-1. `residents.html` をコピーして `xxx.html` を作る(head、`#gtoolBar`、`#loadingScreen`、`#mainContent`、スクリプト読み込み順はそのまま)
+1. `staff.html` などの近い画面をコピーして `xxx.html` を作る(head、`#gtoolBar`、`#loadingScreen`、`#mainContent`、スクリプト読み込み順はそのまま)
 2. `js/common.js` の `PAGES` に追加(または `ready: false` を `true` に)。これで上部タブとポータルのタイルの両方に出る
 3. ページのスクリプトは `App.boot({ active: 'xxx', onReady: async () => { ... } })` で始める。`onReady` が終わるまで「確認しています...」が表示され、合言葉が未入力・誤りなら自動で `login.html` に移動する
 4. DB は `App.rpc('関数名', { p_xxx: ... })` で呼ぶ。合言葉(`input_passcode`)は自動で付く
@@ -75,6 +76,15 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 同じ時間・同じ施設に複数のスタッフが入るのは正常(配膳スタッフと看護師など)。止めるのは同じスタッフの重なりだけ
 - 個人の勤務ページは 1 時間単位のチェックボックス。チェックは画面上だけで変わり、「保存」でまとめて保存する(スマホで軽く動かすため)
 - 保存するときは、チェックが変わった施設の勤務だけを作り直す。変えていない端の時刻(9:30 始まりなど)はそのまま残す
+
+## 部屋と入居のルール
+
+- 部屋は `rooms`(施設ごと)。入居 1 件は `room_assignments` の 1 行(resident_id・room_id・move_in_date・move_out_date)
+- 期間は [入居日, 退居日)。退居日が空なら入居中。退居日にはその部屋は空いていて、同じ日に次の人が入居できる
+- 1 つの部屋に同じ期間 2 人は入れない。同じ利用者が同じ期間に 2 部屋にも入れない(`assign_room` が止める)
+- 入居中の人を別の部屋に入居させると、前の部屋はその日で退居になる(部屋の移動)
+- 記録は消さない。間違いは `void_room_assignment` で取り消す(voided_at)
+- `residents.room` / `residents.move_in_date` は使わない(入居の記録に移った)
 
 ## 個人情報の扱い
 

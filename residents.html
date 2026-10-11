@@ -10,10 +10,34 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <link rel="stylesheet" href="css/common.css">
   <style>
-    /* スマホでは横スクロールにして、氏名欄がつぶれないようにする */
-    #residentTable { min-width: 600px; }
-    #residentTable .col-name { width: 30%; }
-    #residentTable .col-date { width: 150px; }
+    /* スマホで横にはみ出さないよう、氏名とふりがなは 1 つの欄に縦に並べる */
+    #residentTable .col-place { width: 46%; }
+    #residentTable .col-active { width: 44px; }
+    #residentTable td { vertical-align: middle; }
+    #residentTable .name-cell input + input { margin-top: 3px; font-size: 11px; padding: 3px 6px; }
+
+    .place-btn {
+      width: 100%; text-align: left; cursor: pointer;
+      font-family: var(--font-base); font-size: 13px; font-weight: 700; color: var(--color-text);
+      background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+      padding: 4px 8px; line-height: 1.35;
+    }
+    .place-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+    .place-btn small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .place-btn.none { color: var(--color-text-muted); font-weight: 500; }
+    .place-btn .soon { color: var(--color-sat); }
+
+    .add-row select, .modal select { width: 100%; font-size: 13px; padding: 7px 6px; }
+    .modal .muted-box { font-size: 13px; background: var(--color-surface-alt); border-radius: var(--radius-sm); padding: 8px 10px; }
+    .modal .muted-box b { font-size: 15px; }
+    .modal h3 { font-size: 13px; margin: 16px 0 6px; color: var(--color-text-muted); }
+    .modal .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal .inline { display: flex; gap: 8px; align-items: flex-end; }
+    .modal .inline .field { flex: 1; }
+    .hist { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+    .hist li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--color-border); }
+    .hist li .what { flex: 1; }
+    .hist li .now { color: var(--color-primary-dark); font-weight: 700; }
   </style>
 </head>
 <body>
@@ -32,7 +56,7 @@
         <span class="page-icon"><i class="ti ti-users"></i></span>
         利用者
       </h1>
-      <p>利用者の追加と基本情報の編集ができます。変更はすぐに保存されます</p>
+      <p>利用者の追加と編集ができます。「施設・部屋」を押すと、入居・部屋の移動・退居ができます</p>
     </div>
 
     <!-- 追加 -->
@@ -47,9 +71,15 @@
           <label for="newKana">ふりがな</label>
           <input type="text" id="newKana">
         </div>
-        <div class="field narrow">
+      </div>
+      <div class="add-row" style="margin-top:8px;">
+        <div class="field">
+          <label for="newHouse">施設</label>
+          <select id="newHouse"></select>
+        </div>
+        <div class="field">
           <label for="newRoom">部屋</label>
-          <input type="text" id="newRoom">
+          <select id="newRoom"></select>
         </div>
         <div class="field">
           <label for="newMoveIn">入居日</label>
@@ -68,15 +98,14 @@
         <button type="button" data-filter="inactive">退居</button>
         <button type="button" data-filter="all">すべて</button>
       </div>
+      <div class="chips" id="houseChips"></div>
       <div class="table-scroll">
         <table class="compact-table" id="residentTable">
           <thead>
             <tr>
-              <th class="col-name">氏名</th>
-              <th class="col-name">ふりがな</th>
-              <th class="col-narrow">部屋</th>
-              <th class="col-date">入居日</th>
-              <th class="col-center">入居中</th>
+              <th>氏名 / ふりがな</th>
+              <th class="col-place">施設・部屋</th>
+              <th class="col-center col-active">入居中</th>
             </tr>
           </thead>
           <tbody id="residentRows"></tbody>
@@ -87,38 +116,118 @@
   </div>
 </div>
 
+<!-- 施設・部屋のダイアログ -->
+<div id="placeModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="placeTitle">
+    <div class="modal-head">
+      <h2 id="placeTitle"></h2>
+      <button type="button" class="icon-btn" id="placeClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    </div>
+    <div id="placeBody"></div>
+    <div id="placeStatus" class="status-msg"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/config.js"></script>
 <script src="js/common.js"></script>
+<script src="js/rooms.js"></script>
 <script>
-  let residents = [];
+  const esc = App.escapeHtml;
   let currentFilter = 'active';
+  let currentHouse = 'all';          // 'all' / 'none'(部屋なし) / 施設の id
+  let modalResidentId = null;
 
-  async function loadResidents() {
-    residents = await App.rpc('get_residents');
+  async function loadAll() {
+    await Rooms.load();
+    renderHouseChips();
     renderList();
   }
 
+  function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
+
+  // ===== 選択肢 =====
+  function houseOptions(selectedId, emptyLabel) {
+    return '<option value="">' + esc(emptyLabel) + '</option>' + activeHouses().map(function (h) {
+      return '<option value="' + esc(h.id) + '"' + (h.id === selectedId ? ' selected' : '') + '>' + esc(h.name) + '</option>';
+    }).join('');
+  }
+
+  // その日から入れる部屋だけ選べるようにする(埋まっている部屋は入居者名つきで選べない)
+  function roomOptions(houseId, date, residentId, excludeRoomId) {
+    if (!houseId) return '<option value="">先に施設を選んでください</option>';
+    const all = Rooms.roomsOf(houseId);
+    const rooms = all.filter(function (r) { return r.id !== excludeRoomId; });
+    if (!rooms.length) return '<option value="">' + (all.length ? 'ほかの部屋がありません' : '部屋が登録されていません') + '</option>';
+    return '<option value="">選んでください</option>' + rooms.map(function (r) {
+      const free = Rooms.freeFrom(r.id, date || Rooms.today(), residentId);
+      let label = Rooms.roomName(r);
+      if (!free) {
+        const a = Rooms.occupantOf(r.id, date) || Rooms.upcomingIn(r.id, date) ||
+          Rooms.assigns.find(function (x) { return x.room_id === r.id && (!x.move_out_date || x.move_out_date > date); });
+        const p = a ? Rooms.resident(a.resident_id) : null;
+        label += '(' + (p ? p.name + 'さん' : '入居あり') + ')';
+      }
+      return '<option value="' + esc(r.id) + '"' + (free ? '' : ' disabled') + '>' + esc(label) + '</option>';
+    }).join('');
+  }
+
+  // ===== 一覧 =====
+  function renderHouseChips() {
+    const box = document.getElementById('houseChips');
+    const hs = activeHouses();
+    if (!hs.length) { box.hidden = true; currentHouse = 'all'; return; }
+    box.hidden = false;
+    const items = [{ id: 'all', name: 'すべての施設' }].concat(hs.map(function (h) { return { id: h.id, name: h.name }; }))
+      .concat([{ id: 'none', name: '部屋なし' }]);
+    box.innerHTML = items.map(function (it) {
+      return '<button type="button" data-house="' + esc(it.id) + '"' + (it.id === currentHouse ? ' class="active"' : '') + '>' + esc(it.name) + '</button>';
+    }).join('');
+  }
+
+  function placeButton(p) {
+    const today = Rooms.today();
+    const cur = Rooms.currentOf(p.id, today);
+    const next = Rooms.upcomingOf(p.id, today);
+    if (cur) {
+      return '<button type="button" class="place-btn" data-place="' + esc(p.id) + '">' + esc(Rooms.placeText(cur, true)) +
+        '<small>' + esc(Rooms.dateText(cur.move_in_date)) + ' から' + (cur.move_out_date ? '・' + esc(Rooms.dateText(cur.move_out_date)) + ' 退居予定' : '') +
+        (next ? '<br><span class="soon">' + esc(Rooms.dateText(next.move_in_date)) + ' から ' + esc(Rooms.placeText(next, true)) + '</span>' : '') + '</small></button>';
+    }
+    return '<button type="button" class="place-btn none" data-place="' + esc(p.id) + '">' +
+      (next ? '<span class="soon">' + esc(Rooms.dateText(next.move_in_date)) + ' から ' + esc(Rooms.placeText(next, true)) + '</span>' : '部屋なし(押して入居)') + '</button>';
+  }
+
   function renderList() {
-    const rows = residents.filter(function (r) {
-      if (currentFilter === 'active') return r.is_active;
-      if (currentFilter === 'inactive') return !r.is_active;
+    const today = Rooms.today();
+    const rows = Rooms.residents.filter(function (r) {
+      if (currentFilter === 'active' && !r.is_active) return false;
+      if (currentFilter === 'inactive' && r.is_active) return false;
+      if (currentHouse !== 'all') {
+        const cur = Rooms.currentOf(r.id, today);
+        const hid = cur ? (Rooms.room(cur.room_id) || {}).house_id : null;
+        if (currentHouse === 'none' ? !!cur : hid !== currentHouse) return false;
+      }
       return true;
+    }).sort(function (a, b) {
+      // 施設 → 部屋 → ふりがな の順
+      const ca = Rooms.currentOf(a.id, today), cb = Rooms.currentOf(b.id, today);
+      const ka = ca ? Rooms.placeText(ca) : '￿', kb = cb ? Rooms.placeText(cb) : '￿';
+      return ka.localeCompare(kb, 'ja', { numeric: true }) || (a.kana || a.name).localeCompare(b.kana || b.name, 'ja');
     });
-    const esc = App.escapeHtml;
+
     document.getElementById('residentRows').innerHTML = rows.map(function (r) {
       return '<tr data-id="' + esc(r.id) + '"' + (r.is_active ? '' : ' class="row-inactive"') + '>' +
-        '<td><input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '"></td>' +
-        '<td><input type="text" class="autosave" data-field="kana" value="' + esc(r.kana) + '"></td>' +
-        '<td><input type="text" class="autosave" data-field="room" value="' + esc(r.room) + '"></td>' +
-        '<td><input type="date" class="autosave" data-field="move_in_date" value="' + esc(r.move_in_date) + '"></td>' +
+        '<td class="name-cell"><input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '" aria-label="氏名">' +
+        '<input type="text" class="autosave" data-field="kana" value="' + esc(r.kana) + '" placeholder="ふりがな" aria-label="ふりがな"></td>' +
+        '<td>' + placeButton(r) + '</td>' +
         '<td class="col-center"><input type="checkbox" data-field="is_active"' + (r.is_active ? ' checked' : '') + '></td>' +
         '</tr>';
     }).join('');
 
     const msg = document.getElementById('listMsg');
     msg.hidden = rows.length > 0;
-    msg.textContent = '該当する利用者はいません';
+    msg.textContent = Rooms.residents.length ? '該当する利用者はいません' : 'まだ利用者が登録されていません。上のフォームから追加してください';
   }
 
   // 一覧の入力が変わったら、その項目だけ保存する
@@ -127,7 +236,7 @@
     const field = input.dataset.field;
     const tr = input.closest('tr');
     if (!field || !tr) return;
-    const r = residents.find(function (x) { return x.id === tr.dataset.id; });
+    const r = Rooms.resident(tr.dataset.id);
 
     let value;
     if (field === 'is_active') value = input.checked;
@@ -138,13 +247,15 @@
       input.value = r ? r.name : '';
       return;
     }
+    if (field === 'is_active' && !value && Rooms.currentOf(r.id)) {
+      if (!confirm(r.name + ' さんは、まだ部屋に入居しています。\n「入居中」を外しても、部屋の記録はそのままです。退居日は「施設・部屋」から入れてください。\n外しますか?')) {
+        input.checked = true;
+        return;
+      }
+    }
 
     try {
-      await App.rpc('update_resident_field', {
-        p_id: tr.dataset.id,
-        p_field: field,
-        p_value: value == null ? null : String(value),
-      });
+      await App.rpc('update_resident_field', { p_id: tr.dataset.id, p_field: field, p_value: value == null ? null : String(value) });
     } catch (err) {
       console.error(err);
       if (field === 'is_active') { input.checked = !input.checked; alert('保存できませんでした'); }
@@ -156,40 +267,164 @@
     else App.flashSaved(input, true);
   }
 
+  // ===== 追加 =====
+  function refreshAddRooms() {
+    document.getElementById('newRoom').innerHTML =
+      roomOptions(document.getElementById('newHouse').value, document.getElementById('newMoveIn').value || Rooms.today(), null, null);
+  }
+
   async function onAdd(e) {
     e.preventDefault();
     const status = document.getElementById('addStatus');
     const name = document.getElementById('newName').value.trim();
-    if (!name) {
-      App.setStatus(status, '氏名を入力してください', 'err');
-      return;
-    }
+    const roomId = document.getElementById('newRoom').value;
+    const moveIn = document.getElementById('newMoveIn').value;
+    if (!name) return App.setStatus(status, '氏名を入力してください', 'err');
+    if (roomId && !moveIn) return App.setStatus(status, '入居日を入れてください', 'err');
+
     const btn = document.getElementById('addBtn');
     btn.disabled = true;
+    let added = null;
     try {
-      await App.rpc('add_resident', {
+      added = await App.rpc('add_resident', {
         p_name: name,
         p_kana: document.getElementById('newKana').value.trim() || null,
-        p_room: document.getElementById('newRoom').value.trim() || null,
-        p_move_in_date: document.getElementById('newMoveIn').value || null,
+        p_room: null,
+        p_move_in_date: null,
       });
+      if (roomId) await App.rpc('assign_room', { p_resident_id: added.id, p_room_id: roomId, p_move_in_date: moveIn, p_note: null });
     } catch (err) {
       console.error(err);
-      App.setStatus(status, '追加できませんでした', 'err');
-      return;
-    } finally {
+      App.setStatus(status, added ? name + ' さんは追加しましたが、部屋に入れられませんでした: ' + Rooms.friendlyError(err) : '追加できませんでした', 'err');
       btn.disabled = false;
+      await loadAll();
+      return;
     }
+    btn.disabled = false;
     e.target.reset();
+    document.getElementById('newMoveIn').value = Rooms.today();
+    refreshAddRooms();
     App.setStatus(status, name + ' さんを追加しました', 'ok');
-    await loadResidents();
+    await loadAll();
+    refreshAddRooms();
+  }
+
+  // ===== 施設・部屋のダイアログ =====
+  function openPlace(residentId) {
+    modalResidentId = residentId;
+    renderPlace();
+    App.setStatus(document.getElementById('placeStatus'), '');
+    document.getElementById('placeModal').hidden = false;
+  }
+  function closePlace() { document.getElementById('placeModal').hidden = true; }
+
+  function renderPlace() {
+    const p = Rooms.resident(modalResidentId);
+    const today = Rooms.today();
+    const cur = Rooms.currentOf(p.id, today);
+    const curHouse = cur ? (Rooms.room(cur.room_id) || {}).house_id : null;
+    document.getElementById('placeTitle').innerHTML = '<i class="ti ti-door"></i>' + esc(p.name) + ' さん';
+
+    let html = '<div class="muted-box">' + (cur
+      ? 'いまの部屋<br><b>' + esc(Rooms.placeText(cur)) + '</b><br>' + esc(Rooms.dateText(cur.move_in_date)) + ' から' +
+        (cur.move_out_date ? '・' + esc(Rooms.dateText(cur.move_out_date)) + ' 退居予定' : '')
+      : 'いまは部屋に入居していません') + '</div>';
+
+    html += '<h3>' + (cur ? '部屋を移る' : '入居する') + '</h3><div class="form-stack">' +
+      '<div class="row2">' +
+        '<div class="field"><label for="pHouse">施設</label><select id="pHouse">' + houseOptions(curHouse, '選んでください') + '</select></div>' +
+        '<div class="field"><label for="pRoom">部屋</label><select id="pRoom"></select></div>' +
+      '</div>' +
+      '<div class="inline">' +
+        '<div class="field"><label for="pDate">' + (cur ? '移る日' : '入居日') + '</label><input type="date" id="pDate" value="' + today + '"></div>' +
+        '<button type="button" class="btn" data-act="assign"><i class="ti ti-check"></i>' + (cur ? '移る' : '入居する') + '</button>' +
+      '</div>' +
+      (cur ? '<div class="text-sm muted">いまの部屋は、移る日で退居になります</div>' : '') +
+    '</div>';
+
+    if (cur && !cur.move_out_date) {
+      html += '<h3>退居する</h3><div class="inline">' +
+        '<div class="field"><label for="pOut">退居日(この日から部屋が空きます)</label><input type="date" id="pOut" value="' + today + '"></div>' +
+        '<button type="button" class="btn btn-ghost" data-act="out" data-id="' + esc(cur.id) + '"><i class="ti ti-door-exit"></i>退居</button>' +
+      '</div>';
+    }
+
+    const hist = Rooms.historyOf(p.id);
+    if (hist.length) {
+      html += '<h3>入居の記録</h3><ul class="hist">' + hist.map(function (a) {
+        const isNow = Rooms.activeOn(a, today);
+        return '<li><span class="what' + (isNow ? ' now' : '') + '">' + esc(Rooms.placeText(a, true)) + '<br>' + esc(Rooms.periodText(a)) + (isNow ? '(いま)' : '') + '</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-act="void" data-id="' + esc(a.id) + '" title="間違えて登録したときに使います">取消</button></li>';
+      }).join('') + '</ul>';
+    }
+
+    document.getElementById('placeBody').innerHTML = html;
+    refreshPlaceRooms();
+  }
+
+  function refreshPlaceRooms() {
+    const cur = Rooms.currentOf(modalResidentId);
+    document.getElementById('pRoom').innerHTML = roomOptions(
+      document.getElementById('pHouse').value, document.getElementById('pDate').value || Rooms.today(),
+      modalResidentId, cur ? cur.room_id : null);
+  }
+
+  async function placeAction(fn, okMsg) {
+    const st = document.getElementById('placeStatus');
+    document.querySelectorAll('#placeBody button').forEach(function (b) { b.disabled = true; });
+    App.setStatus(st, '保存しています...');
+    try {
+      await fn();
+    } catch (err) {
+      console.error(err);
+      App.setStatus(st, Rooms.friendlyError(err), 'err');
+      document.querySelectorAll('#placeBody button').forEach(function (b) { b.disabled = false; });
+      return;
+    }
+    await loadAll();
+    renderPlace();
+    App.setStatus(st, okMsg, 'ok');
+  }
+
+  function onPlaceClick(e) {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const st = document.getElementById('placeStatus');
+    if (b.dataset.act === 'assign') {
+      const roomId = document.getElementById('pRoom').value, d = document.getElementById('pDate').value;
+      if (!roomId) return App.setStatus(st, '部屋を選んでください', 'err');
+      if (!d) return App.setStatus(st, '日付を入れてください', 'err');
+      return placeAction(function () {
+        return App.rpc('assign_room', { p_resident_id: modalResidentId, p_room_id: roomId, p_move_in_date: d, p_note: null });
+      }, '部屋を登録しました');
+    }
+    if (b.dataset.act === 'out') {
+      const d = document.getElementById('pOut').value;
+      if (!d) return App.setStatus(st, '退居日を入れてください', 'err');
+      return placeAction(function () { return App.rpc('end_room_assignment', { p_id: b.dataset.id, p_move_out_date: d }); }, '退居日を入れました');
+    }
+    if (b.dataset.act === 'void') {
+      if (!confirm('この入居の記録を取り消しますか?(間違えて登録したときに使います)')) return;
+      return placeAction(function () { return App.rpc('void_room_assignment', { p_id: b.dataset.id }); }, '記録を取り消しました');
+    }
   }
 
   App.boot({
     active: 'residents',
     onReady: async function () {
+      await loadAll();
+      document.getElementById('newHouse').innerHTML = houseOptions(null, '(あとで決める)');
+      document.getElementById('newMoveIn').value = Rooms.today();
+      refreshAddRooms();
+      document.getElementById('newHouse').addEventListener('change', refreshAddRooms);
+      document.getElementById('newMoveIn').addEventListener('change', refreshAddRooms);
       document.getElementById('addForm').addEventListener('submit', onAdd);
+
       document.getElementById('residentRows').addEventListener('change', onRowChange);
+      document.getElementById('residentRows').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-place]');
+        if (b) openPlace(b.dataset.place);
+      });
       document.getElementById('filterChips').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-filter]');
         if (!b) return;
@@ -197,7 +432,21 @@
         this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
         renderList();
       });
-      await loadResidents();
+      document.getElementById('houseChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-house]');
+        if (!b) return;
+        currentHouse = b.dataset.house;
+        this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+        renderList();
+      });
+
+      document.getElementById('placeBody').addEventListener('click', onPlaceClick);
+      document.getElementById('placeBody').addEventListener('change', function (e) {
+        if (e.target.id === 'pHouse' || e.target.id === 'pDate') refreshPlaceRooms();
+      });
+      document.getElementById('placeClose').onclick = closePlace;
+      document.getElementById('placeModal').addEventListener('click', function (e) { if (e.target === this) closePlace(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePlace(); });
     },
   });
 </script>
