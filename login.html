@@ -56,7 +56,8 @@
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
-      const code = input.value.trim();
+      // 日本語入力のまま打った全角数字(４７２１)も半角にそろえる
+      const code = input.value.normalize('NFKC').replace(/\s+/g, '');
       if (!code) {
         App.setStatus(status, '合言葉を入力してください', 'err');
         return;
@@ -74,7 +75,8 @@
         location.replace(nextPage());
       } catch (err) {
         console.error(err);
-        App.setStatus(status, '通信できませんでした。config.js の設定と通信状況を確認してください', 'err');
+        // 原因を探しやすいように、Supabase からのメッセージもそのまま出す
+        App.setStatus(status, '通信できませんでした:' + (err && (err.message || err.code) || err), 'err');
       } finally {
         btn.disabled = false;
       }
