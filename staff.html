@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>スタッフ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    /* スマホでは横スクロールにして、入力欄がつぶれないようにする */
+    #staffTable { min-width: 760px; }
+    #staffTable .col-name { width: 20%; }
+    #staffTable .col-house { width: 20%; }
+    #staffTable .col-job { width: 18%; }
+    #staffTable .col-phone { width: 140px; }
+    #staffTable select, .add-row select { width: 100%; font-size: 13px; padding: 6px 6px; }
+    #staffTable select { padding: 4px 6px; }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap wide">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-id-badge-2"></i></span>
+        スタッフ
+      </h1>
+      <p>スタッフの追加と情報の編集ができます。変更はすぐに保存されます</p>
+    </div>
+
+    <!-- 追加 -->
+    <form id="addForm" class="card" novalidate>
+      <h2><i class="ti ti-user-plus"></i>スタッフを追加</h2>
+      <div class="add-row">
+        <div class="field">
+          <label for="newName">氏名 *</label>
+          <input type="text" id="newName" required>
+        </div>
+        <div class="field">
+          <label for="newKana">ふりがな</label>
+          <input type="text" id="newKana">
+        </div>
+        <div class="field">
+          <label for="newHouse">所属施設</label>
+          <select id="newHouse"></select>
+        </div>
+        <div class="field">
+          <label for="newJob">職種</label>
+          <input type="text" id="newJob" list="jobTitles">
+        </div>
+        <div class="field">
+          <label for="newPhone">電話番号</label>
+          <input type="tel" id="newPhone">
+        </div>
+        <button type="submit" id="addBtn" class="btn"><i class="ti ti-plus"></i>追加</button>
+      </div>
+      <div id="addStatus" class="status-msg"></div>
+    </form>
+
+    <!-- 職種の候補(自由入力もできる) -->
+    <datalist id="jobTitles">
+      <option value="管理者">
+      <option value="サービス管理責任者">
+      <option value="世話人">
+      <option value="生活支援員">
+      <option value="夜間支援員">
+    </datalist>
+
+    <!-- 一覧 -->
+    <div class="card">
+      <h2><i class="ti ti-list"></i>スタッフ一覧</h2>
+      <div class="chips" id="filterChips">
+        <button type="button" data-filter="active" class="active">在籍中</button>
+        <button type="button" data-filter="inactive">退職</button>
+        <button type="button" data-filter="all">すべて</button>
+      </div>
+      <div class="chips" id="houseChips"></div>
+      <div class="table-scroll">
+        <table class="compact-table" id="staffTable">
+          <thead>
+            <tr>
+              <th class="col-name">氏名</th>
+              <th class="col-name">ふりがな</th>
+              <th class="col-house">所属施設</th>
+              <th class="col-job">職種</th>
+              <th class="col-phone">電話番号</th>
+              <th class="col-center">在籍中</th>
+            </tr>
+          </thead>
+          <tbody id="staffRows"></tbody>
+        </table>
+      </div>
+      <div id="listMsg" class="empty-msg" hidden></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+  let staff = [];
+  let houses = [];
+  let currentFilter = 'active';
+  let currentHouse = 'all';   // 'all' / 'none'(未設定) / 施設の id
+
+  async function loadAll() {
+    const results = await Promise.all([App.rpc('get_staff'), App.rpc('get_houses')]);
+    staff = results[0];
+    houses = results[1];
+    renderHouseOptions();
+    renderHouseChips();
+    renderList();
+  }
+
+  // 施設の選択肢。運営中の施設だけ出し、休止中の施設に所属している人はその施設も出す
+  function houseOptionsHtml(selectedId) {
+    const esc = App.escapeHtml;
+    let html = '<option value="">(未設定)</option>';
+    houses.forEach(function (h) {
+      if (!h.is_active && h.id !== selectedId) return;
+      const label = h.name + (h.is_active ? '' : '(休止)');
+      html += '<option value="' + esc(h.id) + '"' + (h.id === selectedId ? ' selected' : '') + '>' + esc(label) + '</option>';
+    });
+    return html;
+  }
+
+  function renderHouseOptions() {
+    document.getElementById('newHouse').innerHTML = houseOptionsHtml(null);
+  }
+
+  // 施設での絞り込み。施設が 2 つ以上あるときだけ出す
+  function renderHouseChips() {
+    const box = document.getElementById('houseChips');
+    const active = houses.filter(function (h) { return h.is_active; });
+    if (active.length < 2) { box.hidden = true; currentHouse = 'all'; return; }
+    box.hidden = false;
+    const esc = App.escapeHtml;
+    const items = [{ id: 'all', name: 'すべての施設' }]
+      .concat(active.map(function (h) { return { id: h.id, name: h.name }; }))
+      .concat([{ id: 'none', name: '施設未設定' }]);
+    box.innerHTML = items.map(function (it) {
+      return '<button type="button" data-house="' + esc(it.id) + '"' + (it.id === currentHouse ? ' class="active"' : '') + '>' + esc(it.name) + '</button>';
+    }).join('');
+  }
+
+  function renderList() {
+    const rows = staff.filter(function (s) {
+      if (currentFilter === 'active' && !s.is_active) return false;
+      if (currentFilter === 'inactive' && s.is_active) return false;
+      if (currentHouse === 'none' && s.house_id) return false;
+      if (currentHouse !== 'all' && currentHouse !== 'none' && s.house_id !== currentHouse) return false;
+      return true;
+    });
+    const esc = App.escapeHtml;
+    document.getElementById('staffRows').innerHTML = rows.map(function (s) {
+      return '<tr data-id="' + esc(s.id) + '"' + (s.is_active ? '' : ' class="row-inactive"') + '>' +
+        '<td><input type="text" class="autosave" data-field="name" value="' + esc(s.name) + '"></td>' +
+        '<td><input type="text" class="autosave" data-field="kana" value="' + esc(s.kana) + '"></td>' +
+        '<td><select class="autosave" data-field="house_id">' + houseOptionsHtml(s.house_id) + '</select></td>' +
+        '<td><input type="text" class="autosave" data-field="job_title" list="jobTitles" value="' + esc(s.job_title) + '"></td>' +
+        '<td><input type="tel" class="autosave" data-field="phone" value="' + esc(s.phone) + '"></td>' +
+        '<td class="col-center"><input type="checkbox" data-field="is_active"' + (s.is_active ? ' checked' : '') + '></td>' +
+        '</tr>';
+    }).join('');
+
+    const msg = document.getElementById('listMsg');
+    msg.hidden = rows.length > 0;
+    msg.textContent = staff.length ? '該当するスタッフはいません' : 'まだスタッフが登録されていません。上のフォームから追加してください';
+  }
+
+  // 一覧の入力が変わったら、その項目だけ保存する
+  async function onRowChange(e) {
+    const input = e.target;
+    const field = input.dataset.field;
+    const tr = input.closest('tr');
+    if (!field || !tr) return;
+    const s = staff.find(function (x) { return x.id === tr.dataset.id; });
+
+    let value;
+    if (field === 'is_active') value = input.checked;
+    else value = input.value.trim() || null;
+
+    if (field === 'name' && !value) {
+      alert('氏名は空にできません');
+      input.value = s ? s.name : '';
+      return;
+    }
+
+    try {
+      await App.rpc('update_staff_field', {
+        p_id: tr.dataset.id,
+        p_field: field,
+        p_value: value == null ? null : String(value),
+      });
+    } catch (err) {
+      console.error(err);
+      if (field === 'is_active') { input.checked = !input.checked; alert('保存できませんでした'); }
+      else App.flashSaved(input, false);
+      return;
+    }
+    if (s) s[field] = value;
+    // 在籍・所属が変わると絞り込みの結果も変わるので描き直す
+    if (field === 'is_active' || (field === 'house_id' && currentHouse !== 'all')) renderList();
+    else App.flashSaved(input, true);
+  }
+
+  async function onAdd(e) {
+    e.preventDefault();
+    const status = document.getElementById('addStatus');
+    const name = document.getElementById('newName').value.trim();
+    if (!name) {
+      App.setStatus(status, '氏名を入力してください', 'err');
+      return;
+    }
+    const btn = document.getElementById('addBtn');
+    btn.disabled = true;
+    try {
+      await App.rpc('add_staff', {
+        p_name: name,
+        p_kana: document.getElementById('newKana').value.trim() || null,
+        p_house_id: document.getElementById('newHouse').value || null,
+        p_job_title: document.getElementById('newJob').value.trim() || null,
+        p_phone: document.getElementById('newPhone').value.trim() || null,
+      });
+    } catch (err) {
+      console.error(err);
+      App.setStatus(status, '追加できませんでした', 'err');
+      return;
+    } finally {
+      btn.disabled = false;
+    }
+    e.target.reset();
+    App.setStatus(status, name + ' さんを追加しました', 'ok');
+    await loadAll();
+  }
+
+  function setupChips(boxId, attr, onPick) {
+    document.getElementById(boxId).addEventListener('click', function (e) {
+      const b = e.target.closest('button[' + attr + ']');
+      if (!b) return;
+      this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+      onPick(b.getAttribute(attr));
+      renderList();
+    });
+  }
+
+  App.boot({
+    active: 'staff',
+    onReady: async function () {
+      document.getElementById('addForm').addEventListener('submit', onAdd);
+      document.getElementById('staffRows').addEventListener('change', onRowChange);
+      setupChips('filterChips', 'data-filter', function (v) { currentFilter = v; });
+      setupChips('houseChips', 'data-house', function (v) { currentHouse = v; });
+      await loadAll();
+    },
+  });
+</script>
+
+</body>
+</html>

@@ -17,6 +17,8 @@
 index.html        ポータル(アイコンタイルのメニュー)
 login.html        合言葉の入力画面
 residents.html    利用者(新しい画面を作るときのお手本)
+staff.html        スタッフ(所属施設をプルダウンで選ぶ例)
+houses.html       施設
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
