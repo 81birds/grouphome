@@ -102,12 +102,36 @@
     .top-bar .date-label.sat { color: var(--color-sat); }
     .top-bar .date-label.sun { color: var(--color-danger); }
     .top-bar .icon-btn { font-size: 20px; padding: 4px; }
-    .top-bar .date-wrap { position: relative; width: 30px; height: 30px; }
-    .top-bar .date-wrap i { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--color-text-muted); pointer-events: none; }
-    .top-bar .date-wrap input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; }
-    .top-bar .today-btn { font-size: 11px; padding: 3px 8px; }
-    .top-bar .spacer { flex: 1; }
-    .top-bar select { max-width: 130px; font-size: 12px; padding: 5px 4px; }
+    /* 日付の文字を押すとカレンダーが開く(透明の日付入力を重ねる) */
+    .top-bar .date-wrap { position: relative; cursor: pointer; }
+    .top-bar .date-wrap input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; padding: 0; cursor: pointer; }
+    .top-bar .today-btn { font-size: 11px; padding: 3px 8px; flex-shrink: 0; }
+    /* いま誰の勤務を入れているか。押すと選びなおせる */
+    .staff-pill {
+      flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 10px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary-dark);
+      font-family: var(--font-base); font-size: 14px; font-weight: 700;
+    }
+    .staff-pill span { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .staff-pill i { flex-shrink: 0; }
+    .staff-pill:hover { background: var(--color-primary); color: #fff; }
+
+    /* ----- スタッフを選ぶ ----- */
+    .pick-group { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin: 14px 0 6px; }
+    .pick-group:first-child { margin-top: 0; }
+    .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+    .pick-btn {
+      text-align: left; cursor: pointer;
+      padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+      background: var(--color-surface); color: var(--color-text);
+      font-family: var(--font-base); font-size: 15px; font-weight: 700; line-height: 1.3;
+    }
+    .pick-btn small { display: block; font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+    .pick-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+    .pick-btn.last { border-color: var(--color-primary); }
+    .pick-btn.last small::after { content: '・前回'; color: var(--color-primary-dark); }
 
     .note { font-size: 11px; color: var(--color-text-muted); margin: 0 0 6px; }
 
@@ -212,19 +236,23 @@
     <!-- 個人の勤務 -->
     <div id="panel-my" class="tab-panel">
       <div class="my-wrap">
-        <div class="top-bar">
+        <!-- まずスタッフを選ぶ -->
+        <div id="staffPicker" class="card" hidden>
+          <h2><i class="ti ti-user-search"></i>だれの勤務を入力しますか?</h2>
+          <div id="pickerBody"></div>
+        </div>
+
+        <div class="top-bar" id="myTopBar" hidden>
           <button type="button" class="icon-btn" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
-          <div class="date-label" id="dateLabel"></div>
+          <label class="date-wrap" title="日付を選ぶ"><span class="date-label" id="dateLabel"></span><input type="date" id="datePick" aria-label="日付を選ぶ"></label>
           <button type="button" class="icon-btn" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
-          <span class="date-wrap" title="日付を選ぶ"><i class="ti ti-calendar"></i><input type="date" id="datePick" aria-label="日付を選ぶ"></span>
+          <button type="button" class="staff-pill" id="staffBtn" title="スタッフを選びなおす"><i class="ti ti-user"></i><span id="staffName"></span><i class="ti ti-switch-horizontal"></i></button>
           <button type="button" class="btn btn-ghost today-btn" id="todayBtn">今日</button>
-          <span class="spacer"></span>
-          <select id="staffSel" aria-label="スタッフ"></select>
         </div>
 
         <div id="emptyMsg" class="empty-msg card" hidden></div>
 
-        <div id="mainArea">
+        <div id="mainArea" hidden>
           <p class="note">勤務する時間にチェックを入れて、下の「保存」を押します。斜線は前日・翌日の勤務です。</p>
           <div class="grid-box">
             <table class="day-grid" id="dayGrid"></table>
@@ -1123,11 +1151,66 @@
       return changeCount() === 0 || confirm('保存していない変更があります。破棄して移動しますか?');
     }
 
-    function renderStaffOptions() {
-      const list = M.staff.filter(function (s) { return s.is_active || s.id === state.staffId; });
-      document.getElementById('staffSel').innerHTML = list.map(function (s) {
-        return '<option value="' + esc(s.id) + '"' + (s.id === state.staffId ? ' selected' : '') + '>' + esc(s.name) + '</option>';
+    function renderStaffName() {
+      const s = byId(M.staff, state.staffId);
+      document.getElementById('staffName').textContent = s ? s.name + ' さん' : '';
+    }
+
+    // ===== スタッフを選ぶ画面 =====
+    let picking = true;    // スタッフを選んでいる途中なら true
+
+    // 選ぶ画面と、勤務を入れる画面を切り替える
+    function setView() {
+      document.getElementById('staffPicker').hidden = !picking;
+      document.getElementById('myTopBar').hidden = picking;
+      document.getElementById('mainArea').hidden = picking;
+      syncSaveBar();
+      writeUrl();
+    }
+
+    // 所属施設ごとにまとめて出す。前回選んだ人は枠を付ける
+    function renderPicker() {
+      let last = state.staffId;
+      if (!last) { try { last = localStorage.getItem('gh_my_staff'); } catch (e) { /* noop */ } }
+      const people = M.staff.filter(function (s) { return s.is_active; });
+      const groups = activeHouses().map(function (h) { return { name: h.name, list: [] }; });
+      const other = { name: '所属なし', list: [] };
+      people.forEach(function (p) {
+        const i = activeHouses().findIndex(function (h) { return h.id === p.house_id; });
+        (i >= 0 ? groups[i] : other).list.push(p);
+      });
+      document.getElementById('pickerBody').innerHTML = groups.concat([other]).filter(function (g) { return g.list.length; }).map(function (g) {
+        return '<div class="pick-group">' + esc(g.name) + '</div><div class="pick-grid">' + g.list.map(function (p) {
+          return '<button type="button" class="pick-btn' + (p.id === last ? ' last' : '') + '" data-staff="' + esc(p.id) + '">' +
+            esc(p.name) + '<small>' + esc(p.job_title || 'スタッフ') + '</small></button>';
+        }).join('') + '</div>';
       }).join('');
+    }
+
+    function showPicker() {
+      if (!ready) return;
+      picking = true;
+      renderPicker();
+      setView();
+      window.scrollTo(0, 0);
+    }
+
+    async function pick(staffId) {
+      // 同じ人で、保存していない変更があるなら、そのまま続ける
+      if (staffId === state.staffId && changeCount() > 0) {
+        picking = false;
+        setView();
+        return;
+      }
+      if (staffId !== state.staffId && !confirmLeave()) return;
+      state.staffId = staffId;
+      picking = false;
+      renderStaffName();
+      saveUrl();
+      setView();
+      await loadShifts();
+      renderAll();
+      window.scrollTo(0, 0);
     }
 
     function saveUrl() {
@@ -1146,45 +1229,48 @@
     let ready = false;   // スタッフと施設がそろっていて、表が使えるとき true
 
     async function init(q) {
-      let remembered = null;
-      try { remembered = localStorage.getItem('gh_my_staff'); } catch (e) { /* noop */ }
-      const want = q.get('staff') || remembered;
       const active = M.staff.filter(function (s) { return s.is_active; });
-      state.staffId = byId(M.staff, want) ? want : (active[0] ? active[0].id : null);
+      // URL でスタッフが決まっているとき(勤務表やスタッフ画面から来たとき)だけ、選ぶ画面を飛ばす
+      const want = q.get('tab') === 'my' ? q.get('staff') : null;
+      state.staffId = byId(M.staff, want) ? want : null;
       state.date = /^\d{4}-\d{2}-\d{2}$/.test(q.get('date') || '') ? q.get('date') : App.todayJST();
 
-      if (!state.staffId || !activeHouses().length) {
+      if (!active.length || !activeHouses().length) {
         const msg = document.getElementById('emptyMsg');
         msg.hidden = false;
-        msg.innerHTML = !state.staffId
+        msg.innerHTML = !active.length
           ? 'スタッフがまだ登録されていません。<a href="staff.html">スタッフ画面</a>から追加してください'
           : '施設がまだ登録されていません。<a href="houses.html">施設画面</a>から追加してください';
-        document.getElementById('mainArea').hidden = true;
-        document.querySelector('.top-bar').hidden = true;
         return;
       }
       ready = true;
-
-      renderStaffOptions();
       document.getElementById('dayGrid').addEventListener('change', onCheck);
       document.getElementById('saveBtn').onclick = onSave;
       document.getElementById('undoBtn').onclick = onUndo;
-      document.getElementById('staffSel').addEventListener('change', function () {
-        if (!confirmLeave()) { this.value = state.staffId; return; }
-        state.staffId = this.value;
-        saveUrl();
-        renderAll();
+      document.getElementById('staffBtn').onclick = showPicker;
+      document.getElementById('pickerBody').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-staff]');
+        if (b) pick(b.dataset.staff);
       });
       document.getElementById('prevDay').onclick = function () { goDate(addDays(state.date, -1)); };
       document.getElementById('nextDay').onclick = function () { goDate(addDays(state.date, 1)); };
       document.getElementById('todayBtn').onclick = function () { goDate(App.todayJST()); };
       document.getElementById('datePick').addEventListener('change', function () { if (this.value) goDate(this.value); });
+      // PC のブラウザは日付の欄を押してもカレンダーが開かないことがあるので開く
+      document.getElementById('datePick').addEventListener('click', function () { try { this.showPicker(); } catch (e) { /* noop */ } });
       window.addEventListener('beforeunload', function (e) {
         if (changeCount() > 0) { e.preventDefault(); e.returnValue = ''; }
       });
 
-      await loadShifts();
-      renderAll();
+      if (state.staffId) {
+        picking = false;
+        renderStaffName();
+        await loadShifts();
+        renderAll();
+      } else {
+        renderPicker();
+      }
+      setView();
     }
 
     // 勤務表から、スタッフと日付を決めて開く
@@ -1193,22 +1279,23 @@
       if ((staffId !== state.staffId || date !== state.date) && !confirmLeave()) return;
       state.staffId = staffId;
       state.date = date;
-      renderStaffOptions();
+      picking = false;
+      renderStaffName();
       saveUrl();
+      setView();
       await loadShifts();
       renderAll();
     }
 
-    // タブを開いたとき、勤務表で変わった分を読み直す(未保存の変更があればそのまま)
-    async function refresh() {
-      if (!ready || changeCount() > 0) return;
-      await loadShifts();
-      renderAll();
+    // タブを開いたときは、まずスタッフを選ぶ(保存していない変更があれば、そのまま続ける)
+    function enter() {
+      if (!ready || (!picking && changeCount() > 0)) return;
+      showPicker();
     }
 
     return {
-      init: init, open: open, refresh: refresh,
-      isReady: function () { return ready; },
+      init: init, open: open, enter: enter,
+      isEditing: function () { return ready && !picking; },
       current: function () { return { staffId: state.staffId, date: state.date }; },
     };
   })();
@@ -1218,7 +1305,7 @@
   function writeUrl() {
     const q = new URLSearchParams();
     if (currentTab !== 'roster') q.set('tab', currentTab);
-    if (currentTab === 'my' && MyShift.isReady()) {
+    if (currentTab === 'my' && MyShift.isEditing()) {
       const c = MyShift.current();
       if (c.staffId) q.set('staff', c.staffId);
       q.set('date', c.date);
@@ -1227,23 +1314,29 @@
     history.replaceState(null, '', location.pathname + (s ? '?' + s : ''));
   }
 
-  function showTab(tab) {
+  // skipEnter: 勤務表からスタッフを決めて開くときは、選ぶ画面を出さない
+  function showTab(tab, skipEnter) {
     const prev = currentTab;
     currentTab = tab;
     document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.tab === tab); });
     document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + tab); });
-    const showBar = tab === 'my' && MyShift.isReady();
-    document.getElementById('saveBar').hidden = !showBar;
-    document.body.classList.toggle('with-save-bar', showBar);
+    syncSaveBar();
     writeUrl();
     try { localStorage.setItem('gh_shift_tab', tab); } catch (e) { /* noop */ }
     if (prev === tab) return;
     if (tab === 'roster') Roster.refresh();
-    if (tab === 'my') MyShift.refresh();
+    if (tab === 'my' && !skipEnter) MyShift.enter();
+  }
+
+  // 保存バーは、個人の勤務で表を出しているときだけ
+  function syncSaveBar() {
+    const show = currentTab === 'my' && MyShift.isEditing();
+    document.getElementById('saveBar').hidden = !show;
+    document.body.classList.toggle('with-save-bar', show);
   }
 
   async function openPersonal(staffId, date) {
-    showTab('my');
+    showTab('my', true);
     await MyShift.open(staffId, date);
     window.scrollTo(0, 0);
   }
