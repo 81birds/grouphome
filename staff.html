@@ -166,7 +166,7 @@
         '<td><input type="text" class="autosave" data-field="kana" value="' + esc(s.kana) + '"></td>' +
         '<td><input type="text" class="autosave" data-field="job_title" list="jobTitles" value="' + esc(s.job_title) + '"></td>' +
         '<td><select class="autosave" data-field="house_id">' + houseOptionsHtml(s.house_id) + '</select></td>' +
-        '<td class="col-center"><a class="btn btn-ghost btn-sm" href="myshift.html?staff=' + encodeURIComponent(s.id) + '" title="個人の勤務を開く"><i class="ti ti-calendar-time"></i>勤務</a></td>' +
+        '<td class="col-center"><a class="btn btn-ghost btn-sm" href="shifts.html?tab=my&staff=' + encodeURIComponent(s.id) + '" title="個人の勤務を開く"><i class="ti ti-calendar-time"></i>勤務</a></td>' +
         '</tr>';
     }).join('');
 
