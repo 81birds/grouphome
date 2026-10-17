@@ -95,7 +95,7 @@
     #typeTable { min-width: 520px; }
     #typeTable input[type="time"] { min-width: 96px; }
     /* ===== 個人の勤務(スマホ向け) ===== */
-    .my-wrap { max-width: 640px; margin: 0 auto; }
+    .my-wrap { max-width: 640px; }
     /* ----- 上の帯: 日付(左)とスタッフ(右) ----- */
     .top-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
     .top-bar .date-label { font-size: 17px; font-weight: 700; white-space: nowrap; }
@@ -168,9 +168,10 @@
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
       background: var(--color-surface); border-top: 1px solid var(--color-border);
       box-shadow: 0 -4px 14px rgba(30, 30, 20, 0.08);
-      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     }
-    .save-bar .inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 8px; }
+    /* 表と同じく左寄せ。画面が広いときは .wrap.wide(1100px)の左端に合わせる */
+    .save-bar .inner { max-width: 640px; margin: 0 max(0px, calc((100% - 1100px) / 2)); display: flex; align-items: center; gap: 8px; }
     .save-bar .msg { flex: 1; font-size: 12px; min-width: 0; }
     .save-bar .msg.ok { color: var(--color-primary-dark); }
     .save-bar .msg.err { color: var(--color-danger); }
@@ -240,12 +241,12 @@
       <div class="my-wrap">
         <!-- まずスタッフを選ぶ -->
         <div id="staffPicker" class="card" hidden>
-          <h2><i class="ti ti-user-search"></i>だれの勤務を入力しますか?</h2>
+          <h2><i class="ti ti-user-search"></i>スタッフを選ぶ</h2>
           <div id="pickerBody"></div>
         </div>
 
         <div class="back-row" id="myBackRow" hidden>
-          <button type="button" class="btn btn-ghost btn-sm" id="backToPicker"><i class="ti ti-arrow-left"></i>スタッフを選ぶ</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="backToPicker"><i class="ti ti-arrow-left"></i>もどる</button>
         </div>
 
         <div class="top-bar" id="myTopBar" hidden>
