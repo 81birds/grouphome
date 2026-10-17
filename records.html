@@ -248,13 +248,14 @@
   ];
   const HOUSE_KEY = 'gh_records_house';
   const ITEM_H = 40;
+  const MIN_STEP = 10;          // 分は 10 分きざみ
 
   let houseId = null;
   let date = App.todayJST();
   let residentId = null;
   let records = [];             // 選んだ施設・日の記録
   const visit = { staff: [], types: [], shifts: [], date: null };   // 来る人
-  let picked = new Set();       // 選んでいる内容
+  let picked = new Set();       // 選んでいる内容(1 つだけ)
 
   const $ = function (id) { return document.getElementById(id); };
   const esc = App.escapeHtml;
@@ -265,9 +266,9 @@
   }
 
   // ===== 時刻のホイール =====
-  function buildWheel(col, count) {
+  function buildWheel(col, count, step) {
     let html = '';
-    for (let i = 0; i < count; i++) html += '<div class="wheel-item" data-i="' + i + '">' + String(i).padStart(2, '0') + '</div>';
+    for (let i = 0; i < count; i++) html += '<div class="wheel-item" data-i="' + i + '">' + String(i * step).padStart(2, '0') + '</div>';
     col.innerHTML = html;
     let raf = 0;
     col.addEventListener('scroll', function () {
@@ -291,16 +292,23 @@
     col.scrollTop = v * ITEM_H;
     markWheel(col);
   }
+  // m は分のホイールの位置(0〜5 = 0〜50 分)
   function setTime(h, m) {
     setWheel($('wheelH'), h);
     setWheel($('wheelM'), m);
   }
-  function setNow() {
+  // いまの時刻を 10 分きざみに丸めて [時, 分の位置] で返す(14:37 → 14:40)
+  function nowRounded() {
     const d = new Date(Date.now() + 9 * 3600 * 1000);
-    setTime(d.getUTCHours(), d.getUTCMinutes());
+    const t = (Math.round((d.getUTCHours() * 60 + d.getUTCMinutes()) / MIN_STEP) * MIN_STEP) % (24 * 60);
+    return [Math.floor(t / 60), (t % 60) / MIN_STEP];
+  }
+  function setNow() {
+    const n = nowRounded();
+    setTime(n[0], n[1]);
   }
   function timeText() {
-    return String(wheelValue($('wheelH'))).padStart(2, '0') + ':' + String(wheelValue($('wheelM'))).padStart(2, '0');
+    return String(wheelValue($('wheelH'))).padStart(2, '0') + ':' + String(wheelValue($('wheelM')) * MIN_STEP).padStart(2, '0');
   }
 
   // ===== 施設 =====
@@ -566,8 +574,8 @@
       const r = await Promise.all([Rooms.load(), App.rpc('get_staff'), App.rpc('get_shift_types'), loadVisitShifts()]);
       visit.staff = r[1]; visit.types = r[2];
 
-      buildWheel($('wheelH'), 24);
-      buildWheel($('wheelM'), 60);
+      buildWheel($('wheelH'), 24, 1);
+      buildWheel($('wheelM'), 60 / MIN_STEP, MIN_STEP);
       $('wheelH').addEventListener('scroll', rememberTime, { passive: true });
       $('wheelM').addEventListener('scroll', rememberTime, { passive: true });
       $('nowBtn').addEventListener('click', function () { setNow(); rememberTime(); });
@@ -584,7 +592,10 @@
         const b = e.target.closest('button[data-kind]');
         if (!b) return;
         const k = b.dataset.kind;
-        if (picked.has(k)) picked.delete(k); else picked.add(k);
+        // 選べるのは 1 つだけ。同じものをもう一度押すと外れる
+        const was = picked.has(k);
+        picked.clear();
+        if (!was) picked.add(k);
         renderKinds();
       });
       $('recList').addEventListener('click', function (e) {
@@ -603,8 +614,8 @@
       renderDate();
 
       // はじめの時刻は「いま」
-      const d = new Date(Date.now() + 9 * 3600 * 1000);
-      savedH = d.getUTCHours(); savedM = d.getUTCMinutes();
+      const n = nowRounded();
+      savedH = n[0]; savedM = n[1];
 
       // 前回選んだ施設(施設が 1 つだけならそれ)
       const houses = activeHouses();
