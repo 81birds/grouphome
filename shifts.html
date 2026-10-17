@@ -13,8 +13,21 @@
     /* ----- 月の切り替え ----- */
     .month-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
     .month-bar .month-label { font-size: 16px; font-weight: 700; min-width: 110px; text-align: center; }
-    .month-bar .spacer { flex: 1; }
-    .month-bar .chips { margin-bottom: 0; }
+
+    /* ----- スタッフ別・施設別の切り替え(月の上に、2 つ並んだボタン) ----- */
+    .view-switch {
+      display: inline-flex; margin-bottom: 12px;
+      border: 1px solid var(--color-primary); border-radius: var(--radius-sm); overflow: hidden;
+    }
+    .view-switch button {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-base); font-size: 14px; font-weight: 700;
+      padding: 8px 18px; border: none; cursor: pointer;
+      background: var(--color-surface); color: var(--color-primary-dark);
+    }
+    .view-switch button + button { border-left: 1px solid var(--color-primary); }
+    .view-switch button:hover { background: var(--color-primary-soft); }
+    .view-switch button.active { background: var(--color-primary); color: #fff; }
 
     /* ----- 勤務表 ----- */
     .roster-scroll {
@@ -217,16 +230,15 @@
     <!-- 勤務表 -->
     <div id="panel-roster" class="tab-panel active">
       <div class="card">
+        <div class="view-switch" id="viewChips" role="group" aria-label="表の見かた">
+          <button type="button" data-view="staff" class="active"><i class="ti ti-users"></i>スタッフ別</button>
+          <button type="button" data-view="house"><i class="ti ti-building-community"></i>施設別</button>
+        </div>
         <div class="month-bar">
           <button type="button" class="btn btn-ghost btn-sm" id="prevMonth" aria-label="前の月"><i class="ti ti-chevron-left"></i></button>
           <div class="month-label" id="monthLabel"></div>
           <button type="button" class="btn btn-ghost btn-sm" id="nextMonth" aria-label="次の月"><i class="ti ti-chevron-right"></i></button>
           <button type="button" class="btn btn-ghost btn-sm" id="thisMonth">今月</button>
-          <div class="spacer"></div>
-          <div class="chips" id="viewChips">
-            <button type="button" data-view="staff" class="active">スタッフ別</button>
-            <button type="button" data-view="house">施設別</button>
-          </div>
         </div>
         <div class="roster-scroll">
           <table class="roster" id="roster"></table>
