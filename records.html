@@ -145,8 +145,18 @@
     }
     .rec-list li:last-child { border-bottom: none; }
     .rec-time { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 3.2em; }
-    .rec-kind { flex: 1; display: flex; align-items: center; gap: 6px; }
+    .rec-kind { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .rec-kind i { color: var(--color-primary-dark); }
+    .rec-note {
+      flex-basis: 100%; font-size: 12px; color: var(--color-text-muted);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .rec-note i { font-size: 12px; color: var(--color-text-muted); }
+
+    /* ----- 記録の編集ダイアログ ----- */
+    .edit-what { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .edit-what i { color: var(--color-primary-dark); }
+    #editModal .modal-actions { justify-content: space-between; }
   </style>
 </head>
 <body>
@@ -227,6 +237,26 @@
 
     <button type="button" class="btn btn-block" id="saveBtn" disabled><i class="ti ti-check"></i>記録する</button>
     <div id="saveStatus" class="status-msg center"></div>
+  </div>
+</div>
+
+<!-- 記録の編集ダイアログ(コメント・取消) -->
+<div id="editModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editHead">
+    <div class="modal-head">
+      <h2 id="editHead"><i class="ti ti-edit"></i><span id="editTitle"></span></h2>
+      <button type="button" class="icon-btn" id="editClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="edit-what" id="editWhat"></div>
+    <div class="field">
+      <label for="editNote">コメント</label>
+      <textarea id="editNote" rows="4" placeholder="例: 半分ほど食べました"></textarea>
+    </div>
+    <div id="editStatus" class="status-msg"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="editVoid"><i class="ti ti-trash"></i>記録を取り消す</button>
+      <button type="button" class="btn" id="editSave"><i class="ti ti-device-floppy"></i>保存</button>
+    </div>
   </div>
 </div>
 
@@ -465,8 +495,9 @@
     $('recList').innerHTML = mine.map(function (r) {
       return '<li>' +
         '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
-        '<span class="rec-kind"><i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind) + '</span>' +
-        '<button type="button" class="icon-btn danger" data-void="' + esc(r.id) + '" title="取り消す" aria-label="取り消す"><i class="ti ti-x"></i></button>' +
+        '<span class="rec-kind"><i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind) +
+          (r.note ? '<span class="rec-note"><i class="ti ti-message"></i> ' + esc(r.note) + '</span>' : '') + '</span>' +
+        '<button type="button" class="icon-btn" data-edit="' + esc(r.id) + '" title="コメント・取消" aria-label="編集"><i class="ti ti-pencil"></i></button>' +
         '</li>';
     }).join('');
     $('listMsg').hidden = mine.length > 0;
@@ -552,7 +583,49 @@
     renderList();
   }
 
-  async function onVoid(id) {
+  // ===== 記録の編集(コメント・取消) =====
+  let editId = null;
+
+  function openEdit(id) {
+    const r = records.find(function (x) { return x.id === id; });
+    if (!r) return;
+    editId = id;
+    const p = Rooms.resident(r.resident_id);
+    $('editTitle').textContent = (p ? p.name + ' さん' : '記録の編集');
+    $('editWhat').innerHTML = '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
+      '<i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind);
+    $('editNote').value = r.note || '';
+    App.setStatus($('editStatus'), '');
+    $('editModal').hidden = false;
+    $('editNote').focus();
+  }
+  function closeEdit() { $('editModal').hidden = true; editId = null; }
+
+  async function onEditSave() {
+    const id = editId;
+    if (!id) return;
+    const btn = $('editSave');
+    btn.disabled = true;
+    App.setStatus($('editStatus'), '保存しています...');
+    let row;
+    try {
+      row = await App.rpc('update_daily_record_note', { p_id: id, p_note: $('editNote').value });
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('editStatus'), '保存できませんでした。通信状況を確認してください', 'err');
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+    const r = records.find(function (x) { return x.id === id; });
+    if (r) r.note = row ? row.note : null;
+    closeEdit();
+    App.setStatus($('listStatus'), 'コメントを保存しました', 'ok');
+    renderList();
+  }
+
+  async function onVoid() {
+    const id = editId;
     const r = records.find(function (x) { return x.id === id; });
     if (!r) return;
     if (!confirm(String(r.record_time).slice(0, 5) + ' ' + r.kind + ' の記録を取り消しますか？')) return;
@@ -560,10 +633,12 @@
       await App.rpc('void_daily_record', { p_id: id });
     } catch (err) {
       console.error(err);
-      alert('取り消せませんでした');
+      App.setStatus($('editStatus'), '取り消せませんでした', 'err');
       return;
     }
     records = records.filter(function (x) { return x.id !== id; });
+    closeEdit();
+    App.setStatus($('listStatus'), '記録を取り消しました', 'ok');
     renderPeople();
     renderList();
   }
@@ -599,14 +674,18 @@
         renderKinds();
       });
       $('recList').addEventListener('click', function (e) {
-        const b = e.target.closest('button[data-void]');
-        if (b) onVoid(b.dataset.void);
+        const b = e.target.closest('button[data-edit]');
+        if (b) openEdit(b.dataset.edit);
       });
       $('saveBtn').addEventListener('click', onSave);
       $('newBtn').addEventListener('click', openInput);
       $('inputClose').addEventListener('click', closeInput);
       $('inputModal').addEventListener('click', function (e) { if (e.target === this) closeInput(); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeInput(); });
+      $('editClose').addEventListener('click', closeEdit);
+      $('editModal').addEventListener('click', function (e) { if (e.target === this) closeEdit(); });
+      $('editSave').addEventListener('click', onEditSave);
+      $('editVoid').addEventListener('click', onVoid);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeInput(); closeEdit(); } });
       $('prevDay').addEventListener('click', function () { shiftDate(-1); });
       $('nextDay').addEventListener('click', function () { shiftDate(1); });
       $('dateInput').addEventListener('change', function () { changeDate(this.value); });
