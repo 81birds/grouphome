@@ -102,6 +102,39 @@
     .kind-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
     .kind-btn.active i { color: #fff; }
 
+    /* ----- 来る人(その日の勤務の帯) ----- */
+    .tl { position: relative; }
+    .tl-scale, .tl-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; }
+    .tl-scale { font-size: 10px; color: var(--color-text-muted); margin-bottom: 2px; }
+    .tl-ticks { position: relative; height: 14px; }
+    .tl-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+    .tl-ticks span:first-child { transform: none; }
+    .tl-ticks span:last-child { transform: translateX(-100%); }
+    .tl-row { padding: 5px 0; border-top: 1px solid var(--color-border); }
+    .tl-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tl-name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .tl-track {
+      position: relative; height: 24px; border-radius: 4px;
+      background: repeating-linear-gradient(90deg, var(--color-surface-alt) 0, var(--color-surface-alt) calc(25% - 1px), var(--color-border) calc(25% - 1px), var(--color-border) 25%);
+    }
+    .tl-bar {
+      position: absolute; top: 2px; bottom: 2px; border-radius: 4px;
+      background: var(--color-primary); color: #fff; font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; padding: 0 4px; white-space: nowrap; overflow: hidden; min-width: 4px;
+    }
+    .tl-bar.night { background: var(--color-night); }
+    .tl-bar.cont-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+    .tl-bar.cont-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .tl-now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-danger); z-index: 1; pointer-events: none; }
+    .tl-time { font-size: 11px; color: var(--color-text-muted); grid-column: 2; margin-top: 2px; }
+    .tl-row.here .tl-name::after { content: "いま"; margin-left: 4px; font-size: 10px; color: #fff; background: var(--color-danger); border-radius: 999px; padding: 1px 6px; }
+    .visit-sum { font-size: 12px; color: var(--color-text-muted); margin: 8px 0 0; }
+
+    /* ----- 入力のダイアログ ----- */
+    #inputModal .modal { max-width: 420px; }
+    #inputModal .kind-grid { margin: 12px 0; }
+    .new-btn { margin-top: 12px; }
+
     /* ----- その日の記録 ----- */
     .rec-list { list-style: none; margin: 0; padding: 0; }
     .rec-list li {
@@ -132,7 +165,7 @@
         <span class="page-icon"><i class="ti ti-notebook"></i></span>
         日々の記録
       </h1>
-      <p>施設と利用者さんを選び、時刻と内容を選んで記録します</p>
+      <p>施設と利用者さんを選ぶと、その日の記録が出ます。「新しい入力」で時刻と内容を選んで記録します</p>
     </div>
 
     <!-- 施設と日にち -->
@@ -147,6 +180,13 @@
       </div>
     </div>
 
+    <!-- 来る人 -->
+    <div class="card" id="visitCard" hidden>
+      <h2><i class="ti ti-users-group"></i>来る人</h2>
+      <div class="tl" id="visitList"></div>
+      <p class="visit-sum" id="visitSum"></p>
+    </div>
+
     <!-- 利用者 -->
     <div class="card" id="personCard" hidden>
       <h2><i class="ti ti-users"></i>利用者さん</h2>
@@ -154,32 +194,39 @@
       <div id="personMsg" class="empty-msg" hidden></div>
     </div>
 
-    <!-- 入力 -->
-    <div class="card" id="inputCard" hidden>
-      <h2><i class="ti ti-pencil"></i><span id="inputTitle"></span></h2>
-
-      <div class="wheel-wrap">
-        <div class="wheel" aria-label="時刻">
-          <div class="wheel-band"></div>
-          <div class="wheel-col" id="wheelH" aria-label="時"></div>
-          <div class="wheel-sep">:</div>
-          <div class="wheel-col" id="wheelM" aria-label="分"></div>
-        </div>
-        <button type="button" class="btn btn-ghost btn-sm" id="nowBtn"><i class="ti ti-clock"></i>いま</button>
-      </div>
-
-      <div class="kind-grid" id="kindGrid"></div>
-
-      <button type="button" class="btn btn-block" id="saveBtn" disabled><i class="ti ti-check"></i>記録する</button>
-      <div id="saveStatus" class="status-msg center"></div>
-    </div>
-
     <!-- その人のその日の記録 -->
     <div class="card" id="listCard" hidden>
       <h2><i class="ti ti-list"></i><span id="listTitle"></span></h2>
       <ul class="rec-list" id="recList"></ul>
       <div id="listMsg" class="empty-msg" hidden>まだ記録はありません</div>
+      <button type="button" class="btn btn-block new-btn" id="newBtn"><i class="ti ti-plus"></i>新しい入力</button>
+      <div id="listStatus" class="status-msg center"></div>
     </div>
+  </div>
+</div>
+
+<!-- 入力のダイアログ(時刻と内容) -->
+<div id="inputModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inputHead">
+    <div class="modal-head">
+      <h2 id="inputHead"><i class="ti ti-pencil"></i><span id="inputTitle"></span></h2>
+      <button type="button" class="icon-btn" id="inputClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="wheel-wrap">
+      <div class="wheel" aria-label="時刻">
+        <div class="wheel-band"></div>
+        <div class="wheel-col" id="wheelH" aria-label="時"></div>
+        <div class="wheel-sep">:</div>
+        <div class="wheel-col" id="wheelM" aria-label="分"></div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="nowBtn"><i class="ti ti-clock"></i>いま</button>
+    </div>
+
+    <div class="kind-grid" id="kindGrid"></div>
+
+    <button type="button" class="btn btn-block" id="saveBtn" disabled><i class="ti ti-check"></i>記録する</button>
+    <div id="saveStatus" class="status-msg center"></div>
   </div>
 </div>
 
@@ -206,6 +253,7 @@
   let date = App.todayJST();
   let residentId = null;
   let records = [];             // 選んだ施設・日の記録
+  const visit = { staff: [], types: [], shifts: [], date: null };   // 来る人
   let picked = new Set();       // 選んでいる内容
 
   const $ = function (id) { return document.getElementById(id); };
@@ -281,10 +329,80 @@
     if (!v) return;
     date = v;
     renderDate();
-    await loadRecords();
+    App.setStatus($('listStatus'), '');
+    await Promise.all([loadRecords(), loadVisitShifts()]);
+    renderVisits();
     renderPeople();
-    renderInput();
-    if (residentId) setTime(savedH, savedM);
+    renderList();
+  }
+
+  // ===== 来る人(その日のこの施設の勤務) =====
+  const DAY = 24 * 60;
+  function hm(t) { return t ? String(t).slice(0, 5) : ''; }
+  function minOf(t) { const p = hm(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
+  function crosses(s) { return minOf(s.end_time) <= minOf(s.start_time); }
+  function durationOf(s) { let d = minOf(s.end_time) - minOf(s.start_time); if (d <= 0) d += DAY; return d; }
+  function shiftText(s) { return hm(s.start_time) + '〜' + (crosses(s) ? '翌' : '') + hm(s.end_time); }
+  function dayOffset(workDate) { return Math.round((new Date(workDate + 'T00:00:00Z') - new Date(date + 'T00:00:00Z')) / 86400000); }
+
+  async function loadVisitShifts() {
+    if (visit.date === date) return;
+    try {
+      // 前日に始まった夜勤も返ってくる
+      visit.shifts = await App.rpc('get_shifts', { p_from: date, p_to: date });
+      visit.date = date;
+    } catch (err) {
+      console.error(err);
+      visit.shifts = [];
+      visit.date = null;
+    }
+  }
+
+  function renderVisits() {
+    $('visitCard').hidden = !houseId;
+    if (!houseId) return;
+    const box = $('visitList');
+    const sum = $('visitSum');
+
+    // この日(0:00〜24:00)にかかる勤務。前日からの夜勤も含める
+    const items = visit.shifts.filter(function (s) { return s.house_id === houseId; }).map(function (s) {
+      const start = dayOffset(s.work_date) * DAY + minOf(s.start_time);
+      return { s: s, start: start, end: start + durationOf(s) };
+    }).filter(function (x) { return x.end > 0 && x.start < DAY; })
+      .sort(function (a, b) { return a.start - b.start || a.end - b.end; });
+
+    const isToday = date === App.todayJST();
+    const nowParts = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(11, 16).split(':');
+    const nowMin = (+nowParts[0]) * 60 + (+nowParts[1]);
+
+    let html = '<div class="tl-scale"><span></span><div class="tl-ticks">' +
+      [0, 6, 12, 18, 24].map(function (h) { return '<span style="left:' + (h / 24 * 100) + '%">' + h + '時</span>'; }).join('') +
+      '</div></div>';
+
+    if (!items.length) {
+      html += '<div class="empty-msg">この日に来る予定の人はいません</div>';
+    }
+    items.forEach(function (x) {
+      const st = visit.staff.find(function (p) { return p.id === x.s.staff_id; });
+      const t = x.s.shift_type_id ? visit.types.find(function (y) { return y.id === x.s.shift_type_id; }) : null;
+      const a = Math.max(0, x.start), b = Math.min(DAY, x.end);
+      const here = isToday && x.start <= nowMin && nowMin < x.end;
+      const night = crosses(x.s) || (t && /夜/.test(t.name));
+      const cls = 'tl-bar' + (night ? ' night' : '') + (x.start < 0 ? ' cont-left' : '') + (x.end > DAY ? ' cont-right' : '');
+      const when = (x.start < 0 ? '前日 ' : '') + shiftText(x.s) + (t ? ' / ' + t.name : '') + (x.s.note ? ' / ' + x.s.note : '');
+      html += '<div class="tl-row' + (here ? ' here' : '') + '">' +
+        '<div class="tl-name">' + esc(st ? st.name : '?') + '<small>' + esc(st && st.job_title ? st.job_title : '') + '</small></div>' +
+        '<div><div class="tl-track">' +
+          (isToday ? '<div class="tl-now" style="left:' + (nowMin / DAY * 100) + '%"></div>' : '') +
+          '<div class="' + cls + '" style="left:' + (a / DAY * 100) + '%;width:' + ((b - a) / DAY * 100) + '%">' + esc(x.start < 0 ? '〜' + hm(x.s.end_time) : hm(x.s.start_time)) + '</div>' +
+        '</div><div class="tl-time">' + esc(when) + '</div></div>' +
+        '</div>';
+    });
+    box.innerHTML = html;
+
+    const people = new Set(items.map(function (x) { return x.s.staff_id; })).size;
+    const hereNow = isToday ? new Set(items.filter(function (x) { return x.start <= nowMin && nowMin < x.end; }).map(function (x) { return x.s.staff_id; })).size : 0;
+    sum.textContent = items.length ? ('この日に来る人: ' + people + '人' + (isToday ? ' / いま ' + hereNow + '人' : '')) : '';
   }
 
   // ===== 利用者 =====
@@ -327,14 +445,13 @@
     $('saveBtn').disabled = !residentId || picked.size === 0;
   }
 
-  function renderInput() {
+  // 選んだ人のその日の記録(メイン)
+  function renderList() {
     const p = residentId ? Rooms.resident(residentId) : null;
-    $('inputCard').hidden = !p;
     $('listCard').hidden = !p;
-    if (!p) return;
+    if (!p) { closeInput(); return; }
     $('inputTitle').textContent = p.name + ' さん';
     $('listTitle').textContent = p.name + ' さんの記録(' + Rooms.dateText(date) + ')';
-    renderKinds();
 
     const mine = records.filter(function (r) { return r.resident_id === residentId; });
     $('recList').innerHTML = mine.map(function (r) {
@@ -361,26 +478,36 @@
     } catch (err) {
       console.error(err);
       records = [];
-      App.setStatus($('saveStatus'), '記録を読み込めませんでした', 'err');
+      App.setStatus($('listStatus'), '記録を読み込めませんでした', 'err');
     }
+    renderVisits();
     renderPeople();
-    renderInput();
+    renderList();
   }
 
   function selectResident(id) {
     residentId = id;
-    App.setStatus($('saveStatus'), '');
+    App.setStatus($('listStatus'), '');
     renderPeople();
-    renderInput();
+    renderList();
+    $('listCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ===== 入力のダイアログ =====
+  function openInput() {
+    if (!residentId) return;
+    App.setStatus($('saveStatus'), '');
+    renderKinds();
+    $('inputModal').hidden = false;
     // 非表示のあいだはスクロール位置が消えるので、覚えておいた時刻に合わせ直す
     setTime(savedH, savedM);
-    $('inputCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  function closeInput() { $('inputModal').hidden = true; }
 
   // ホイールが非表示のあいだも時刻を覚えておく
   let savedH = 0, savedM = 0;
   function rememberTime() {
-    if ($('inputCard').hidden) return;
+    if ($('inputModal').hidden) return;
     savedH = wheelValue($('wheelH')); savedM = wheelValue($('wheelM'));
   }
 
@@ -409,10 +536,12 @@
       return;
     }
     rememberTime();
-    App.setStatus(status, t + ' ' + kinds.join('・') + ' を記録しました', 'ok');
+    btn.disabled = false;
+    closeInput();
+    App.setStatus($('listStatus'), t + ' ' + kinds.join('・') + ' を記録しました', 'ok');
     // 時刻と内容はそのまま残す(次の利用者に同じ内容をすぐ記録できるように)
     renderPeople();
-    renderInput();
+    renderList();
   }
 
   async function onVoid(id) {
@@ -428,13 +557,14 @@
     }
     records = records.filter(function (x) { return x.id !== id; });
     renderPeople();
-    renderInput();
+    renderList();
   }
 
   App.boot({
     active: 'records',
     onReady: async function () {
-      await Rooms.load();
+      const r = await Promise.all([Rooms.load(), App.rpc('get_staff'), App.rpc('get_shift_types'), loadVisitShifts()]);
+      visit.staff = r[1]; visit.types = r[2];
 
       buildWheel($('wheelH'), 24);
       buildWheel($('wheelM'), 60);
@@ -462,6 +592,10 @@
         if (b) onVoid(b.dataset.void);
       });
       $('saveBtn').addEventListener('click', onSave);
+      $('newBtn').addEventListener('click', openInput);
+      $('inputClose').addEventListener('click', closeInput);
+      $('inputModal').addEventListener('click', function (e) { if (e.target === this) closeInput(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeInput(); });
       $('prevDay').addEventListener('click', function () { shiftDate(-1); });
       $('nextDay').addEventListener('click', function () { shiftDate(1); });
       $('dateInput').addEventListener('change', function () { changeDate(this.value); });
