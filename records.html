@@ -133,8 +133,24 @@
     .visit-sum { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
 
     /* ----- 入力のダイアログ ----- */
-    #inputModal .modal { max-width: 420px; }
-    #inputModal .kind-grid { margin: 12px 0; }
+    #inputModal .kind-grid { margin: 12px 0 0; }
+    .modal-foot .status-msg { margin: 0 0 8px; }
+    .modal-foot .status-msg:empty { display: none; }
+
+    /* 背の低いスマホ: ホイールを 3 段にし、チップを小さめにして、ダイアログに収める */
+    @media (max-height: 760px) {
+      .wheel { height: calc(var(--item-h) * 3); }
+      .wheel-col { padding: var(--item-h) 0; }
+      .kind-btn { padding: 9px 8px; font-size: 13px; }
+      .kind-grid { gap: 6px; }
+    }
+
+    /* ----- PC: 左に施設・スタッフ・利用者さん、右にその人の記録 ----- */
+    @media (min-width: 1000px) {
+      .rec-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 20px; align-items: start; }
+      .rec-main .rec-list li { font-size: 15px; padding: 10px 2px; }
+      .person-btn .p-name { font-size: 15px; }
+    }
     .new-btn { margin-top: 12px; }
 
     /* ----- その日の記録 ----- */
@@ -165,7 +181,7 @@
       transform: translateY(-110%); transition: transform 0.15s ease; visibility: hidden;
     }
     .ctx-bar.show { transform: none; visibility: visible; }
-    .ctx-bar .inner { max-width: 720px; margin: 0 auto; padding: 10px 12px; }
+    .ctx-bar .inner { max-width: 1100px; margin: 0 auto; padding: 10px 12px; }
     /* 利用者さんを選んで一覧へ移るとき、上の 2 本の帯に隠れないように */
     #listCard { scroll-margin-top: calc(var(--gtool-h) + 76px); }
 
@@ -210,7 +226,7 @@
 </div>
 
 <div id="mainContent" hidden>
-  <div class="wrap">
+  <div class="wrap wide">
     <div class="page-header">
       <h1>
         <span class="page-icon"><i class="ti ti-notebook"></i></span>
@@ -219,6 +235,8 @@
       <p>施設と利用者さんを選ぶと、その日の記録が出ます。「新しい入力」で時刻と内容を選んで記録します</p>
     </div>
 
+    <div class="rec-layout">
+    <div class="rec-side">
     <!-- 施設と日にち -->
     <div class="card" id="houseCard">
       <div class="date-row">
@@ -244,6 +262,9 @@
       <div id="personMsg" class="empty-msg" hidden></div>
     </div>
 
+    </div>
+
+    <div class="rec-main">
     <!-- その人のその日の記録 -->
     <div class="card" id="listCard" hidden>
       <h2><i class="ti ti-list"></i><span id="listTitle"></span></h2>
@@ -251,6 +272,8 @@
       <div id="listMsg" class="empty-msg" hidden>まだ記録はありません</div>
       <button type="button" class="btn btn-block new-btn" id="newBtn"><i class="ti ti-plus"></i>新しい入力</button>
       <div id="listStatus" class="status-msg center"></div>
+    </div>
+    </div>
     </div>
   </div>
 </div>
@@ -279,8 +302,11 @@
 
     <div class="kind-grid" id="kindGrid"></div>
 
-    <button type="button" class="btn btn-block" id="saveBtn" disabled><i class="ti ti-check"></i>記録する</button>
-    <div id="saveStatus" class="status-msg center"></div>
+    <!-- 「記録する」はダイアログの下に固定(スマホで画面の外に出ないように) -->
+    <div class="modal-foot">
+      <div id="saveStatus" class="status-msg center"></div>
+      <button type="button" class="btn btn-block" id="saveBtn" disabled><i class="ti ti-check"></i>記録する</button>
+    </div>
   </div>
 </div>
 
@@ -622,7 +648,8 @@
     App.setStatus($('listStatus'), '');
     renderPeople();
     renderList();
-    $('listCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // PC は記録が右に並んで見えるので、スクロールしない
+    if (!window.matchMedia('(min-width: 1000px)').matches) $('listCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ===== 入力のダイアログ =====
