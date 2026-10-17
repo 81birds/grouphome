@@ -157,6 +157,7 @@
     .edit-what { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
     .edit-what i { color: var(--color-primary-dark); }
     #editModal .modal-actions { justify-content: space-between; }
+    .edit-wheel { margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -248,6 +249,14 @@
       <button type="button" class="icon-btn" id="editClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
     </div>
     <div class="edit-what" id="editWhat"></div>
+    <div class="wheel-wrap edit-wheel">
+      <div class="wheel" aria-label="時刻">
+        <div class="wheel-band"></div>
+        <div class="wheel-col" id="editWheelH" aria-label="時"></div>
+        <div class="wheel-sep">:</div>
+        <div class="wheel-col" id="editWheelM" aria-label="分"></div>
+      </div>
+    </div>
     <div class="field">
       <label for="editNote">コメント</label>
       <textarea id="editNote" rows="4" placeholder="例: 半分ほど食べました"></textarea>
@@ -323,22 +332,31 @@
     markWheel(col);
   }
   // m は分のホイールの位置(0〜5 = 0〜50 分)
-  function setTime(h, m) {
-    setWheel($('wheelH'), h);
-    setWheel($('wheelM'), m);
+  function setTime(h, m, prefix) {
+    setWheel($((prefix || 'wheel') + 'H'), h);
+    setWheel($((prefix || 'wheel') + 'M'), m);
   }
-  // いまの時刻を 10 分きざみに丸めて [時, 分の位置] で返す(14:37 → 14:40)
+  // 時・分を 10 分きざみに丸めて [時, 分の位置] で返す(14:37 → 14:40)
+  function roundTime(h, m) {
+    const t = (Math.round((h * 60 + m) / MIN_STEP) * MIN_STEP) % (24 * 60);
+    return [Math.floor(t / 60), (t % 60) / MIN_STEP];
+  }
   function nowRounded() {
     const d = new Date(Date.now() + 9 * 3600 * 1000);
-    const t = (Math.round((d.getUTCHours() * 60 + d.getUTCMinutes()) / MIN_STEP) * MIN_STEP) % (24 * 60);
-    return [Math.floor(t / 60), (t % 60) / MIN_STEP];
+    return roundTime(d.getUTCHours(), d.getUTCMinutes());
   }
   function setNow() {
     const n = nowRounded();
     setTime(n[0], n[1]);
   }
-  function timeText() {
-    return String(wheelValue($('wheelH'))).padStart(2, '0') + ':' + String(wheelValue($('wheelM')) * MIN_STEP).padStart(2, '0');
+  function timeText(prefix) {
+    const p = prefix || 'wheel';
+    return String(wheelValue($(p + 'H'))).padStart(2, '0') + ':' + String(wheelValue($(p + 'M')) * MIN_STEP).padStart(2, '0');
+  }
+  function sortRecords() {
+    records.sort(function (a, b) {
+      return a.record_time < b.record_time ? -1 : a.record_time > b.record_time ? 1 : 0;
+    });
   }
 
   // ===== 施設 =====
@@ -497,7 +515,7 @@
         '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
         '<span class="rec-kind"><i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind) +
           (r.note ? '<span class="rec-note"><i class="ti ti-message"></i> ' + esc(r.note) + '</span>' : '') + '</span>' +
-        '<button type="button" class="icon-btn" data-edit="' + esc(r.id) + '" title="コメント・取消" aria-label="編集"><i class="ti ti-pencil"></i></button>' +
+        '<button type="button" class="icon-btn" data-edit="' + esc(r.id) + '" title="時刻・コメント・取消" aria-label="編集"><i class="ti ti-pencil"></i></button>' +
         '</li>';
     }).join('');
     $('listMsg').hidden = mine.length > 0;
@@ -565,9 +583,8 @@
         p_time: t,
         p_kinds: kinds,
       });
-      records = records.concat(added || []).sort(function (a, b) {
-        return a.record_time < b.record_time ? -1 : a.record_time > b.record_time ? 1 : 0;
-      });
+      records = records.concat(added || []);
+      sortRecords();
     } catch (err) {
       console.error(err);
       App.setStatus(status, '記録できませんでした。通信状況を確認してください', 'err');
@@ -585,6 +602,7 @@
 
   // ===== 記録の編集(コメント・取消) =====
   let editId = null;
+  let editStartText = '';    // 開いたときのホイールの時刻
 
   function openEdit(id) {
     const r = records.find(function (x) { return x.id === id; });
@@ -592,12 +610,15 @@
     editId = id;
     const p = Rooms.resident(r.resident_id);
     $('editTitle').textContent = (p ? p.name + ' さん' : '記録の編集');
-    $('editWhat').innerHTML = '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
-      '<i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind);
+    $('editWhat').innerHTML = '<i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind);
     $('editNote').value = r.note || '';
     App.setStatus($('editStatus'), '');
     $('editModal').hidden = false;
-    $('editNote').focus();
+    // 10 分きざみでない時刻(9:37 など)は近い位置に合わせる。ホイールを動かさなければ元の時刻のまま保存する
+    const t = String(r.record_time).slice(0, 5).split(':');
+    const rt = roundTime(+t[0], +t[1]);
+    setTime(rt[0], rt[1], 'editWheel');
+    editStartText = timeText('editWheel');
   }
   function closeEdit() { $('editModal').hidden = true; editId = null; }
 
@@ -609,7 +630,10 @@
     App.setStatus($('editStatus'), '保存しています...');
     let row;
     try {
-      row = await App.rpc('update_daily_record_note', { p_id: id, p_note: $('editNote').value });
+      const r0 = records.find(function (x) { return x.id === id; });
+      const wheel = timeText('editWheel');
+      const time = wheel === editStartText && r0 ? String(r0.record_time).slice(0, 5) : wheel;
+      row = await App.rpc('update_daily_record', { p_id: id, p_time: time, p_note: $('editNote').value });
     } catch (err) {
       console.error(err);
       App.setStatus($('editStatus'), '保存できませんでした。通信状況を確認してください', 'err');
@@ -618,9 +642,10 @@
     }
     btn.disabled = false;
     const r = records.find(function (x) { return x.id === id; });
-    if (r) r.note = row ? row.note : null;
+    if (r && row) { r.note = row.note; r.record_time = row.record_time; }
+    sortRecords();
     closeEdit();
-    App.setStatus($('listStatus'), 'コメントを保存しました', 'ok');
+    App.setStatus($('listStatus'), '記録を直しました', 'ok');
     renderList();
   }
 
@@ -651,6 +676,8 @@
 
       buildWheel($('wheelH'), 24, 1);
       buildWheel($('wheelM'), 60 / MIN_STEP, MIN_STEP);
+      buildWheel($('editWheelH'), 24, 1);
+      buildWheel($('editWheelM'), 60 / MIN_STEP, MIN_STEP);
       $('wheelH').addEventListener('scroll', rememberTime, { passive: true });
       $('wheelM').addEventListener('scroll', rememberTime, { passive: true });
       $('nowBtn').addEventListener('click', function () { setNow(); rememberTime(); });
