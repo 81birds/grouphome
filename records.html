@@ -16,27 +16,27 @@
     .date-row input[type="date"] { width: auto; font-size: 14px; }
     .date-row .date-label { font-size: 13px; font-weight: 700; min-width: 3em; }
 
-    /* ----- 利用者のボタン(大きめ・押しやすく) ----- */
-    .person-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    @media (min-width: 520px) { .person-grid { grid-template-columns: repeat(3, 1fr); } }
+    /* ----- 利用者のボタン ----- */
+    .person-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    @media (min-width: 520px) { .person-grid { grid-template-columns: repeat(4, 1fr); } }
     .person-btn {
       font-family: var(--font-base);
       position: relative;
       text-align: left;
-      padding: 10px 12px;
+      padding: 6px 8px;
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       background: var(--color-surface-alt);
       color: var(--color-text);
       cursor: pointer;
-      min-height: 52px;
+      min-height: 40px;
     }
-    .person-btn .p-name { display: block; font-size: 14px; font-weight: 700; padding-right: 26px; }
-    .person-btn .p-room { display: block; font-size: 11px; color: var(--color-text-muted); }
+    .person-btn .p-name { display: block; font-size: 13px; font-weight: 700; padding-right: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .person-btn .p-room { display: block; font-size: 10px; color: var(--color-text-muted); }
     .person-btn .p-count {
-      position: absolute; top: 8px; right: 8px;
-      font-size: 11px; font-weight: 700;
-      min-width: 20px; height: 20px; padding: 0 6px;
+      position: absolute; top: 5px; right: 5px;
+      font-size: 10px; font-weight: 700;
+      min-width: 16px; height: 16px; padding: 0 4px;
       border-radius: 999px;
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--color-primary-soft); color: var(--color-primary-dark);
@@ -103,7 +103,7 @@
     .kind-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
     .kind-btn.active i { color: #fff; }
 
-    /* ----- 今日のスタッフ(その日の勤務の帯) ----- */
+    /* ----- 本日のスタッフ(その日の勤務の帯) ----- */
     .tl { position: relative; }
     .tl-scale, .tl-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; }
     .tl-scale { font-size: 10px; color: var(--color-text-muted); margin-bottom: 2px; }
@@ -149,7 +149,7 @@
     @media (min-width: 1000px) {
       .rec-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 20px; align-items: start; }
       .rec-main .rec-list li { font-size: 15px; padding: 10px 2px; }
-      .person-btn .p-name { font-size: 15px; }
+      .person-btn .p-name { font-size: 14px; }
     }
     .new-btn { margin-top: 12px; }
 
@@ -183,9 +183,9 @@
     .ctx-bar.show { transform: none; visibility: visible; }
     .ctx-bar .inner { max-width: 1100px; margin: 0 auto; padding: 10px 12px; }
     /* 利用者さんを選んで一覧へ移るとき、上の 2 本の帯に隠れないように */
-    #listCard { scroll-margin-top: calc(var(--gtool-h) + 76px); }
+    #listCard { scroll-margin-top: calc(var(--gtool-h) + 52px); }
 
-    /* 1 行目「〇〇さんの記録を入力中です」・2 行目 施設と日にち */
+    /* 「〇〇さんの記録を入力中です」(新しい入力のダイアログ)と、施設・日にちの行 */
     .ctx-doing { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
     .ctx-doing i { font-size: 18px; }
     .ctx-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; }
@@ -194,20 +194,17 @@
     .ctx-line .today { color: var(--color-primary-dark); }
     .ctx-line .past { background: var(--color-danger); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
 
-    /* 利用者さんを選んで入力しているあいだはオレンジにする */
-    .ctx-bar.working { background: var(--color-work-soft); border-bottom: 3px solid var(--color-work); color: var(--color-work-dark); }
-    .ctx-bar.working i,
-    .ctx-bar.working .ctx-line .today,
-    .ctx-bar.working .ctx-line .sep { color: var(--color-work-dark); }
+    /* ダイアログの中の施設と日にち */
+    .modal-ctx { margin: -6px 0 12px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--color-surface-alt); }
+    /* 新しい入力のダイアログだけ、オレンジで「入力中です」を出す */
+    .modal-ctx.working { background: var(--color-work-soft); border-left: 4px solid var(--color-work); color: var(--color-work-dark); }
+    .modal-ctx.working i,
+    .modal-ctx.working .ctx-line .today,
+    .modal-ctx.working .ctx-line .sep { color: var(--color-work-dark); }
 
-    /* ダイアログの中の施設と日にち(入力中なのでオレンジ) */
-    .modal-ctx {
-      margin: -6px 0 12px; padding: 8px 10px; border-radius: var(--radius-sm);
-      background: var(--color-work-soft); border-left: 4px solid var(--color-work); color: var(--color-work-dark);
-    }
-    .modal-ctx i,
-    .modal-ctx .ctx-line .today,
-    .modal-ctx .ctx-line .sep { color: var(--color-work-dark); }
+    /* 新しい入力のコメント */
+    .input-note { margin-top: 12px; }
+    .input-note textarea { min-height: 56px; }
 
     /* ----- 記録の編集ダイアログ ----- */
     .edit-what { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
@@ -249,9 +246,9 @@
       <div class="chips" id="houseChips"></div>
     </div>
 
-    <!-- 今日のスタッフ -->
+    <!-- 本日のスタッフ -->
     <div class="card" id="visitCard" hidden>
-      <h2><i class="ti ti-users-group"></i><span id="visitTitle">今日のスタッフ</span><span class="visit-sum" id="visitSum"></span></h2>
+      <h2><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span></h2>
       <div class="tl" id="visitList"></div>
     </div>
 
@@ -288,7 +285,7 @@
       <h2 id="inputHead"><i class="ti ti-pencil"></i><span id="inputTitle"></span></h2>
       <button type="button" class="icon-btn" id="inputClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
     </div>
-    <div class="modal-ctx" id="inputCtx"></div>
+    <div class="modal-ctx working" id="inputCtx"></div>
 
     <div class="wheel-wrap">
       <div class="wheel" aria-label="時刻">
@@ -301,6 +298,11 @@
     </div>
 
     <div class="kind-grid" id="kindGrid"></div>
+
+    <div class="field input-note">
+      <label for="newNote">コメント(選んだ内容について。なくてもよい)</label>
+      <textarea id="newNote" rows="2" placeholder="例: 半分ほど食べました"></textarea>
+    </div>
 
     <!-- 「記録する」はダイアログの下に固定(スマホで画面の外に出ないように) -->
     <div class="modal-foot">
@@ -363,7 +365,7 @@
   let date = App.todayJST();
   let residentId = null;
   let records = [];             // 選んだ施設・日の記録
-  const visit = { staff: [], types: [], shifts: [], date: null };   // 今日のスタッフ
+  const visit = { staff: [], types: [], shifts: [], date: null };   // 本日のスタッフ
   let picked = new Set();       // 選んでいる内容(1 つだけ)
 
   const $ = function (id) { return document.getElementById(id); };
@@ -449,20 +451,20 @@
   }
   // ===== いまの施設・日にち(上の帯とダイアログに出す) =====
   // 施設と日にちの 1 行
-  function ctxLine() {
+  function ctxLine(person) {
     const h = Rooms.houses.find(function (x) { return x.id === houseId; });
     const wd = '日月火水木金土'.charAt(new Date(date + 'T00:00:00Z').getUTCDay());
     const today = App.todayJST();
     const rel = date === today ? ' <span class="today">きょう</span>' : date === App.todayJST(-1) ? ' <span class="past">きのう</span>' : date < today ? ' <span class="past">過去の日</span>' : '';
     return '<div class="ctx-line"><i class="ti ti-building-community"></i>' + esc(h ? h.name : '施設を選んでください') +
-      '<span class="sep">・</span><i class="ti ti-calendar"></i>' + (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + '(' + wd + ')' + rel + '</div>';
+      '<span class="sep">・</span><i class="ti ti-calendar"></i>' + (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + '(' + wd + ')' + rel +
+      (person ? '<span class="sep">・</span><i class="ti ti-user"></i>' + esc(person.name) + ' さん' : '') + '</div>';
   }
   function renderCtx() {
     const p = residentId ? Rooms.resident(residentId) : null;
-    // 利用者さんを選んでいれば「〇〇さんの記録を入力中です」をオレンジで出す
-    $('ctxBarInner').innerHTML = (p ? '<div class="ctx-doing"><i class="ti ti-pencil"></i>' + esc(p.name) + ' さんの記録を入力中です</div>' : '') + ctxLine();
-    $('ctxBar').classList.toggle('working', !!p);
-    $('inputCtx').innerHTML = ctxLine();
+    $('ctxBarInner').innerHTML = ctxLine(p);
+    // 新しい入力のダイアログには「〇〇さんの記録を入力中です」をオレンジで出す
+    $('inputCtx').innerHTML = (p ? '<div class="ctx-doing"><i class="ti ti-pencil"></i>' + esc(p.name) + ' さんの記録を入力中です</div>' : '') + ctxLine();
     $('editCtx').innerHTML = ctxLine();
   }
   // 施設のカードが画面の上に隠れたら、上の帯を出す
@@ -490,7 +492,7 @@
     renderList();
   }
 
-  // ===== 今日のスタッフ(その日のこの施設の勤務) =====
+  // ===== 本日のスタッフ(その日のこの施設の勤務) =====
   const DAY = 24 * 60;
   function hm(t) { return t ? String(t).slice(0, 5) : ''; }
   function minOf(t) { const p = hm(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
@@ -527,7 +529,7 @@
 
     const isToday = date === App.todayJST();
     // ほかの日を見ているときは「10/16 のスタッフ」
-    $('visitTitle').textContent = isToday ? '今日のスタッフ' : (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + ' のスタッフ';
+    $('visitTitle').textContent = isToday ? '本日のスタッフ' : (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + ' のスタッフ';
     const nowParts = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(11, 16).split(':');
     const nowMin = (+nowParts[0]) * 60 + (+nowParts[1]);
 
@@ -582,7 +584,7 @@
     $('personGrid').innerHTML = people.map(function (x) {
       const n = records.filter(function (r) { return r.resident_id === x.resident.id; }).length;
       return '<button type="button" class="person-btn' + (x.resident.id === residentId ? ' active' : '') + '" data-resident="' + esc(x.resident.id) + '">' +
-        '<span class="p-name">' + esc(x.resident.name) + '</span>' +
+        '<span class="p-name">' + esc(x.resident.name) + ' さん</span>' +
         '<span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span>' +
         (n ? '<span class="p-count" title="この日の記録の数">' + n + '</span>' : '') +
         '</button>';
@@ -644,6 +646,7 @@
   }
 
   function selectResident(id) {
+    if (id !== residentId) $('newNote').value = '';   // コメントはその人だけのもの
     residentId = id;
     App.setStatus($('listStatus'), '');
     renderPeople();
@@ -684,6 +687,7 @@
         p_date: date,
         p_time: t,
         p_kinds: kinds,
+        p_note: $('newNote').value.trim() || null,
       });
       records = records.concat(added || []);
       sortRecords();
@@ -695,6 +699,8 @@
     }
     rememberTime();
     btn.disabled = false;
+    // コメントはその記録だけのものなので消す(時刻と内容は残す)
+    $('newNote').value = '';
     closeInput();
     App.setStatus($('listStatus'), t + ' ' + kinds.join('・') + ' を記録しました', 'ok');
     // 時刻と内容はそのまま残す(次の利用者に同じ内容をすぐ記録できるように)
