@@ -153,6 +153,37 @@
     }
     .rec-note i { font-size: 12px; color: var(--color-text-muted); }
 
+    /* ----- いまの施設・日にち(下にスクロールしても上に出しておく) ----- */
+    .ctx-bar {
+      position: fixed; top: var(--gtool-h); left: 0; right: 0; z-index: 900;
+      display: block; width: 100%; padding: 0; cursor: pointer;
+      border: none; border-bottom: 1px solid var(--color-border);
+      background: var(--color-surface); box-shadow: var(--shadow-md);
+      font-family: var(--font-base); text-align: left;
+      transform: translateY(-110%); transition: transform 0.15s ease; visibility: hidden;
+    }
+    .ctx-bar.show { transform: none; visibility: visible; }
+    /* 利用者さんを選んで一覧へ移るとき、上の 2 本の帯に隠れないように */
+    #listCard { scroll-margin-top: calc(var(--gtool-h) + 48px); }
+    .ctx-bar .inner {
+      max-width: 720px; margin: 0 auto; padding: 7px 10px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      font-size: 13px; font-weight: 700; color: var(--color-text);
+    }
+    .ctx-bar i { color: var(--color-primary-dark); }
+    .ctx-bar .sep { color: var(--color-text-muted); font-weight: 400; }
+    .ctx-bar .today { color: var(--color-primary-dark); }
+    .ctx-bar .past { color: var(--color-danger); }
+    .modal-ctx {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      margin: -6px 0 12px; padding: 6px 10px; border-radius: var(--radius-sm);
+      background: var(--color-surface-alt); font-size: 13px; font-weight: 700;
+    }
+    .modal-ctx i { color: var(--color-primary-dark); }
+    .modal-ctx .sep { color: var(--color-text-muted); font-weight: 400; }
+    .modal-ctx .today { color: var(--color-primary-dark); }
+    .modal-ctx .past { color: var(--color-danger); }
+
     /* ----- 記録の編集ダイアログ ----- */
     .edit-what { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
     .edit-what i { color: var(--color-primary-dark); }
@@ -180,7 +211,7 @@
     </div>
 
     <!-- 施設と日にち -->
-    <div class="card">
+    <div class="card" id="houseCard">
       <h2><i class="ti ti-building-community"></i>施設</h2>
       <div class="chips" id="houseChips"></div>
       <div class="date-row">
@@ -216,6 +247,9 @@
   </div>
 </div>
 
+<!-- 下にスクロールしたときに上に出す、いまの施設・日にち。押すと上に戻る -->
+<button type="button" class="ctx-bar" id="ctxBar" aria-label="施設と日にちを変える"><div class="inner" id="ctxBarInner"></div></button>
+
 <!-- 入力のダイアログ(時刻と内容) -->
 <div id="inputModal" class="modal-backdrop" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="inputHead">
@@ -223,6 +257,7 @@
       <h2 id="inputHead"><i class="ti ti-pencil"></i><span id="inputTitle"></span></h2>
       <button type="button" class="icon-btn" id="inputClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
     </div>
+    <div class="modal-ctx" id="inputCtx"></div>
 
     <div class="wheel-wrap">
       <div class="wheel" aria-label="時刻">
@@ -248,6 +283,7 @@
       <h2 id="editHead"><i class="ti ti-edit"></i><span id="editTitle"></span></h2>
       <button type="button" class="icon-btn" id="editClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
     </div>
+    <div class="modal-ctx" id="editCtx"></div>
     <div class="edit-what" id="editWhat"></div>
     <div class="wheel-wrap edit-wheel">
       <div class="wheel" aria-label="時刻">
@@ -371,11 +407,37 @@
 
   // ===== 日にち =====
   function renderDate() {
+    renderCtx();
     $('dateInput').value = date;
     const wd = '日月火水木金土'.charAt(new Date(date + 'T00:00:00Z').getUTCDay());
     const today = App.todayJST();
     $('dateLabel').textContent = date === today ? 'きょう(' + wd + ')' : date === App.todayJST(-1) ? 'きのう(' + wd + ')' : '(' + wd + ')';
   }
+  // ===== いまの施設・日にち(上の帯とダイアログに出す) =====
+  function ctxHtml(withPerson) {
+    const h = Rooms.houses.find(function (x) { return x.id === houseId; });
+    const wd = '日月火水木金土'.charAt(new Date(date + 'T00:00:00Z').getUTCDay());
+    const today = App.todayJST();
+    const rel = date === today ? ' <span class="today">きょう</span>' : date === App.todayJST(-1) ? ' <span class="past">きのう</span>' : date < today ? ' <span class="past">過去の日</span>' : '';
+    const p = withPerson && residentId ? Rooms.resident(residentId) : null;
+    return '<i class="ti ti-building-community"></i>' + esc(h ? h.name : '施設を選んでください') +
+      '<span class="sep">・</span><i class="ti ti-calendar"></i>' + (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + '(' + wd + ')' + rel +
+      (p ? '<span class="sep">・</span><i class="ti ti-user"></i>' + esc(p.name) + ' さん' : '');
+  }
+  function renderCtx() {
+    $('ctxBarInner').innerHTML = ctxHtml(true);
+    $('inputCtx').innerHTML = ctxHtml(false);
+    $('editCtx').innerHTML = ctxHtml(false);
+  }
+  // 施設のカードが画面の上に隠れたら、上の帯を出す
+  function watchHouseCard() {
+    if (!('IntersectionObserver' in window)) return;
+    const gtoolH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gtool-h'), 10) || 46;
+    new IntersectionObserver(function (entries) {
+      $('ctxBar').classList.toggle('show', !entries[0].isIntersecting && !!houseId);
+    }, { rootMargin: '-' + gtoolH + 'px 0px 0px 0px' }).observe($('houseCard'));
+  }
+
   function shiftDate(days) {
     const d = new Date(date + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() + days);
@@ -505,6 +567,7 @@
 
   // 選んだ人のその日の記録(メイン)
   function renderList() {
+    renderCtx();
     const p = residentId ? Rooms.resident(residentId) : null;
     $('listCard').hidden = !p;
     if (!p) { closeInput(); return; }
@@ -707,6 +770,8 @@
         if (b) openEdit(b.dataset.edit);
       });
       $('saveBtn').addEventListener('click', onSave);
+      $('ctxBar').addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      watchHouseCard();
       $('newBtn').addEventListener('click', openInput);
       $('inputClose').addEventListener('click', closeInput);
       $('inputModal').addEventListener('click', function (e) { if (e.target === this) closeInput(); });
