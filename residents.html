@@ -10,11 +10,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <link rel="stylesheet" href="css/common.css">
   <style>
-    /* スマホで横にはみ出さないよう、氏名とふりがなは 1 つの欄に縦に並べる */
-    #residentTable .col-place { width: 46%; }
-    #residentTable .col-active { width: 44px; }
+    #residentTable .col-place { width: 55%; }
     #residentTable td { vertical-align: middle; }
-    #residentTable .name-cell input + input { margin-top: 3px; font-size: 11px; padding: 3px 6px; }
 
     .place-btn {
       width: 100%; text-align: left; cursor: pointer;
@@ -56,62 +53,61 @@
         <span class="page-icon"><i class="ti ti-users"></i></span>
         利用者さん
       </h1>
-      <p>利用者さんの追加と編集ができます。「施設・部屋」を押すと、入居・部屋の移動・退居ができます</p>
+      <p>利用者さんの一覧です。氏名はその場で直せます。「施設・部屋」を押すと、入居・部屋の移動・退居ができます</p>
     </div>
 
-    <!-- 追加 -->
-    <form id="addForm" class="card" novalidate>
-      <h2><i class="ti ti-user-plus"></i>利用者さんを追加</h2>
-      <div class="add-row">
-        <div class="field">
-          <label for="newName">氏名 *</label>
-          <input type="text" id="newName" required>
-        </div>
-        <div class="field">
-          <label for="newKana">ふりがな</label>
-          <input type="text" id="newKana">
-        </div>
-      </div>
-      <div class="add-row" style="margin-top:8px;">
-        <div class="field">
-          <label for="newHouse">施設</label>
-          <select id="newHouse"></select>
-        </div>
-        <div class="field">
-          <label for="newRoom">部屋</label>
-          <select id="newRoom"></select>
-        </div>
-        <div class="field">
-          <label for="newMoveIn">入居日</label>
-          <input type="date" id="newMoveIn">
-        </div>
-        <button type="submit" id="addBtn" class="btn"><i class="ti ti-plus"></i>追加</button>
-      </div>
-      <div id="addStatus" class="status-msg"></div>
-    </form>
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-panel="panel-list"><i class="ti ti-list"></i>利用者さん一覧</button>
+      <button type="button" class="tab-btn" data-panel="panel-add"><i class="ti ti-user-plus"></i>利用者さん登録</button>
+    </div>
 
     <!-- 一覧 -->
-    <div class="card">
-      <h2><i class="ti ti-list"></i>利用者さん一覧</h2>
-      <div class="chips" id="filterChips">
-        <button type="button" data-filter="active" class="active">入居中</button>
-        <button type="button" data-filter="inactive">退居</button>
-        <button type="button" data-filter="all">すべて</button>
+    <div id="panel-list" class="tab-panel active">
+      <div class="card">
+        <h2><i class="ti ti-list"></i>利用者さん一覧</h2>
+        <div class="chips" id="houseChips"></div>
+        <div class="table-scroll">
+          <table class="compact-table" id="residentTable">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th class="col-place">施設・部屋</th>
+              </tr>
+            </thead>
+            <tbody id="residentRows"></tbody>
+          </table>
+        </div>
+        <div id="listMsg" class="empty-msg" hidden></div>
       </div>
-      <div class="chips" id="houseChips"></div>
-      <div class="table-scroll">
-        <table class="compact-table" id="residentTable">
-          <thead>
-            <tr>
-              <th>氏名 / ふりがな</th>
-              <th class="col-place">施設・部屋</th>
-              <th class="col-center col-active">入居中</th>
-            </tr>
-          </thead>
-          <tbody id="residentRows"></tbody>
-        </table>
-      </div>
-      <div id="listMsg" class="empty-msg" hidden></div>
+    </div>
+
+    <!-- 登録 -->
+    <div id="panel-add" class="tab-panel">
+      <form id="addForm" class="card" novalidate>
+        <h2><i class="ti ti-user-plus"></i>利用者さんを登録</h2>
+        <div class="add-row">
+          <div class="field">
+            <label for="newName">氏名 *</label>
+            <input type="text" id="newName" required>
+          </div>
+        </div>
+        <div class="add-row" style="margin-top:8px;">
+          <div class="field">
+            <label for="newHouse">施設</label>
+            <select id="newHouse"></select>
+          </div>
+          <div class="field">
+            <label for="newRoom">部屋</label>
+            <select id="newRoom"></select>
+          </div>
+          <div class="field">
+            <label for="newMoveIn">入居日</label>
+            <input type="date" id="newMoveIn">
+          </div>
+          <button type="submit" id="addBtn" class="btn"><i class="ti ti-plus"></i>登録</button>
+        </div>
+        <div id="addStatus" class="status-msg"></div>
+      </form>
     </div>
   </div>
 </div>
@@ -134,7 +130,6 @@
 <script src="js/rooms.js"></script>
 <script>
   const esc = App.escapeHtml;
-  let currentFilter = 'active';
   let currentHouse = 'all';          // 'all' / 'none'(部屋なし) / 施設の id
   let modalResidentId = null;
 
@@ -201,8 +196,7 @@
   function renderList() {
     const today = Rooms.today();
     const rows = Rooms.residents.filter(function (r) {
-      if (currentFilter === 'active' && !r.is_active) return false;
-      if (currentFilter === 'inactive' && r.is_active) return false;
+      if (!r.is_active) return false;
       if (currentHouse !== 'all') {
         const cur = Rooms.currentOf(r.id, today);
         const hid = cur ? (Rooms.room(cur.room_id) || {}).house_id : null;
@@ -210,24 +204,22 @@
       }
       return true;
     }).sort(function (a, b) {
-      // 施設 → 部屋 → ふりがな の順
+      // 施設 → 部屋 → 氏名 の順
       const ca = Rooms.currentOf(a.id, today), cb = Rooms.currentOf(b.id, today);
       const ka = ca ? Rooms.placeText(ca) : '￿', kb = cb ? Rooms.placeText(cb) : '￿';
-      return ka.localeCompare(kb, 'ja', { numeric: true }) || (a.kana || a.name).localeCompare(b.kana || b.name, 'ja');
+      return ka.localeCompare(kb, 'ja', { numeric: true }) || a.name.localeCompare(b.name, 'ja');
     });
 
     document.getElementById('residentRows').innerHTML = rows.map(function (r) {
-      return '<tr data-id="' + esc(r.id) + '"' + (r.is_active ? '' : ' class="row-inactive"') + '>' +
-        '<td class="name-cell"><input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '" aria-label="氏名">' +
-        '<input type="text" class="autosave" data-field="kana" value="' + esc(r.kana) + '" placeholder="ふりがな" aria-label="ふりがな"></td>' +
+      return '<tr data-id="' + esc(r.id) + '">' +
+        '<td><input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '" aria-label="氏名"></td>' +
         '<td>' + placeButton(r) + '</td>' +
-        '<td class="col-center"><input type="checkbox" data-field="is_active"' + (r.is_active ? ' checked' : '') + '></td>' +
         '</tr>';
     }).join('');
 
     const msg = document.getElementById('listMsg');
     msg.hidden = rows.length > 0;
-    msg.textContent = Rooms.residents.length ? '該当する利用者さんはいません' : 'まだ利用者さんが登録されていません。上のフォームから追加してください';
+    msg.textContent = Rooms.residents.length ? '該当する利用者さんはいません' : 'まだ利用者さんが登録されていません。「利用者さん登録」から登録してください';
   }
 
   // 一覧の入力が変わったら、その項目だけ保存する
@@ -238,33 +230,23 @@
     if (!field || !tr) return;
     const r = Rooms.resident(tr.dataset.id);
 
-    let value;
-    if (field === 'is_active') value = input.checked;
-    else value = input.value.trim() || null;
+    const value = input.value.trim() || null;
 
     if (field === 'name' && !value) {
       alert('氏名は空にできません');
       input.value = r ? r.name : '';
       return;
     }
-    if (field === 'is_active' && !value && Rooms.currentOf(r.id)) {
-      if (!confirm(r.name + ' さんは、まだ部屋に入居しています。\n「入居中」を外しても、部屋の記録はそのままです。退居日は「施設・部屋」から入れてください。\n外しますか?')) {
-        input.checked = true;
-        return;
-      }
-    }
 
     try {
       await App.rpc('update_resident_field', { p_id: tr.dataset.id, p_field: field, p_value: value == null ? null : String(value) });
     } catch (err) {
       console.error(err);
-      if (field === 'is_active') { input.checked = !input.checked; alert('保存できませんでした'); }
-      else App.flashSaved(input, false);
+      App.flashSaved(input, false);
       return;
     }
     if (r) r[field] = value;
-    if (field === 'is_active') renderList();
-    else App.flashSaved(input, true);
+    App.flashSaved(input, true);
   }
 
   // ===== 追加 =====
@@ -288,14 +270,14 @@
     try {
       added = await App.rpc('add_resident', {
         p_name: name,
-        p_kana: document.getElementById('newKana').value.trim() || null,
+        p_kana: null,
         p_room: null,
         p_move_in_date: null,
       });
       if (roomId) await App.rpc('assign_room', { p_resident_id: added.id, p_room_id: roomId, p_move_in_date: moveIn, p_note: null });
     } catch (err) {
       console.error(err);
-      App.setStatus(status, added ? name + ' さんは追加しましたが、部屋に入れられませんでした: ' + Rooms.friendlyError(err) : '追加できませんでした', 'err');
+      App.setStatus(status, added ? name + ' さんは登録しましたが、部屋に入れられませんでした: ' + Rooms.friendlyError(err) : '登録できませんでした', 'err');
       btn.disabled = false;
       await loadAll();
       return;
@@ -304,7 +286,7 @@
     e.target.reset();
     document.getElementById('newMoveIn').value = Rooms.today();
     refreshAddRooms();
-    App.setStatus(status, name + ' さんを追加しました', 'ok');
+    App.setStatus(status, name + ' さんを登録しました', 'ok');
     await loadAll();
     refreshAddRooms();
   }
@@ -425,12 +407,11 @@
         const b = e.target.closest('button[data-place]');
         if (b) openPlace(b.dataset.place);
       });
-      document.getElementById('filterChips').addEventListener('click', function (e) {
-        const b = e.target.closest('button[data-filter]');
-        if (!b) return;
-        currentFilter = b.dataset.filter;
-        this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
-        renderList();
+      document.querySelectorAll('.tab-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+          document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === b.dataset.panel); });
+        });
       });
       document.getElementById('houseChips').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-house]');
