@@ -118,6 +118,8 @@
     .staff-pill i { flex-shrink: 0; }
     .staff-pill:hover { background: var(--color-primary); color: #fff; }
 
+    .back-row { margin-bottom: 8px; }
+
     /* ----- スタッフを選ぶ ----- */
     .pick-group { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin: 14px 0 6px; }
     .pick-group:first-child { margin-top: 0; }
@@ -240,6 +242,10 @@
         <div id="staffPicker" class="card" hidden>
           <h2><i class="ti ti-user-search"></i>だれの勤務を入力しますか?</h2>
           <div id="pickerBody"></div>
+        </div>
+
+        <div class="back-row" id="myBackRow" hidden>
+          <button type="button" class="btn btn-ghost btn-sm" id="backToPicker"><i class="ti ti-arrow-left"></i>スタッフを選ぶ</button>
         </div>
 
         <div class="top-bar" id="myTopBar" hidden>
@@ -1162,6 +1168,7 @@
     // 選ぶ画面と、勤務を入れる画面を切り替える
     function setView() {
       document.getElementById('staffPicker').hidden = !picking;
+      document.getElementById('myBackRow').hidden = picking;
       document.getElementById('myTopBar').hidden = picking;
       document.getElementById('mainArea').hidden = picking;
       syncSaveBar();
@@ -1248,6 +1255,7 @@
       document.getElementById('saveBtn').onclick = onSave;
       document.getElementById('undoBtn').onclick = onUndo;
       document.getElementById('staffBtn').onclick = showPicker;
+      document.getElementById('backToPicker').onclick = showPicker;
       document.getElementById('pickerBody').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-staff]');
         if (b) pick(b.dataset.staff);
