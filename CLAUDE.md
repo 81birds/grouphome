@@ -23,10 +23,14 @@ shifts.html       勤務表。タブで「勤務表(月の表・ダイアログ�
                   個人の勤務は縦=時間・横=施設のチェック表。勤務の入力はここが基本。スマホ向け(?tab=my&staff=&date= で直接開ける)
 myshift.html      前のブックマーク用。shifts.html の「個人の勤務」タブへ転送するだけ
 records.html      日々の記録(施設→本日のスタッフを表示→利用者→その日の記録→「新しい入力」のダイアログで時刻ホイール・内容チップ・コメント。スマホ向け)
+family.html       利用者さんの画面(作成中)。ハウス→名前を選ぶとその人の画面: 本日のスタッフ・本日の予定(まだ空)・食事表(○×)。スマホ向け
+meals.html        食数管理。日ごとに、ハウス×食事の ○ の数と、利用者さんごとの ○×
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
-js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html・residents.html・records.html で使う
+js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html・residents.html・records.html・family.html・meals.html で使う
+js/staffday.js    本日のスタッフ(その日・その施設の勤務の帯。window.StaffDay)。records.html・family.html で使う
+js/meals.js       食事の予定の共通処理(window.Meals)。family.html・meals.html で使う
 sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ```
 
@@ -103,6 +107,13 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 時刻はスクロール式のホイール(時 0〜23・分は 10 分きざみ。「いま」は 10 分単位に丸める)。記録したあとも時刻と内容は残す(次の利用者にすぐ同じ内容を記録できるように)
 - 記録の鉛筆ボタンで編集ダイアログを開き、時刻とコメント(`note`)を直せる(`update_daily_record`)。ホイールを動かさなければ元の時刻(9:37 など)のまま。取消もここから
 - 記録は消さない。間違いは `void_daily_record` で取り消す(voided_at)
+
+## 食事の予定のルール
+
+- 1 行は `meal_plans`(resident_id・meal_date・meal・will_eat)。meal は breakfast / lunch / dinner。true = ○ 食べる、false = × 食べない、行なし = 未回答
+- 土日は朝・昼・夕の 3 食、平日は朝と夕(平日の昼は `set_meal_plan` が止める)
+- 利用者さんの画面で、押すたびに ○ → × → ○ と切り替わり、すぐ保存する
+- ハウスは持たない。その日に入居している部屋から決める(食数管理もそうやって数える)
 
 ## 個人情報の扱い
 

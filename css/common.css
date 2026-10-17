@@ -324,6 +324,40 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
 .status-msg.ok { color: var(--color-primary-dark); }
 .status-msg.err { color: var(--color-danger); }
 
+/* ===== 本日のスタッフ(その日の勤務の帯。js/staffday.js) ===== */
+.tl { position: relative; }
+/* ===== 食事の ○ × 未(family.html・meals.html) ===== */
+.meal-mark.eat   { background: var(--color-primary-soft); border-color: var(--color-primary); color: var(--color-primary-dark); }
+.meal-mark.skip  { background: var(--color-danger-soft); border-color: var(--color-danger); color: var(--color-danger); }
+.meal-mark.unset { background: var(--color-surface); color: var(--color-text-muted); }
+
+/* 見出しの右に出す人数 */
+.visit-sum { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
+.tl-scale, .tl-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; }
+.tl-scale { font-size: 10px; color: var(--color-text-muted); margin-bottom: 2px; }
+.tl-ticks { position: relative; height: 14px; }
+.tl-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.tl-ticks span:first-child { transform: none; }
+.tl-ticks span:last-child { transform: translateX(-100%); }
+.tl-row { padding: 5px 0; border-top: 1px solid var(--color-border); }
+.tl-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+.tl-track {
+  position: relative; height: 24px; border-radius: 4px;
+  background: repeating-linear-gradient(90deg, var(--color-surface-alt) 0, var(--color-surface-alt) calc(25% - 1px), var(--color-border) calc(25% - 1px), var(--color-border) 25%);
+}
+.tl-bar {
+  position: absolute; top: 2px; bottom: 2px; border-radius: 4px;
+  background: var(--color-primary); color: #fff; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; padding: 0 4px; white-space: nowrap; overflow: hidden; min-width: 4px;
+}
+.tl-bar.night { background: var(--color-night); }
+.tl-bar.cont-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.tl-bar.cont-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.tl-now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-danger); z-index: 1; pointer-events: none; }
+.tl-time { font-size: 11px; color: var(--color-text-muted); grid-column: 2; margin-top: 2px; }
+.tl-row.here .tl-name::after { content: "いま"; margin-left: 4px; font-size: 10px; color: #fff; background: var(--color-danger); border-radius: 999px; padding: 1px 6px; }
+
 .muted { color: var(--color-text-muted); }
 .text-sm { font-size: 12px; }
 .center { text-align: center; }

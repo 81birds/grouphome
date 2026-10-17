@@ -103,34 +103,6 @@
     .kind-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
     .kind-btn.active i { color: #fff; }
 
-    /* ----- 本日のスタッフ(その日の勤務の帯) ----- */
-    .tl { position: relative; }
-    .tl-scale, .tl-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; }
-    .tl-scale { font-size: 10px; color: var(--color-text-muted); margin-bottom: 2px; }
-    .tl-ticks { position: relative; height: 14px; }
-    .tl-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
-    .tl-ticks span:first-child { transform: none; }
-    .tl-ticks span:last-child { transform: translateX(-100%); }
-    .tl-row { padding: 5px 0; border-top: 1px solid var(--color-border); }
-    .tl-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tl-name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
-    .tl-track {
-      position: relative; height: 24px; border-radius: 4px;
-      background: repeating-linear-gradient(90deg, var(--color-surface-alt) 0, var(--color-surface-alt) calc(25% - 1px), var(--color-border) calc(25% - 1px), var(--color-border) 25%);
-    }
-    .tl-bar {
-      position: absolute; top: 2px; bottom: 2px; border-radius: 4px;
-      background: var(--color-primary); color: #fff; font-size: 10px; font-weight: 700;
-      display: flex; align-items: center; padding: 0 4px; white-space: nowrap; overflow: hidden; min-width: 4px;
-    }
-    .tl-bar.night { background: var(--color-night); }
-    .tl-bar.cont-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-    .tl-bar.cont-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-    .tl-now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-danger); z-index: 1; pointer-events: none; }
-    .tl-time { font-size: 11px; color: var(--color-text-muted); grid-column: 2; margin-top: 2px; }
-    .tl-row.here .tl-name::after { content: "いま"; margin-left: 4px; font-size: 10px; color: #fff; background: var(--color-danger); border-radius: 999px; padding: 1px 6px; }
-    /* 見出しの右に人数を出す */
-    .visit-sum { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
 
     /* ----- 入力のダイアログ ----- */
     #inputModal .kind-grid { margin: 12px 0 0; }
@@ -345,6 +317,7 @@
 <script src="js/config.js"></script>
 <script src="js/common.js"></script>
 <script src="js/rooms.js"></script>
+<script src="js/staffday.js"></script>
 <script>
   // ----- 記録の内容(チップ)。ここに足せば画面に増える -----
   const KINDS = [
@@ -365,7 +338,6 @@
   let date = App.todayJST();
   let residentId = null;
   let records = [];             // 選んだ施設・日の記録
-  const visit = { staff: [], types: [], shifts: [], date: null };   // 本日のスタッフ
   let picked = new Set();       // 選んでいる内容(1 つだけ)
 
   const $ = function (id) { return document.getElementById(id); };
@@ -486,82 +458,20 @@
     date = v;
     renderDate();
     App.setStatus($('listStatus'), '');
-    await Promise.all([loadRecords(), loadVisitShifts()]);
+    await Promise.all([loadRecords(), StaffDay.loadShifts(date)]);
     renderVisits();
     renderPeople();
     renderList();
   }
 
-  // ===== 本日のスタッフ(その日のこの施設の勤務) =====
-  const DAY = 24 * 60;
-  function hm(t) { return t ? String(t).slice(0, 5) : ''; }
-  function minOf(t) { const p = hm(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
-  function crosses(s) { return minOf(s.end_time) <= minOf(s.start_time); }
-  function durationOf(s) { let d = minOf(s.end_time) - minOf(s.start_time); if (d <= 0) d += DAY; return d; }
-  function shiftText(s) { return hm(s.start_time) + '〜' + (crosses(s) ? '翌' : '') + hm(s.end_time); }
-  function dayOffset(workDate) { return Math.round((new Date(workDate + 'T00:00:00Z') - new Date(date + 'T00:00:00Z')) / 86400000); }
-
-  async function loadVisitShifts() {
-    if (visit.date === date) return;
-    try {
-      // 前日に始まった夜勤も返ってくる
-      visit.shifts = await App.rpc('get_shifts', { p_from: date, p_to: date });
-      visit.date = date;
-    } catch (err) {
-      console.error(err);
-      visit.shifts = [];
-      visit.date = null;
-    }
-  }
-
+  // ===== 本日のスタッフ(js/staffday.js) =====
   function renderVisits() {
     $('visitCard').hidden = !houseId;
     if (!houseId) return;
-    const box = $('visitList');
-    const sum = $('visitSum');
-
-    // この日(0:00〜24:00)にかかる勤務。前日からの夜勤も含める
-    const items = visit.shifts.filter(function (s) { return s.house_id === houseId; }).map(function (s) {
-      const start = dayOffset(s.work_date) * DAY + minOf(s.start_time);
-      return { s: s, start: start, end: start + durationOf(s) };
-    }).filter(function (x) { return x.end > 0 && x.start < DAY; })
-      .sort(function (a, b) { return a.start - b.start || a.end - b.end; });
-
-    const isToday = date === App.todayJST();
-    // ほかの日を見ているときは「10/16 のスタッフ」
-    $('visitTitle').textContent = isToday ? '本日のスタッフ' : (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + ' のスタッフ';
-    const nowParts = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(11, 16).split(':');
-    const nowMin = (+nowParts[0]) * 60 + (+nowParts[1]);
-
-    let html = '<div class="tl-scale"><span></span><div class="tl-ticks">' +
-      [0, 6, 12, 18, 24].map(function (h) { return '<span style="left:' + (h / 24 * 100) + '%">' + h + '時</span>'; }).join('') +
-      '</div></div>';
-
-    if (!items.length) {
-      html += '<div class="empty-msg">この日のスタッフはいません</div>';
-    }
-    items.forEach(function (x) {
-      const st = visit.staff.find(function (p) { return p.id === x.s.staff_id; });
-      const t = x.s.shift_type_id ? visit.types.find(function (y) { return y.id === x.s.shift_type_id; }) : null;
-      const a = Math.max(0, x.start), b = Math.min(DAY, x.end);
-      const here = isToday && x.start <= nowMin && nowMin < x.end;
-      const night = crosses(x.s) || (t && /夜/.test(t.name));
-      const cls = 'tl-bar' + (night ? ' night' : '') + (x.start < 0 ? ' cont-left' : '') + (x.end > DAY ? ' cont-right' : '');
-      const when = (x.start < 0 ? '前日 ' : '') + shiftText(x.s) + (t ? ' / ' + t.name : '') + (x.s.note ? ' / ' + x.s.note : '');
-      html += '<div class="tl-row' + (here ? ' here' : '') + '">' +
-        '<div class="tl-name">' + esc(st ? st.name : '?') + '<small>' + esc(st && st.job_title ? st.job_title : '') + '</small></div>' +
-        '<div><div class="tl-track">' +
-          (isToday ? '<div class="tl-now" style="left:' + (nowMin / DAY * 100) + '%"></div>' : '') +
-          '<div class="' + cls + '" style="left:' + (a / DAY * 100) + '%;width:' + ((b - a) / DAY * 100) + '%">' + esc(x.start < 0 ? '〜' + hm(x.s.end_time) : hm(x.s.start_time)) + '</div>' +
-        '</div><div class="tl-time">' + esc(when) + '</div></div>' +
-        '</div>';
-    });
-    box.innerHTML = html;
-
-    const people = new Set(items.map(function (x) { return x.s.staff_id; })).size;
-    const hereNow = isToday ? new Set(items.filter(function (x) { return x.start <= nowMin && nowMin < x.end; }).map(function (x) { return x.s.staff_id; })).size : 0;
-    sum.textContent = items.length ? (people + '人' + (isToday ? '・いま ' + hereNow + '人' : '')) : '';
+    $('visitTitle').textContent = StaffDay.title(date);
+    $('visitSum').textContent = StaffDay.render($('visitList'), houseId, date);
   }
+
 
   // ===== 利用者 =====
   // その日にこの施設のどこかの部屋に入居している人(部屋の順)
@@ -779,8 +689,7 @@
   App.boot({
     active: 'records',
     onReady: async function () {
-      const r = await Promise.all([Rooms.load(), App.rpc('get_staff'), App.rpc('get_shift_types'), loadVisitShifts()]);
-      visit.staff = r[1]; visit.types = r[2];
+      await Promise.all([Rooms.load(), StaffDay.loadMasters(), StaffDay.loadShifts(date)]);
 
       buildWheel($('wheelH'), 24, 1);
       buildWheel($('wheelM'), 60 / MIN_STEP, MIN_STEP);

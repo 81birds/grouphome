@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>利用者さんの画面</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    /* ----- 利用者さんを選ぶ ----- */
+    .person-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    @media (min-width: 520px) { .person-grid { grid-template-columns: repeat(3, 1fr); } }
+    .person-btn {
+      font-family: var(--font-base); text-align: left; cursor: pointer;
+      padding: 12px; min-height: 56px;
+      border: 1px solid var(--color-border); border-radius: var(--radius-md);
+      background: var(--color-surface-alt); color: var(--color-text);
+    }
+    .person-btn .p-name { display: block; font-size: 15px; font-weight: 700; }
+    .person-btn .p-room { display: block; font-size: 11px; color: var(--color-text-muted); }
+    .person-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+
+    /* ----- その人の画面の上 ----- */
+    .me-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .me-bar .me-icon { font-size: 40px; color: var(--color-primary-dark); }
+    .me-bar .me-name { font-size: 20px; font-weight: 700; line-height: 1.3; }
+    .me-bar .me-place { font-size: 12px; color: var(--color-text-muted); }
+    .me-bar .spacer { flex: 1; }
+
+    /* ----- 食事表 ----- */
+    .meal-note { font-size: 12px; color: var(--color-text-muted); margin: -6px 0 10px; }
+    .meal-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .meal-table th, .meal-table td { border-bottom: 1px solid var(--color-border); padding: 4px; text-align: center; }
+    .meal-table thead th { font-size: 12px; color: var(--color-text-muted); }
+    .meal-table th.d { width: 76px; text-align: left; font-size: 13px; font-weight: 700; color: var(--color-text); white-space: nowrap; }
+    .meal-table th.d.sat { color: var(--color-sat); }
+    .meal-table th.d.sun { color: var(--color-danger); }
+    .meal-table tr.today th.d::after { content: "きょう"; display: block; font-size: 10px; color: var(--color-primary-dark); }
+    .meal-table tr.week-start th, .meal-table tr.week-start td { border-top: 2px solid var(--color-border); }
+    .meal-btn {
+      width: 100%; height: 44px; cursor: pointer;
+      font-family: var(--font-base); font-size: 22px; font-weight: 700; line-height: 1;
+      border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    }
+    .meal-none { font-size: 12px; color: var(--color-text-muted); }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+
+    <!-- ① ハウスと利用者さんを選ぶ -->
+    <div id="pickView" hidden>
+      <div class="page-header">
+        <h1>
+          <span class="page-icon"><i class="ti ti-device-mobile-message"></i></span>
+          利用者さんの画面
+        </h1>
+        <p>ハウスと、あなたの名前を選んでください</p>
+      </div>
+      <div class="card">
+        <h2><i class="ti ti-building-community"></i>ハウス</h2>
+        <div class="chips" id="houseChips"></div>
+      </div>
+      <div class="card" id="personCard" hidden>
+        <h2><i class="ti ti-users"></i>お名前</h2>
+        <div class="person-grid" id="personGrid"></div>
+        <div id="personMsg" class="empty-msg" hidden>このハウスに入居している利用者さんがいません</div>
+      </div>
+    </div>
+
+    <!-- ② その人の画面 -->
+    <div id="homeView" hidden>
+      <div class="me-bar">
+        <i class="ti ti-user-circle me-icon"></i>
+        <div>
+          <div class="me-name" id="meName"></div>
+          <div class="me-place" id="mePlace"></div>
+        </div>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="backBtn"><i class="ti ti-arrow-left"></i>もどる</button>
+      </div>
+
+      <!-- 本日のスタッフ -->
+      <div class="card">
+        <h2><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span></h2>
+        <div class="tl" id="visitList"></div>
+      </div>
+
+      <!-- 本日の予定(通院・出勤などは本部で入れる。まだ作っていない) -->
+      <div class="card">
+        <h2><i class="ti ti-calendar-event"></i>本日の予定</h2>
+        <div class="empty-msg">まだ予定はありません</div>
+      </div>
+
+      <!-- 食事表 -->
+      <div class="card">
+        <h2><i class="ti ti-tools-kitchen-2"></i>食事表</h2>
+        <p class="meal-note">○ = 食べる、× = 食べない。押すたびに切り替わります。平日の昼食はありません</p>
+        <table class="meal-table" id="mealTable"></table>
+        <div id="mealStatus" class="status-msg center"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/staffday.js"></script>
+<script src="js/meals.js"></script>
+<script>
+  const DAYS = 14;                       // 食事表は今日から 2 週間
+  const ME_KEY = 'gh_family_resident';   // この端末で選んだ利用者さん
+
+  const $ = function (id) { return document.getElementById(id); };
+  const esc = App.escapeHtml;
+
+  let today = App.todayJST();
+  let houseId = null;
+  let meId = null;
+  let plans = {};                        // Meals.index の形
+
+  function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
+
+  // その日にハウスの部屋に入居している人(部屋の順)
+  function peopleOfHouse(hid) {
+    const out = [];
+    Rooms.roomsOf(hid, true).forEach(function (room) {
+      const a = Rooms.occupantOf(room.id, today);
+      const p = a ? Rooms.resident(a.resident_id) : null;
+      if (p) out.push({ resident: p, room: room });
+    });
+    return out;
+  }
+
+  // ===== ① 選ぶ =====
+  function showPick() {
+    $('homeView').hidden = true;
+    $('pickView').hidden = false;
+    renderHouses();
+    renderPeople();
+    history.replaceState(null, '', location.pathname);
+  }
+  function renderHouses() {
+    $('houseChips').innerHTML = activeHouses().map(function (h) {
+      return '<button type="button" data-house="' + esc(h.id) + '"' + (h.id === houseId ? ' class="active"' : '') + '>' + esc(h.name) + '</button>';
+    }).join('') || '<span class="muted text-sm">ハウスが登録されていません</span>';
+  }
+  function renderPeople() {
+    $('personCard').hidden = !houseId;
+    if (!houseId) return;
+    const people = peopleOfHouse(houseId);
+    $('personGrid').innerHTML = people.map(function (x) {
+      return '<button type="button" class="person-btn" data-resident="' + esc(x.resident.id) + '">' +
+        '<span class="p-name">' + esc(x.resident.name) + ' さん</span>' +
+        '<span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span></button>';
+    }).join('');
+    $('personMsg').hidden = people.length > 0;
+  }
+
+  // ===== ② その人の画面 =====
+  async function showHome(residentId) {
+    const p = Rooms.resident(residentId);
+    const cur = p ? Rooms.currentOf(residentId, today) : null;
+    if (!cur) { showPick(); return; }     // いま入居していない人は選びなおし
+    meId = residentId;
+    houseId = (Rooms.room(cur.room_id) || {}).house_id || null;
+    try { localStorage.setItem(ME_KEY, meId); } catch (e) { /* noop */ }
+    history.replaceState(null, '', location.pathname + '?resident=' + encodeURIComponent(meId));
+
+    $('pickView').hidden = true;
+    $('homeView').hidden = false;
+    $('meName').textContent = p.name + ' さん';
+    $('mePlace').textContent = Rooms.placeText(cur);
+    window.scrollTo(0, 0);
+
+    await Promise.all([StaffDay.loadShifts(today), loadPlans()]);
+    $('visitTitle').textContent = StaffDay.title(today);
+    $('visitSum').textContent = StaffDay.render($('visitList'), houseId, today);
+    renderMeals();
+  }
+
+  async function loadPlans() {
+    try {
+      plans = Meals.index(await App.rpc('get_meal_plans', { p_from: today, p_to: Meals.addDays(today, DAYS - 1), p_resident_id: meId }));
+    } catch (err) {
+      console.error(err);
+      plans = {};
+      App.setStatus($('mealStatus'), '食事表を読み込めませんでした', 'err');
+    }
+  }
+
+  function renderMeals() {
+    let html = '<thead><tr><th class="d"></th>' + Meals.KINDS.map(function (k) {
+      return '<th><i class="ti ' + k.icon + '"></i> ' + k.label + '</th>';
+    }).join('') + '</tr></thead><tbody>';
+    for (let i = 0; i < DAYS; i++) {
+      const d = Meals.addDays(today, i);
+      const cls = [];
+      if (d === today) cls.push('today');
+      if (i > 0 && Meals.dow(d) === 1) cls.push('week-start');   // 月曜で区切る
+      html += '<tr class="' + cls.join(' ') + '"><th class="d ' + Meals.dayClass(d) + '">' + Meals.dateLabel(d) + '</th>';
+      Meals.KINDS.forEach(function (k) {
+        if (!Meals.hasMeal(d, k.key)) { html += '<td><span class="meal-none">—</span></td>'; return; }
+        const v = plans[Meals.key(meId, d, k.key)];
+        html += '<td><button type="button" class="meal-btn meal-mark ' + Meals.markClass(v) + '" data-date="' + d + '" data-meal="' + k.key + '"' +
+          ' aria-label="' + Meals.dateLabel(d) + ' ' + k.label + ' ' + Meals.mark(v) + '">' + (v === undefined ? '' : Meals.mark(v)) + '</button></td>';
+      });
+      html += '</tr>';
+    }
+    $('mealTable').innerHTML = html + '</tbody>';
+  }
+
+  // 押すたびに ○ → × → ○ …(まだ選んでいないときは ○ から)
+  async function onMealClick(e) {
+    const b = e.target.closest('button[data-meal]');
+    if (!b) return;
+    const k = Meals.key(meId, b.dataset.date, b.dataset.meal);
+    const before = plans[k];
+    const next = before === true ? false : true;
+    plans[k] = next;
+    renderMeals();
+    App.setStatus($('mealStatus'), '');
+    try {
+      await App.rpc('set_meal_plan', { p_resident_id: meId, p_date: b.dataset.date, p_meal: b.dataset.meal, p_will_eat: next });
+    } catch (err) {
+      console.error(err);
+      if (before === undefined) delete plans[k]; else plans[k] = before;
+      renderMeals();
+      App.setStatus($('mealStatus'), '保存できませんでした。通信状況を確認してください', 'err');
+    }
+  }
+
+  App.boot({
+    active: 'family',
+    onReady: async function () {
+      await Promise.all([Rooms.load(), StaffDay.loadMasters()]);
+
+      $('houseChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-house]');
+        if (!b) return;
+        houseId = b.dataset.house;
+        renderHouses();
+        renderPeople();
+      });
+      $('personGrid').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-resident]');
+        if (b) showHome(b.dataset.resident);
+      });
+      $('backBtn').addEventListener('click', function () {
+        try { localStorage.removeItem(ME_KEY); } catch (e) { /* noop */ }
+        showPick();
+      });
+      $('mealTable').addEventListener('click', onMealClick);
+
+      // URL か、この端末で前に選んだ人がいれば、その人の画面から
+      let want = new URLSearchParams(location.search).get('resident');
+      if (!want) { try { want = localStorage.getItem(ME_KEY); } catch (e) { /* noop */ } }
+      if (want && Rooms.resident(want)) await showHome(want);
+      else showPick();
+    },
+  });
+</script>
+
+</body>
+</html>

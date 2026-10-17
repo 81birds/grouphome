@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>食数管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .date-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .date-row input[type="date"] { width: auto; font-size: 14px; }
+    .date-row .date-label { font-size: 15px; font-weight: 700; }
+    .date-row .date-label.sat { color: var(--color-sat); }
+    .date-row .date-label.sun { color: var(--color-danger); }
+
+    /* ----- まとめ・ハウスごとの表 ----- */
+    .count-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .count-table th, .count-table td { border-bottom: 1px solid var(--color-border); padding: 6px 4px; text-align: center; }
+    .count-table thead th { font-size: 12px; color: var(--color-text-muted); }
+    .count-table th.name { text-align: left; width: 38%; font-size: 13px; font-weight: 700; color: var(--color-text); }
+    .count-table th.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .count-table tfoot th, .count-table tfoot td { border-bottom: none; border-top: 2px solid var(--color-border); }
+    .count-big { font-size: 20px; font-weight: 700; color: var(--color-primary-dark); }
+    .count-big small { font-size: 11px; font-weight: 500; margin-left: 1px; }
+    .count-sub { display: block; font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
+    .count-none { font-size: 12px; color: var(--color-text-muted); }
+    .mark-cell { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-size: 16px; font-weight: 700; }
+    .mark-cell.unset { font-size: 11px; }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-tools-kitchen-2"></i></span>
+        食数管理
+      </h1>
+      <p>利用者さんが選んだ「食べる ○・食べない ×」を、ハウスごとに数えます</p>
+    </div>
+
+    <div class="card">
+      <div class="date-row">
+        <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
+        <span class="date-label" id="dateLabel"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
+        <input type="date" id="dateInput" aria-label="日にち">
+        <button type="button" class="btn btn-ghost btn-sm" id="todayBtn">今日</button>
+      </div>
+      <div id="loadStatus" class="status-msg center"></div>
+    </div>
+
+    <!-- まとめ(ハウス × 食事の ○ の数) -->
+    <div class="card">
+      <h2><i class="ti ti-sum"></i>まとめ</h2>
+      <table class="count-table" id="sumTable"></table>
+    </div>
+
+    <!-- ハウスごと(利用者さんの ○ ×) -->
+    <div id="houseCards"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/meals.js"></script>
+<script>
+  const $ = function (id) { return document.getElementById(id); };
+  const esc = App.escapeHtml;
+
+  let date = App.todayJST();
+  let plans = {};
+
+  function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
+
+  // その日にハウスの部屋に入居している人(部屋の順)
+  function peopleOfHouse(hid) {
+    const out = [];
+    Rooms.roomsOf(hid, true).forEach(function (room) {
+      const a = Rooms.occupantOf(room.id, date);
+      const p = a ? Rooms.resident(a.resident_id) : null;
+      if (p) out.push({ resident: p, room: room });
+    });
+    return out;
+  }
+
+  // ある人たち・ある食事の ○ × 未 の数
+  function countOf(people, meal) {
+    const c = { eat: 0, skip: 0, unset: 0 };
+    people.forEach(function (x) { c[Meals.markClass(plans[Meals.key(x.resident.id, date, meal)])]++; });
+    return c;
+  }
+  function countCell(c) {
+    return '<td><span class="count-big">' + c.eat + '<small>食</small></span>' +
+      '<span class="count-sub">× ' + c.skip + '・未 ' + c.unset + '</span></td>';
+  }
+
+  function render() {
+    $('dateInput').value = date;
+    const lbl = $('dateLabel');
+    lbl.textContent = Meals.dateLabel(date) + (date === App.todayJST() ? ' きょう' : '');
+    lbl.className = 'date-label ' + Meals.dayClass(date);
+
+    const meals = Meals.KINDS.filter(function (k) { return Meals.hasMeal(date, k.key); });
+    const head = '<thead><tr><th class="name"></th>' + meals.map(function (k) {
+      return '<th><i class="ti ' + k.icon + '"></i> ' + k.label + '</th>';
+    }).join('') + '</tr></thead>';
+
+    // まとめ
+    const houses = activeHouses().map(function (h) { return { house: h, people: peopleOfHouse(h.id) }; });
+    let sum = head + '<tbody>';
+    houses.forEach(function (x) {
+      sum += '<tr><th class="name">' + esc(x.house.name) + '<small>入居 ' + x.people.length + '人</small></th>' +
+        meals.map(function (k) { return countCell(countOf(x.people, k.key)); }).join('') + '</tr>';
+    });
+    const all = houses.reduce(function (a, x) { return a.concat(x.people); }, []);
+    sum += '</tbody><tfoot><tr><th class="name">合計<small>入居 ' + all.length + '人</small></th>' +
+      meals.map(function (k) { return countCell(countOf(all, k.key)); }).join('') + '</tr></tfoot>';
+    $('sumTable').innerHTML = houses.length ? sum : '<tr><td class="empty-msg">ハウスが登録されていません</td></tr>';
+
+    // ハウスごと
+    $('houseCards').innerHTML = houses.map(function (x) {
+      let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(x.house.name) + '</h2>';
+      if (!x.people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
+      t += '<table class="count-table">' + head + '<tbody>';
+      x.people.forEach(function (p) {
+        t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
+          meals.map(function (k) {
+            const v = plans[Meals.key(p.resident.id, date, k.key)];
+            return '<td><span class="mark-cell meal-mark ' + Meals.markClass(v) + '">' + Meals.mark(v) + '</span></td>';
+          }).join('') + '</tr>';
+      });
+      t += '</tbody><tfoot><tr><th class="name">○ の数</th>' +
+        meals.map(function (k) { return countCell(countOf(x.people, k.key)); }).join('') + '</tr></tfoot></table></div>';
+      return t;
+    }).join('');
+  }
+
+  async function load() {
+    App.setStatus($('loadStatus'), '');
+    try {
+      plans = Meals.index(await App.rpc('get_meal_plans', { p_from: date, p_to: date }));
+    } catch (err) {
+      console.error(err);
+      plans = {};
+      App.setStatus($('loadStatus'), '食事の予定を読み込めませんでした', 'err');
+    }
+    render();
+  }
+
+  async function goDate(d) {
+    if (!d) return;
+    date = d;
+    await load();
+  }
+
+  App.boot({
+    active: 'meals',
+    onReady: async function () {
+      await Rooms.load();
+      $('prevDay').addEventListener('click', function () { goDate(Meals.addDays(date, -1)); });
+      $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, 1)); });
+      $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
+      $('dateInput').addEventListener('change', function () { goDate(this.value); });
+      await load();
+    },
+  });
+</script>
+
+</body>
+</html>

@@ -26,7 +26,7 @@
         <span class="page-icon"><i class="ti ti-home-heart"></i></span>
         <span id="appName"></span>
       </h1>
-      <p>使いたい機能のアイコンを選んでください</p>
+      <p>福祉施設の業務ツールのサンプルです</p>
     </div>
 
     <div id="iconGrid" class="icon-grid"></div>
@@ -44,15 +44,16 @@
   App.boot({
     active: 'index',
     onReady: function () {
-      document.title = App.config.APP_NAME + ' ポータル';
-      document.getElementById('appName').textContent = App.config.APP_NAME + ' ポータル';
+      document.title = App.config.APP_NAME + 'ポータル（SAMPLE）';
+      document.getElementById('appName').textContent = App.config.APP_NAME + 'ポータル（SAMPLE）';
       document.getElementById('logoutBtn').onclick = App.logout;
 
       document.getElementById('iconGrid').innerHTML = App.PAGES
         .filter(function (p) { return p.portal !== false; })
         .map(function (p, i) {
           const disabled = p.ready ? '' : ' disabled';
-          const soon = p.ready ? '' : '<span class="badge-soon">' + App.escapeHtml(p.badge || '準備中') + '</span>';
+          // 準備中のものは押せない。作成中(badge)のものは押せるが札を付ける
+          const soon = (!p.ready || p.badge) ? '<span class="badge-soon">' + App.escapeHtml(p.badge || '準備中') + '</span>' : '';
           // 番号は並び順(左上が 01、右へ 02、次の段へ … の Z の順)
           const no = String(i + 1).padStart(2, '0');
           return '<a href="' + p.file + '" class="icon-tile' + disabled + '">' +
