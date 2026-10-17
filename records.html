@@ -161,30 +161,37 @@
       display: block; width: 100%; padding: 0; cursor: pointer;
       border: none; border-bottom: 1px solid var(--color-border);
       background: var(--color-surface); box-shadow: var(--shadow-md);
-      font-family: var(--font-base); text-align: left;
+      font-family: var(--font-base); text-align: left; color: var(--color-text);
       transform: translateY(-110%); transition: transform 0.15s ease; visibility: hidden;
     }
     .ctx-bar.show { transform: none; visibility: visible; }
+    .ctx-bar .inner { max-width: 720px; margin: 0 auto; padding: 10px 12px; }
     /* 利用者さんを選んで一覧へ移るとき、上の 2 本の帯に隠れないように */
-    #listCard { scroll-margin-top: calc(var(--gtool-h) + 48px); }
-    .ctx-bar .inner {
-      max-width: 720px; margin: 0 auto; padding: 7px 10px;
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-      font-size: 13px; font-weight: 700; color: var(--color-text);
-    }
-    .ctx-bar i { color: var(--color-primary-dark); }
-    .ctx-bar .sep { color: var(--color-text-muted); font-weight: 400; }
-    .ctx-bar .today { color: var(--color-primary-dark); }
-    .ctx-bar .past { color: var(--color-danger); }
+    #listCard { scroll-margin-top: calc(var(--gtool-h) + 76px); }
+
+    /* 1 行目「〇〇さんの記録を入力中です」・2 行目 施設と日にち */
+    .ctx-doing { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+    .ctx-doing i { font-size: 18px; }
+    .ctx-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; }
+    .ctx-line i { color: var(--color-primary-dark); }
+    .ctx-line .sep { color: var(--color-text-muted); font-weight: 400; }
+    .ctx-line .today { color: var(--color-primary-dark); }
+    .ctx-line .past { background: var(--color-danger); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
+
+    /* 利用者さんを選んで入力しているあいだはオレンジにする */
+    .ctx-bar.working { background: var(--color-work-soft); border-bottom: 3px solid var(--color-work); color: var(--color-work-dark); }
+    .ctx-bar.working i,
+    .ctx-bar.working .ctx-line .today,
+    .ctx-bar.working .ctx-line .sep { color: var(--color-work-dark); }
+
+    /* ダイアログの中の施設と日にち(入力中なのでオレンジ) */
     .modal-ctx {
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-      margin: -6px 0 12px; padding: 6px 10px; border-radius: var(--radius-sm);
-      background: var(--color-surface-alt); font-size: 13px; font-weight: 700;
+      margin: -6px 0 12px; padding: 8px 10px; border-radius: var(--radius-sm);
+      background: var(--color-work-soft); border-left: 4px solid var(--color-work); color: var(--color-work-dark);
     }
-    .modal-ctx i { color: var(--color-primary-dark); }
-    .modal-ctx .sep { color: var(--color-text-muted); font-weight: 400; }
-    .modal-ctx .today { color: var(--color-primary-dark); }
-    .modal-ctx .past { color: var(--color-danger); }
+    .modal-ctx i,
+    .modal-ctx .ctx-line .today,
+    .modal-ctx .ctx-line .sep { color: var(--color-work-dark); }
 
     /* ----- 記録の編集ダイアログ ----- */
     .edit-what { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin-bottom: 12px; }
@@ -415,20 +422,22 @@
     $('dateLabel').textContent = date === today ? 'きょう(' + wd + ')' : date === App.todayJST(-1) ? 'きのう(' + wd + ')' : '(' + wd + ')';
   }
   // ===== いまの施設・日にち(上の帯とダイアログに出す) =====
-  function ctxHtml(withPerson) {
+  // 施設と日にちの 1 行
+  function ctxLine() {
     const h = Rooms.houses.find(function (x) { return x.id === houseId; });
     const wd = '日月火水木金土'.charAt(new Date(date + 'T00:00:00Z').getUTCDay());
     const today = App.todayJST();
     const rel = date === today ? ' <span class="today">きょう</span>' : date === App.todayJST(-1) ? ' <span class="past">きのう</span>' : date < today ? ' <span class="past">過去の日</span>' : '';
-    const p = withPerson && residentId ? Rooms.resident(residentId) : null;
-    return '<i class="ti ti-building-community"></i>' + esc(h ? h.name : '施設を選んでください') +
-      '<span class="sep">・</span><i class="ti ti-calendar"></i>' + (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + '(' + wd + ')' + rel +
-      (p ? '<span class="sep">・</span><i class="ti ti-user"></i>' + esc(p.name) + ' さん' : '');
+    return '<div class="ctx-line"><i class="ti ti-building-community"></i>' + esc(h ? h.name : '施設を選んでください') +
+      '<span class="sep">・</span><i class="ti ti-calendar"></i>' + (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + '(' + wd + ')' + rel + '</div>';
   }
   function renderCtx() {
-    $('ctxBarInner').innerHTML = ctxHtml(true);
-    $('inputCtx').innerHTML = ctxHtml(false);
-    $('editCtx').innerHTML = ctxHtml(false);
+    const p = residentId ? Rooms.resident(residentId) : null;
+    // 利用者さんを選んでいれば「〇〇さんの記録を入力中です」をオレンジで出す
+    $('ctxBarInner').innerHTML = (p ? '<div class="ctx-doing"><i class="ti ti-pencil"></i>' + esc(p.name) + ' さんの記録を入力中です</div>' : '') + ctxLine();
+    $('ctxBar').classList.toggle('working', !!p);
+    $('inputCtx').innerHTML = ctxLine();
+    $('editCtx').innerHTML = ctxLine();
   }
   // 施設のカードが画面の上に隠れたら、上の帯を出す
   function watchHouseCard() {

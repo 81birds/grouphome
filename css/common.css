@@ -27,6 +27,11 @@
   --color-night: #4a4677;
   --color-night-soft: #e6e4f2;
 
+  /* 入力中(作業中)を知らせるオレンジ */
+  --color-work: #d9822b;
+  --color-work-dark: #7a4512;
+  --color-work-soft: #fbdcb4;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 18px;
