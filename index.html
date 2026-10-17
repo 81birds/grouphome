@@ -50,12 +50,14 @@
 
       document.getElementById('iconGrid').innerHTML = App.PAGES
         .filter(function (p) { return p.portal !== false; })
-        .map(function (p) {
+        .map(function (p, i) {
           const disabled = p.ready ? '' : ' disabled';
-          const soon = p.ready ? '' : '<span class="badge-soon">準備中</span>';
+          const soon = p.ready ? '' : '<span class="badge-soon">' + App.escapeHtml(p.badge || '準備中') + '</span>';
+          // 番号は並び順(左上が 01、右へ 02、次の段へ … の Z の順)
+          const no = String(i + 1).padStart(2, '0');
           return '<a href="' + p.file + '" class="icon-tile' + disabled + '">' +
             '<div class="icon-circle"><i class="ti ' + p.icon + '"></i></div>' +
-            '<div class="tile-label">' + App.escapeHtml(p.label) + '</div>' +
+            '<div class="tile-label"><span class="tile-no">' + no + '</span>' + App.escapeHtml(p.label) + '</div>' +
             '<div class="tile-sub">' + App.escapeHtml(p.sub) + '</div>' + soon +
             '</a>';
         }).join('');
