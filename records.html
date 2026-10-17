@@ -102,7 +102,7 @@
     .kind-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
     .kind-btn.active i { color: #fff; }
 
-    /* ----- 来る人(その日の勤務の帯) ----- */
+    /* ----- 今日のスタッフ(その日の勤務の帯) ----- */
     .tl { position: relative; }
     .tl-scale, .tl-row { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; }
     .tl-scale { font-size: 10px; color: var(--color-text-muted); margin-bottom: 2px; }
@@ -191,9 +191,9 @@
       </div>
     </div>
 
-    <!-- 来る人 -->
+    <!-- 今日のスタッフ -->
     <div class="card" id="visitCard" hidden>
-      <h2><i class="ti ti-users-group"></i>来る人</h2>
+      <h2><i class="ti ti-users-group"></i><span id="visitTitle">今日のスタッフ</span></h2>
       <div class="tl" id="visitList"></div>
       <p class="visit-sum" id="visitSum"></p>
     </div>
@@ -293,7 +293,7 @@
   let date = App.todayJST();
   let residentId = null;
   let records = [];             // 選んだ施設・日の記録
-  const visit = { staff: [], types: [], shifts: [], date: null };   // 来る人
+  const visit = { staff: [], types: [], shifts: [], date: null };   // 今日のスタッフ
   let picked = new Set();       // 選んでいる内容(1 つだけ)
 
   const $ = function (id) { return document.getElementById(id); };
@@ -392,7 +392,7 @@
     renderList();
   }
 
-  // ===== 来る人(その日のこの施設の勤務) =====
+  // ===== 今日のスタッフ(その日のこの施設の勤務) =====
   const DAY = 24 * 60;
   function hm(t) { return t ? String(t).slice(0, 5) : ''; }
   function minOf(t) { const p = hm(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
@@ -428,6 +428,8 @@
       .sort(function (a, b) { return a.start - b.start || a.end - b.end; });
 
     const isToday = date === App.todayJST();
+    // ほかの日を見ているときは「10/16 のスタッフ」
+    $('visitTitle').textContent = isToday ? '今日のスタッフ' : (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + ' のスタッフ';
     const nowParts = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(11, 16).split(':');
     const nowMin = (+nowParts[0]) * 60 + (+nowParts[1]);
 
@@ -436,7 +438,7 @@
       '</div></div>';
 
     if (!items.length) {
-      html += '<div class="empty-msg">この日に来る予定の人はいません</div>';
+      html += '<div class="empty-msg">この日のスタッフはいません</div>';
     }
     items.forEach(function (x) {
       const st = visit.staff.find(function (p) { return p.id === x.s.staff_id; });
@@ -458,7 +460,7 @@
 
     const people = new Set(items.map(function (x) { return x.s.staff_id; })).size;
     const hereNow = isToday ? new Set(items.filter(function (x) { return x.start <= nowMin && nowMin < x.end; }).map(function (x) { return x.s.staff_id; })).size : 0;
-    sum.textContent = items.length ? ('この日に来る人: ' + people + '人' + (isToday ? ' / いま ' + hereNow + '人' : '')) : '';
+    sum.textContent = items.length ? ('スタッフ: ' + people + '人' + (isToday ? ' / いま ' + hereNow + '人' : '')) : '';
   }
 
   // ===== 利用者 =====
