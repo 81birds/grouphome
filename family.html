@@ -23,6 +23,14 @@
     .person-btn .p-room { display: block; font-size: 11px; color: var(--color-text-muted); }
     .person-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
 
+    .sample-note {
+      display: flex; gap: 6px; align-items: flex-start;
+      font-size: 12px; line-height: 1.6; color: var(--color-text-muted);
+      background: var(--color-surface-alt); border-radius: var(--radius-sm);
+      padding: 8px 10px; margin: -6px 0 14px;
+    }
+    .sample-note i { font-size: 16px; color: var(--color-primary-dark); margin-top: 1px; }
+
     /* ----- その人の画面の上 ----- */
     .me-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
     .me-bar .me-icon { font-size: 40px; color: var(--color-primary-dark); }
@@ -69,6 +77,7 @@
         </h1>
         <p>ハウスと、あなたの名前を選んでください</p>
       </div>
+      <p class="sample-note"><i class="ti ti-info-circle"></i>これはサンプルです。ためしに見られるよう、いまはすべての機能を同じ合言葉(同じ ID)で使えます。本番では、利用者さんごとにログインして、自分の画面だけが見られるようにします。</p>
       <div class="card">
         <h2><i class="ti ti-building-community"></i>ハウス</h2>
         <div class="chips" id="houseChips"></div>
