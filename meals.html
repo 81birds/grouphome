@@ -41,6 +41,45 @@
     .mark-cell.unset { font-size: 11px; }
     .mark-cell:hover { box-shadow: var(--shadow-md); }
 
+    /* ----- 1日 / 1週間 の切り替え ----- */
+    .mode-switch { display: flex; justify-content: center; margin-bottom: 12px; }
+    .mode-switch button {
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+      font-family: var(--font-base); font-size: 14px; font-weight: 700;
+      padding: 7px 18px; border: 1px solid var(--color-primary);
+      background: var(--color-surface); color: var(--color-primary-dark);
+    }
+    .mode-switch button:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+    .mode-switch button:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
+    .mode-switch button.active { background: var(--color-primary); color: #fff; }
+
+    /* ----- 1週間の表 ----- */
+    .count-table th.d { text-align: left; font-size: 13px; font-weight: 700; color: var(--color-text); white-space: nowrap; }
+    .count-table th.d.sat, .week-table th.sat { color: var(--color-sat); }
+    .count-table th.d.sun, .week-table th.sun { color: var(--color-danger); }
+    .count-table tr.today th.d::after { content: " きょう"; font-size: 10px; color: var(--color-primary-dark); }
+    .week-scroll { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+    .week-table { width: 100%; min-width: 300px; border-collapse: collapse; table-layout: fixed; }
+    .week-table th, .week-table td { border-bottom: 1px solid var(--color-border); padding: 5px 1px; text-align: center; vertical-align: top; }
+    .week-table thead th { font-size: 10px; color: var(--color-text-muted); line-height: 1.3; }
+    .week-table thead th.today { background: var(--color-primary-soft); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+    .week-table th.name {
+      position: sticky; left: 0; z-index: 1; background: var(--color-surface);
+      width: 54px; text-align: left; font-size: 11px; font-weight: 700; color: var(--color-text); white-space: normal; word-break: break-all;
+    }
+    .week-table th.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .wk-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .mini {
+      width: 100%; max-width: 46px; height: 24px; padding: 0; cursor: pointer;
+      font-family: var(--font-base); font-size: 10px; font-weight: 700; line-height: 1; letter-spacing: -0.5px;
+      border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    }
+    .mini:hover { box-shadow: var(--shadow-md); }
+    .week-table td.out { color: var(--color-text-muted); font-size: 11px; vertical-align: middle; }
+    .wk-sum { font-size: 10px; line-height: 1.5; color: var(--color-text-muted); white-space: nowrap; }
+    .wk-sum b { color: var(--color-primary-dark); font-size: 12px; }
+    .week-table tfoot th, .week-table tfoot td { border-bottom: none; border-top: 2px solid var(--color-border); }
+
     /* 色の説明 */
     .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 11px; color: var(--color-text-muted); margin: -6px 0 8px; }
     .legend span { display: inline-flex; align-items: center; gap: 4px; }
@@ -68,10 +107,15 @@
     </div>
 
     <div class="card">
+      <!-- 1日 / 1週間 -->
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="表示する期間">
+        <button type="button" data-mode="day"><i class="ti ti-calendar-event"></i>1日</button>
+        <button type="button" data-mode="week"><i class="ti ti-calendar-week"></i>1週間</button>
+      </div>
       <div class="date-row">
-        <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前へ"><i class="ti ti-chevron-left"></i></button>
         <span class="date-label" id="dateLabel"></span>
-        <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次へ"><i class="ti ti-chevron-right"></i></button>
         <input type="date" id="dateInput" aria-label="日にち">
         <button type="button" class="btn btn-ghost btn-sm" id="todayBtn">今日</button>
       </div>
@@ -82,7 +126,7 @@
 
     <!-- まとめ(ハウス × 食事の ○ の数) -->
     <div class="card" id="sumCard">
-      <h2><i class="ti ti-sum"></i>まとめ</h2>
+      <h2><i class="ti ti-sum"></i><span id="sumTitle">まとめ</span></h2>
       <table class="count-table" id="sumTable"></table>
     </div>
 
@@ -100,11 +144,13 @@
   const $ = function (id) { return document.getElementById(id); };
   const esc = App.escapeHtml;
 
-  let date = App.todayJST();
-  let plans = {};
   const VIEW_KEY = 'gh_meals_view';
+  const MODE_KEY = 'gh_meals_mode';
+  let date = App.todayJST();
+  let mode = 'day';   // 'day'(1日)か 'week'(1週間。月曜〜日曜)
   let view = 'sum';   // 'sum'(まとめ)か、ハウスの id
-  let byWho = {};    // 誰が選んだか(resident / staff)
+  let plans = {};
+  let byWho = {};     // 誰が選んだか(resident / staff)
 
   // 色の説明(ハウスごとのカードの中に出す)
   const LEGEND = '<div class="legend">' +
@@ -115,83 +161,184 @@
 
   function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
 
+  // ===== 期間 =====
+  // その週の月曜
+  function weekStart(d) { const w = Meals.dow(d); return Meals.addDays(d, w === 0 ? -6 : 1 - w); }
+  function days() {
+    if (mode === 'day') return [date];
+    const out = [], m = weekStart(date);
+    for (let i = 0; i < 7; i++) out.push(Meals.addDays(m, i));
+    return out;
+  }
+
   // その日にハウスの部屋に入居している人(部屋の順)
-  function peopleOfHouse(hid) {
+  function peopleOfHouse(hid, d) {
     const out = [];
     Rooms.roomsOf(hid, true).forEach(function (room) {
-      const a = Rooms.occupantOf(room.id, date);
+      const a = Rooms.occupantOf(room.id, d);
       const p = a ? Rooms.resident(a.resident_id) : null;
       if (p) out.push({ resident: p, room: room });
     });
     return out;
   }
+  // 期間のどこかで入居している人(1週間の表の行)
+  function peopleOfWeek(hid, ds) {
+    const seen = {}, out = [];
+    ds.forEach(function (d) {
+      peopleOfHouse(hid, d).forEach(function (x) { if (!seen[x.resident.id]) { seen[x.resident.id] = true; out.push(x); } });
+    });
+    return out;
+  }
 
-  // ある人たち・ある食事の ○ × 未 の数
-  function countOf(people, meal) {
+  // ある人たち・ある日・ある食事の ○ × 未 の数
+  function countOf(people, d, meal) {
     const c = { eat: 0, skip: 0, unset: 0 };
-    people.forEach(function (x) { c[Meals.markClass(plans[Meals.key(x.resident.id, date, meal)])]++; });
+    people.forEach(function (x) { c[Meals.markClass(plans[Meals.key(x.resident.id, d, meal)])]++; });
     return c;
   }
+  function addCount(a, b) { return { eat: a.eat + b.eat, skip: a.skip + b.skip, unset: a.unset + b.unset }; }
   function countCell(c) {
     return '<td><span class="count-big">' + c.eat + '<small>食</small></span>' +
       '<span class="count-sub">× ' + c.skip + '・未 ' + c.unset + '</span></td>';
   }
+  const NONE_CELL = '<td><span class="count-none">—</span></td>';
 
+  function markButton(cls, rid, d, meal, label, text) {
+    return '<button type="button" class="' + cls + '" data-resident="' + esc(rid) + '" data-date="' + d + '" data-meal="' + meal + '" aria-label="' + esc(label) + '">' + text + '</button>';
+  }
+
+  // ===== 描く =====
   function render() {
+    const ds = days();
+    const today = App.todayJST();
     $('dateInput').value = date;
     const lbl = $('dateLabel');
-    lbl.textContent = Meals.dateLabel(date) + (date === App.todayJST() ? ' きょう' : '');
-    lbl.className = 'date-label ' + Meals.dayClass(date);
+    if (mode === 'day') {
+      lbl.textContent = Meals.dateLabel(date) + (date === today ? ' きょう' : '');
+      lbl.className = 'date-label ' + Meals.dayClass(date);
+    } else {
+      lbl.textContent = Meals.dateLabel(ds[0]) + '〜' + Meals.dateLabel(ds[6]);
+      lbl.className = 'date-label';
+    }
+    $('modeSwitch').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.mode === mode); });
 
-    const meals = Meals.KINDS.filter(function (k) { return Meals.hasMeal(date, k.key); });
-    const head = '<thead><tr><th class="name"></th>' + meals.map(function (k) {
-      return '<th><i class="ti ' + k.icon + '"></i> ' + k.label + '</th>';
-    }).join('') + '</tr></thead>';
-
-    // まとめ
-    const houses = activeHouses().map(function (h) { return { house: h, people: peopleOfHouse(h.id) }; });
-    if (view !== 'sum' && !houses.some(function (x) { return x.house.id === view; })) view = 'sum';
-
-    // 切り替えのチップ
-    $('viewChips').innerHTML = [{ id: 'sum', name: 'まとめ' }].concat(houses.map(function (x) { return { id: x.house.id, name: x.house.name }; })).map(function (it) {
+    const houses = activeHouses();
+    if (view !== 'sum' && !houses.some(function (h) { return h.id === view; })) view = 'sum';
+    $('viewChips').innerHTML = [{ id: 'sum', name: 'まとめ' }].concat(houses).map(function (it) {
       return '<button type="button" data-view="' + esc(it.id) + '"' + (it.id === view ? ' class="active"' : '') + '>' +
         (it.id === 'sum' ? '<i class="ti ti-sum"></i> ' : '') + esc(it.name) + '</button>';
     }).join('');
     $('sumCard').hidden = view !== 'sum';
-    let sum = head + '<tbody>';
-    houses.forEach(function (x) {
-      sum += '<tr><th class="name"><button type="button" class="house-link" data-view="' + esc(x.house.id) + '">' + esc(x.house.name) + '</button><small>入居 ' + x.people.length + '人</small></th>' +
-        meals.map(function (k) { return countCell(countOf(x.people, k.key)); }).join('') + '</tr>';
-    });
-    const all = houses.reduce(function (a, x) { return a.concat(x.people); }, []);
-    sum += '</tbody><tfoot><tr><th class="name">合計<small>入居 ' + all.length + '人</small></th>' +
-      meals.map(function (k) { return countCell(countOf(all, k.key)); }).join('') + '</tr></tfoot>';
-    $('sumTable').innerHTML = houses.length ? sum : '<tr><td class="empty-msg">ハウスが登録されていません</td></tr>';
+    $('sumTitle').textContent = mode === 'day' ? 'まとめ' : 'まとめ(1週間・全ハウス)';
 
-    // 選んだハウスだけ出す
-    $('houseCards').innerHTML = houses.filter(function (x) { return x.house.id === view; }).map(function (x) {
-      let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(x.house.name) + '</h2>';
-      if (!x.people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
-      t += LEGEND + '<table class="count-table">' + head + '<tbody>';
-      x.people.forEach(function (p) {
-        t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
-          meals.map(function (k) {
-            const key = Meals.key(p.resident.id, date, k.key);
-            const v = plans[key];
-            return '<td><button type="button" class="mark-cell meal-mark ' + Meals.cellClass(v, byWho[key]) + '" data-resident="' + esc(p.resident.id) + '" data-meal="' + k.key + '"' +
-              ' aria-label="' + esc(p.resident.name) + ' さん ' + k.label + ' ' + Meals.mark(v) + '">' + Meals.mark(v) + '</button></td>';
-          }).join('') + '</tr>';
-      });
-      t += '</tbody><tfoot><tr><th class="name">○ の数</th>' +
-        meals.map(function (k) { return countCell(countOf(x.people, k.key)); }).join('') + '</tr></tfoot></table></div>';
-      return t;
-    }).join('');
+    if (view === 'sum') {
+      $('houseCards').innerHTML = '';
+      if (!houses.length) { $('sumTable').innerHTML = '<tr><td class="empty-msg">ハウスが登録されていません</td></tr>'; return; }
+      $('sumTable').innerHTML = mode === 'day' ? sumDay(houses) : sumWeek(houses, ds);
+    } else {
+      const h = houses.find(function (x) { return x.id === view; });
+      $('houseCards').innerHTML = mode === 'day' ? houseDay(h) : houseWeek(h, ds);
+    }
   }
 
+  function mealHead(meals, first) {
+    return '<thead><tr><th class="name">' + (first || '') + '</th>' + meals.map(function (k) {
+      return '<th><i class="ti ' + k.icon + '"></i> ' + k.label + '</th>';
+    }).join('') + '</tr></thead>';
+  }
+
+  // 1日のまとめ: ハウス × 食事
+  function sumDay(houses) {
+    const meals = Meals.KINDS.filter(function (k) { return Meals.hasMeal(date, k.key); });
+    let t = mealHead(meals) + '<tbody>';
+    let all = [];
+    houses.forEach(function (h) {
+      const people = peopleOfHouse(h.id, date);
+      all = all.concat(people);
+      t += '<tr><th class="name"><button type="button" class="house-link" data-view="' + esc(h.id) + '">' + esc(h.name) + '</button><small>入居 ' + people.length + '人</small></th>' +
+        meals.map(function (k) { return countCell(countOf(people, date, k.key)); }).join('') + '</tr>';
+    });
+    return t + '</tbody><tfoot><tr><th class="name">合計<small>入居 ' + all.length + '人</small></th>' +
+      meals.map(function (k) { return countCell(countOf(all, date, k.key)); }).join('') + '</tr></tfoot>';
+  }
+
+  // 1週間のまとめ: 日 × 食事(全ハウスの合計)
+  function sumWeek(houses, ds) {
+    const today = App.todayJST();
+    let t = mealHead(Meals.KINDS) + '<tbody>';
+    const total = {};
+    Meals.KINDS.forEach(function (k) { total[k.key] = { eat: 0, skip: 0, unset: 0 }; });
+    ds.forEach(function (d) {
+      const all = houses.reduce(function (a, h) { return a.concat(peopleOfHouse(h.id, d)); }, []);
+      t += '<tr' + (d === today ? ' class="today"' : '') + '><th class="name d ' + Meals.dayClass(d) + '">' + Meals.dateLabel(d) + '</th>' +
+        Meals.KINDS.map(function (k) {
+          if (!Meals.hasMeal(d, k.key)) return NONE_CELL;
+          const c = countOf(all, d, k.key);
+          total[k.key] = addCount(total[k.key], c);
+          return countCell(c);
+        }).join('') + '</tr>';
+    });
+    return t + '</tbody><tfoot><tr><th class="name">週の合計</th>' +
+      Meals.KINDS.map(function (k) { return countCell(total[k.key]); }).join('') + '</tr></tfoot>';
+  }
+
+  // 1日のハウス: 利用者さん × 食事(押して変えられる)
+  function houseDay(h) {
+    const people = peopleOfHouse(h.id, date);
+    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>';
+    if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
+    const meals = Meals.KINDS.filter(function (k) { return Meals.hasMeal(date, k.key); });
+    t += LEGEND + '<table class="count-table">' + mealHead(meals) + '<tbody>';
+    people.forEach(function (p) {
+      t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
+        meals.map(function (k) {
+          const key = Meals.key(p.resident.id, date, k.key), v = plans[key];
+          return '<td>' + markButton('mark-cell meal-mark ' + Meals.cellClass(v, byWho[key]), p.resident.id, date, k.key,
+            p.resident.name + ' さん ' + k.label + ' ' + Meals.mark(v), Meals.mark(v)) + '</td>';
+        }).join('') + '</tr>';
+    });
+    return t + '</tbody><tfoot><tr><th class="name">○ の数</th>' +
+      meals.map(function (k) { return countCell(countOf(people, date, k.key)); }).join('') + '</tr></tfoot></table></div>';
+  }
+
+  // 1週間のハウス: 利用者さん × 日(1マスに朝・(昼)・夕。押して変えられる)
+  function houseWeek(h, ds) {
+    const today = App.todayJST();
+    const people = peopleOfWeek(h.id, ds);
+    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '(1週間)</h2>';
+    if (!people.length) return t + '<div class="empty-msg">この週に入居している利用者さんはいません</div></div>';
+    t += LEGEND + '<div class="week-scroll"><table class="week-table"><thead><tr><th class="name"></th>' +
+      ds.map(function (d) {
+        return '<th class="' + Meals.dayClass(d) + (d === today ? ' today' : '') + '">' + Meals.dateLabel(d).replace('(', '<br>(') + '</th>';
+      }).join('') + '</tr></thead><tbody>';
+    people.forEach(function (p) {
+      t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
+      ds.forEach(function (d) {
+        // その日はこのハウスにいない(入居前・退居後・ほかのハウス)
+        if (!peopleOfHouse(h.id, d).some(function (x) { return x.resident.id === p.resident.id; })) { t += '<td class="out">—</td>'; return; }
+        t += '<td><div class="wk-cell">' + Meals.KINDS.filter(function (k) { return Meals.hasMeal(d, k.key); }).map(function (k) {
+          const key = Meals.key(p.resident.id, d, k.key), v = plans[key];
+          return markButton('mini meal-mark ' + Meals.cellClass(v, byWho[key]), p.resident.id, d, k.key,
+            p.resident.name + ' さん ' + Meals.dateLabel(d) + ' ' + k.label + ' ' + Meals.mark(v), k.short + Meals.mark(v));
+        }).join('') + '</div></td>';
+      });
+      t += '</tr>';
+    });
+    t += '</tbody><tfoot><tr><th class="name">○ の数</th>' + ds.map(function (d) {
+      const ps = peopleOfHouse(h.id, d);
+      return '<td><div class="wk-sum">' + Meals.KINDS.filter(function (k) { return Meals.hasMeal(d, k.key); }).map(function (k) {
+        return k.short + ' <b>' + countOf(ps, d, k.key).eat + '</b>';
+      }).join('<br>') + '</div></td>';
+    }).join('') + '</tr></tfoot></table></div></div>';
+    return t;
+  }
+
+  // ===== 読み込み・変更 =====
   async function load() {
     App.setStatus($('loadStatus'), '');
+    const ds = days();
     try {
-      const rows = await App.rpc('get_meal_plans', { p_from: date, p_to: date });
+      const rows = await App.rpc('get_meal_plans', { p_from: ds[0], p_to: ds[ds.length - 1] });
       plans = Meals.index(rows);
       byWho = Meals.byIndex(rows);
     } catch (err) {
@@ -207,14 +354,15 @@
   async function onMarkClick(e) {
     const b = e.target.closest('button[data-meal]');
     if (!b) return;
-    const k = Meals.key(b.dataset.resident, date, b.dataset.meal);
+    const d = b.dataset.date;
+    const k = Meals.key(b.dataset.resident, d, b.dataset.meal);
     const before = plans[k], beforeBy = byWho[k];
     const next = before === true ? false : true;
     plans[k] = next; byWho[k] = 'staff';
     render();
     App.setStatus($('loadStatus'), '');
     try {
-      await App.rpc('set_meal_plan', { p_resident_id: b.dataset.resident, p_date: date, p_meal: b.dataset.meal, p_will_eat: next, p_by: 'staff' });
+      await App.rpc('set_meal_plan', { p_resident_id: b.dataset.resident, p_date: d, p_meal: b.dataset.meal, p_will_eat: next, p_by: 'staff' });
     } catch (err) {
       console.error(err);
       if (before === undefined) { delete plans[k]; delete byWho[k]; } else { plans[k] = before; byWho[k] = beforeBy; }
@@ -233,11 +381,19 @@
     active: 'meals',
     onReady: async function () {
       await Rooms.load();
-      $('prevDay').addEventListener('click', function () { goDate(Meals.addDays(date, -1)); });
-      $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, 1)); });
+      // 前へ・次へは、1日なら 1 日、1週間なら 7 日
+      $('prevDay').addEventListener('click', function () { goDate(Meals.addDays(date, mode === 'day' ? -1 : -7)); });
+      $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, mode === 'day' ? 1 : 7)); });
       $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
       $('dateInput').addEventListener('change', function () { goDate(this.value); });
       $('houseCards').addEventListener('click', onMarkClick);
+      $('modeSwitch').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-mode]');
+        if (!b || b.dataset.mode === mode) return;
+        mode = b.dataset.mode;
+        try { localStorage.setItem(MODE_KEY, mode); } catch (e2) { /* noop */ }
+        load();
+      });
       // チップと、まとめのハウス名で切り替える
       function onView(e) {
         const b = e.target.closest('button[data-view]');
@@ -248,7 +404,10 @@
       }
       $('viewChips').addEventListener('click', onView);
       $('sumTable').addEventListener('click', onView);
-      try { view = localStorage.getItem(VIEW_KEY) || 'sum'; } catch (e) { /* noop */ }
+      try {
+        view = localStorage.getItem(VIEW_KEY) || 'sum';
+        mode = localStorage.getItem(MODE_KEY) === 'week' ? 'week' : 'day';
+      } catch (e) { /* noop */ }
       await load();
     },
   });
