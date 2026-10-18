@@ -41,7 +41,8 @@
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--color-primary-soft); color: var(--color-primary-dark);
     }
-    .person-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    /* 選んでいる利用者さんは薄いオレンジ(上の帯と同じ色) */
+    .person-btn.active { background: var(--color-work-soft); border-color: var(--color-work); color: var(--color-work-dark); box-shadow: inset 0 0 0 1px var(--color-work); }
     /* 空室(押せない) */
     .person-btn.vacant { cursor: default; background: transparent; border-style: dashed; color: var(--color-text-muted); }
     .person-btn.vacant .p-name { font-weight: 500; }
@@ -56,8 +57,8 @@
     .visit-box .tl-track { height: 18px; }
     .visit-box .tl-time { font-size: 10px; margin-top: 1px; }
     .visit-box .empty-msg { padding: 8px; font-size: 12px; }
-    .person-btn.active .p-room { color: #fff; opacity: 0.85; }
-    .person-btn.active .p-count { background: var(--color-surface); }
+    .person-btn.active .p-room { color: var(--color-work-dark); }
+    .person-btn.active .p-count { background: var(--color-surface); color: var(--color-work-dark); }
 
     /* ----- 時刻のホイール(iPhone のアラーム風) ----- */
     .wheel-wrap { display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -168,6 +169,12 @@
     }
     .ctx-bar.show { transform: none; visibility: visible; }
     .ctx-bar .inner { max-width: 1100px; margin: 0 auto; padding: 10px 12px; }
+    /* 利用者さんを選んでいるときは、選んだチップと同じ薄いオレンジ */
+    .ctx-bar.working { background: var(--color-work-soft); border-bottom: 2px solid var(--color-work); }
+    .ctx-bar.working .ctx-line,
+    .ctx-bar.working .ctx-line i,
+    .ctx-bar.working .ctx-line .today,
+    .ctx-bar.working .ctx-line .sep { color: var(--color-work-dark); }
     /* 利用者さんを選んで一覧へ移るとき、上の 2 本の帯に隠れないように */
     #listCard { scroll-margin-top: calc(var(--gtool-h) + 52px); }
 
@@ -450,6 +457,7 @@
   function renderCtx() {
     const p = residentId ? Rooms.resident(residentId) : null;
     $('ctxBarInner').innerHTML = ctxLine(p);
+    $('ctxBar').classList.toggle('working', !!p);
     // 新しい入力のダイアログには「〇〇さんの記録を入力中です」をオレンジで出す
     $('inputCtx').innerHTML = (p ? '<div class="ctx-doing"><i class="ti ti-pencil"></i>' + esc(p.name) + ' さんの記録を入力中です</div>' : '') + ctxLine();
     $('editCtx').innerHTML = ctxLine();
