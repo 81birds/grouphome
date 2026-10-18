@@ -39,6 +39,9 @@
       font-family: var(--font-base); font-size: 18px; font-weight: 700;
     }
     .mark-cell.unset { font-size: 11px; }
+    /* 平日の昼(食事なし) */
+    .mark-cell.mark-none { cursor: default; background: var(--color-surface-alt); color: var(--color-text-muted); border-color: transparent; opacity: 0.6; }
+    .mark-cell.mark-none:hover { box-shadow: none; }
     .mark-cell:hover { box-shadow: var(--shadow-md); }
 
     /* ----- 1日 / 1週間 の切り替え ----- */
@@ -257,17 +260,19 @@
 
   // 1日のまとめ: ハウス × 食事
   function sumDay(houses) {
-    const meals = Meals.KINDS.filter(function (k) { return Meals.hasMeal(date, k.key); });
+    // 平日も昼食の列は出し、「-」をグレーで(ほかの表と列をそろえる)
+    const meals = Meals.KINDS;
+    const cell = function (people, k) { return Meals.hasMeal(date, k.key) ? countCell(countOf(people, date, k.key)) : NONE_CELL; };
     let t = mealHead(meals) + '<tbody>';
     let all = [];
     houses.forEach(function (h) {
       const people = peopleOfHouse(h.id, date);
       all = all.concat(people);
       t += '<tr><th class="name"><button type="button" class="house-link" data-view="' + esc(h.id) + '">' + esc(h.name) + '</button><small>入居 ' + people.length + '人</small></th>' +
-        meals.map(function (k) { return countCell(countOf(people, date, k.key)); }).join('') + '</tr>';
+        meals.map(function (k) { return cell(people, k); }).join('') + '</tr>';
     });
     return t + '</tbody><tfoot><tr><th class="name">合計<small>入居 ' + all.length + '人</small></th>' +
-      meals.map(function (k) { return countCell(countOf(all, date, k.key)); }).join('') + '</tr></tfoot>';
+      meals.map(function (k) { return cell(all, k); }).join('') + '</tr></tfoot>';
   }
 
   // 1週間のまとめ: 日 × 食事(全ハウスの合計)
@@ -295,18 +300,20 @@
     const people = peopleOfHouse(h.id, date);
     let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>';
     if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
-    const meals = Meals.KINDS.filter(function (k) { return Meals.hasMeal(date, k.key); });
+    // 平日も昼食の列は出し、「-」をグレーで
+    const meals = Meals.KINDS;
     t += LEGEND + '<table class="count-table">' + mealHead(meals) + '<tbody>';
     people.forEach(function (p) {
       t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
         meals.map(function (k) {
+          if (!Meals.hasMeal(date, k.key)) return '<td><span class="mark-cell mark-none">-</span></td>';
           const key = Meals.key(p.resident.id, date, k.key), v = plans[key];
           return '<td>' + markButton('mark-cell meal-mark ' + Meals.cellClass(v, byWho[key]), p.resident.id, date, k.key,
             p.resident.name + ' さん ' + k.label + ' ' + Meals.mark(v), Meals.mark(v)) + '</td>';
         }).join('') + '</tr>';
     });
     return t + '</tbody><tfoot><tr><th class="name">○ の数</th>' +
-      meals.map(function (k) { return countCell(countOf(people, date, k.key)); }).join('') + '</tr></tfoot></table></div>';
+      meals.map(function (k) { return Meals.hasMeal(date, k.key) ? countCell(countOf(people, date, k.key)) : NONE_CELL; }).join('') + '</tr></tfoot></table></div>';
   }
 
   // 1週間のハウス: 利用者さん × 日(1マスに朝・(昼)・夕。押して変えられる)
