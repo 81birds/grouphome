@@ -25,7 +25,7 @@
     { key: 'records',    file: 'records.html',    icon: 'ti-notebook',   label: '日々の記録', sub: '食事・外出・お薬の記録', ready: true },
     { key: 'shifts',     file: 'shifts.html',     icon: 'ti-calendar-time', label: '勤務表',  sub: '1か月のシフト・個人の勤務', ready: true },
     { key: 'meals',      file: 'meals.html',      icon: 'ti-tools-kitchen-2', label: '食数管理', sub: 'ハウスごとの食べる・食べない', ready: true },
-    { key: 'vitals',     file: 'vitals.html',     icon: 'ti-heartbeat',  label: 'バイタル',   sub: '体温・血圧・食事量など', ready: false },
+    { key: 'vitals',     file: 'vitals.html',     icon: 'ti-heartbeat',  label: 'バイタル',   sub: '体温・血圧・脈拍・入浴', ready: true },
     { key: 'medication', file: 'medication.html', icon: 'ti-pill',       label: '服薬',       sub: '服薬チェック',           ready: false },
     { key: 'handover',   file: 'handover.html',   icon: 'ti-messages',   label: '申し送り',   sub: 'スタッフ間の連絡',       ready: false },
     { key: 'residents',  file: 'residents.html',  icon: 'ti-users',      label: '利用者さんDB',   sub: '利用者さん一覧・基本情報',   ready: true },

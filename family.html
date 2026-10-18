@@ -65,6 +65,17 @@
     .out-hist li { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid var(--color-border); }
     .out-hist .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3em; }
 
+    /* ----- バイタル ----- */
+    .vt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .vt-grid .full { grid-column: 1 / -1; }
+    .vt-grid input { font-size: 18px; padding: 9px 10px; text-align: center; }
+    .bp-row { display: flex; align-items: center; gap: 6px; }
+    .bp-row span { font-size: 18px; color: var(--color-text-muted); }
+    .bath-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .vt-hist li { flex-wrap: wrap; align-items: center; }
+    .vt-hist .vals { flex: 1; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+    .vt-hist .vals small { color: var(--color-text-muted); }
+
     /* ----- 食事表 ----- */
     .meal-note { font-size: 12px; color: var(--color-text-muted); margin: -6px 0 10px; }
     .meal-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -140,6 +151,42 @@
         <div class="empty-msg">まだ予定はありません</div>
       </div>
 
+      <!-- バイタル(バイタルの画面 vitals.html で見る) -->
+      <div class="card">
+        <h2><i class="ti ti-heartbeat"></i>バイタル</h2>
+        <p class="meal-note">はかったら入れてください。はかっていないものは空のままでかまいません</p>
+        <div class="vt-grid">
+          <div class="field">
+            <label for="vtTime">はかった時間</label>
+            <input type="time" id="vtTime">
+          </div>
+          <div class="field">
+            <label for="vtTemp">体温(℃)</label>
+            <input type="number" id="vtTemp" inputmode="decimal" step="0.1" min="34" max="42" placeholder="36.5">
+          </div>
+          <div class="field">
+            <label for="vtHigh">血圧(上 / 下)</label>
+            <div class="bp-row">
+              <input type="number" id="vtHigh" inputmode="numeric" min="50" max="260" placeholder="120" aria-label="血圧の上">
+              <span>/</span>
+              <input type="number" id="vtLow" inputmode="numeric" min="30" max="160" placeholder="80" aria-label="血圧の下">
+            </div>
+          </div>
+          <div class="field">
+            <label for="vtPulse">脈拍(回/分)</label>
+            <input type="number" id="vtPulse" inputmode="numeric" min="30" max="200" placeholder="70">
+          </div>
+        </div>
+        <p class="out-label">きのう、お風呂かシャワーに入りましたか?(どちらかを押す)</p>
+        <div class="bath-row" id="bathRow">
+          <button type="button" class="dest-btn" data-bath="bath"><i class="ti ti-bath"></i>お風呂</button>
+          <button type="button" class="dest-btn" data-bath="shower"><i class="ti ti-droplet"></i>シャワー</button>
+        </div>
+        <button type="button" class="btn btn-block out-btn" id="vtSave"><i class="ti ti-check"></i>記録する</button>
+        <div id="vtStatus" class="status-msg center"></div>
+        <ul class="out-hist vt-hist" id="vtHist"></ul>
+      </div>
+
       <!-- 外出・もどり(日々の記録に「外出」「もどり」として残る) -->
       <div class="card">
         <h2><i class="ti ti-door-exit"></i>外出・もどり</h2>
@@ -177,6 +224,7 @@
 <script src="js/rooms.js"></script>
 <script src="js/staffday.js"></script>
 <script src="js/meals.js"></script>
+<script src="js/vitals.js"></script>
 <script>
   const DAYS = 14;                       // 食事表は今日から 2 週間
   const ME_KEY = 'gh_family_resident';   // この端末で選んだ利用者さん
@@ -191,6 +239,8 @@
   let byWho = {};                        // 誰が選んだか(スタッフが変えたものは青)
   let outRecs = [];                      // きょうの「外出」「もどり」(この人の分)
   let dest = null;                       // 選んでいる行き先
+  let vitals = [];                       // きょうのバイタル(この人の分)
+  let bath = null;                       // 前日の入浴(bath / shower)
 
   // 外出の行き先。日々の記録には kind「外出」、コメントに行き先を入れる
   const DESTS = [
@@ -258,11 +308,94 @@
     dest = null;
     $('destOther').value = '';
     App.setStatus($('outStatus'), '');
-    await Promise.all([StaffDay.loadShifts(today), loadPlans(), loadOut()]);
+    resetVitalForm();
+    await Promise.all([StaffDay.loadShifts(today), loadPlans(), loadOut(), loadVitals()]);
     $('visitTitle').textContent = StaffDay.title(today);
     $('visitSum').textContent = StaffDay.render($('visitList'), houseId, today);
     renderOut();
+    renderVitals();
     renderMeals();
+  }
+
+  // ===== バイタル =====
+  function resetVitalForm() {
+    $('vtTime').value = nowTime();
+    ['vtTemp', 'vtHigh', 'vtLow', 'vtPulse'].forEach(function (id) { $(id).value = ''; });
+    bath = null;
+    App.setStatus($('vtStatus'), '');
+  }
+
+  async function loadVitals() {
+    try {
+      vitals = await App.rpc('get_vitals', { p_from: today, p_to: today, p_resident_id: meId });
+    } catch (err) {
+      console.error(err);
+      vitals = [];
+      App.setStatus($('vtStatus'), 'バイタルを読み込めませんでした', 'err');
+    }
+  }
+
+  function renderVitals() {
+    $('bathRow').querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.bath === bath);
+      b.setAttribute('aria-pressed', b.dataset.bath === bath);
+    });
+    $('vtHist').innerHTML = vitals.slice().reverse().map(function (v) {
+      const vals = [];
+      if (v.temperature !== null) vals.push('<span><small>体温</small> ' + esc(Vitals.temp(v.temperature)) + '</span>');
+      if (v.bp_high) vals.push('<span><small>血圧</small> ' + esc(Vitals.bp(v)) + '</span>');
+      if (v.pulse) vals.push('<span><small>脈拍</small> ' + esc(Vitals.pulse(v.pulse)) + '</span>');
+      if (v.bath_prev_day) vals.push('<span><small>きのう</small> ' + esc(Vitals.bath(v.bath_prev_day)) + '</span>');
+      return '<li><span class="t">' + esc(Vitals.time(v.measured_time)) + '</span><span class="vals">' + vals.join('') + '</span>' +
+        '<button type="button" class="btn btn-ghost btn-sm" data-void="' + esc(v.id) + '">取消</button></li>';
+    }).join('');
+  }
+
+  // 数の欄を読む(空なら null)
+  function num(id) { const v = $(id).value.trim(); return v === '' ? null : Number(v); }
+
+  async function onVitalSave() {
+    const st = $('vtStatus');
+    const temp = num('vtTemp'), hi = num('vtHigh'), lo = num('vtLow'), pulse = num('vtPulse');
+    if (!$('vtTime').value) return App.setStatus(st, 'はかった時間を入れてください', 'err');
+    if (temp === null && hi === null && lo === null && pulse === null && !bath) return App.setStatus(st, 'はかった値を入れてください', 'err');
+    if ((hi === null) !== (lo === null)) return App.setStatus(st, '血圧は上と下の両方を入れてください', 'err');
+    const btn = $('vtSave');
+    btn.disabled = true;
+    try {
+      const row = await App.rpc('add_vital', {
+        p_resident_id: meId, p_date: today, p_time: $('vtTime').value,
+        p_temperature: temp, p_bp_high: hi === null ? null : Math.round(hi), p_bp_low: lo === null ? null : Math.round(lo),
+        p_pulse: pulse === null ? null : Math.round(pulse), p_bath: bath, p_by: 'resident',
+      });
+      vitals = vitals.concat([row]);
+    } catch (err) {
+      console.error(err);
+      // 値の範囲など、DB からの説明はそのまま見せる
+      const m = err && err.message ? err.message : '';
+      App.setStatus(st, /入れてください|確かめて/.test(m) ? m : '記録できませんでした。通信状況を確認してください', 'err');
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+    resetVitalForm();
+    App.setStatus(st, 'バイタルを記録しました', 'ok');
+    renderVitals();
+  }
+
+  async function onVitalVoid(id) {
+    const v = vitals.find(function (x) { return x.id === id; });
+    if (!v || !confirm(Vitals.time(v.measured_time) + ' のバイタルを取り消しますか?')) return;
+    try {
+      await App.rpc('void_vital', { p_id: id });
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('vtStatus'), '取り消せませんでした', 'err');
+      return;
+    }
+    vitals = vitals.filter(function (x) { return x.id !== id; });
+    App.setStatus($('vtStatus'), '取り消しました', 'ok');
+    renderVitals();
   }
 
   // ===== 外出・もどり =====
@@ -421,6 +554,17 @@
         if (dest === 'その他') $('destOther').focus();
       });
       $('goBtn').addEventListener('click', onGo);
+      $('bathRow').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-bath]');
+        if (!b) return;
+        bath = bath === b.dataset.bath ? null : b.dataset.bath;   // もう一度押すと外れる
+        renderVitals();
+      });
+      $('vtSave').addEventListener('click', onVitalSave);
+      $('vtHist').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-void]');
+        if (b) onVitalVoid(b.dataset.void);
+      });
       $('returnBtn').addEventListener('click', function () { addOut('もどり', null); });
 
       // URL か、この端末で前に選んだ人がいれば、その人の画面から

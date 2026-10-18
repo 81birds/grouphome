@@ -23,14 +23,16 @@ shifts.html       勤務表。タブで「勤務表(月の表・ダイアログ�
                   個人の勤務は縦=時間・横=施設のチェック表。勤務の入力はここが基本。スマホ向け(?tab=my&staff=&date= で直接開ける)
 myshift.html      前のブックマーク用。shifts.html の「個人の勤務」タブへ転送するだけ
 records.html      日々の記録(施設→本日のスタッフを表示→利用者→その日の記録→「新しい入力」のダイアログで時刻ホイール・内容チップ・コメント。スマホ向け)
-family.html       利用者さんの画面(作成中)。ハウス→名前を選ぶとその人の画面: 本日のスタッフ・本日の予定(まだ空)・外出・もどり・食事表(○×)。スマホ向け
+family.html       利用者さんの画面(作成中)。ハウス→名前を選ぶとその人の画面: 本日のスタッフ・本日の予定(まだ空)・バイタル・外出・もどり・食事表(○×)。スマホ向け
+vitals.html       バイタル。日付とハウスを選んで、利用者さんが入れた体温・血圧・脈拍・前日の入浴を見る。目安を外れた値は赤
 meals.html        食数管理。「1日 / 1週間(月〜日)」と「まとめ / 各ハウス」を切り替えて、○ の数と利用者さんごとの ○×(スタッフも変えられる)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
 js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html・residents.html・records.html・family.html・meals.html で使う
 js/staffday.js    本日のスタッフ(その日・その施設の勤務の帯。window.StaffDay)。records.html・family.html で使う
-js/meals.js       食事の予定の共通処理(window.Meals)。family.html・meals.html で使う
+js/meals.js       食事の予定の共通処理(window.Meals)。family.html・meals.html で使う(日付の表示にも)
+js/vitals.js      バイタルの共通処理(window.Vitals。表示と注意の目安 LIMITS)。family.html・vitals.html で使う
 sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ```
 
@@ -115,6 +117,13 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 利用者さんの画面で、行き先(通所・会社・買い物・散歩・その他)を選んで「外出する」、帰ったら「もどりました」
 - 日々の記録の `daily_records` にそのまま入れる(kind「外出」+ コメントに行き先 / kind「もどり」、時刻は押したとき)。だから日々の記録の画面にも出る
 - 外出中かどうかは、その日のその人の最後の記録が「外出」かどうかで決める。行き先は `family.html` の `DESTS`
+
+## バイタルのルール
+
+- 1 行は `vitals`(resident_id・measured_date・measured_time・体温・血圧の上下・脈拍・bath_prev_day・entered_by)。はかったものだけ入れる(1 つ以上必要。血圧は上下そろえる)
+- 利用者さんの画面で入れ、バイタル(vitals.html)で見る。前日の入浴は お風呂(bath)/ シャワー(shower)/ 空
+- 注意の目安は `js/vitals.js` の `LIMITS`(体温 37.5℃ 以上など)。医療の判断ではなく、気づくための目安
+- 記録は消さない。間違いは `void_vital` で取り消す(voided_at)
 
 ## 食事の予定のルール
 

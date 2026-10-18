@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>バイタル</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .date-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .date-row input[type="date"] { width: auto; font-size: 14px; }
+    .date-row .date-label { font-size: 15px; font-weight: 700; }
+    .date-row .date-label.sat { color: var(--color-sat); }
+    .date-row .date-label.sun { color: var(--color-danger); }
+    .house-chips { justify-content: center; margin: 12px 0 0; }
+    .house-chips button { font-size: 13px; padding: 7px 14px; }
+
+    .vt-note { font-size: 11px; color: var(--color-text-muted); margin: 10px 0 0; line-height: 1.6; text-align: center; }
+    .vt-note .alert { font-weight: 700; }
+    .vt-sum { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }
+
+    .vt-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+    .vt-table th, .vt-table td { border-bottom: 1px solid var(--color-border); padding: 6px 3px; text-align: center; vertical-align: middle; }
+    .vt-table thead th { font-size: 11px; color: var(--color-text-muted); white-space: normal; line-height: 1.3; }
+    .vt-table th.name { width: 72px; text-align: left; font-size: 12px; font-weight: 700; color: var(--color-text); white-space: normal; }
+    .vt-table th.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .vt-table th.bath, .vt-table td.bath { width: 58px; font-size: 11px; }
+    .vt-table .t { width: 44px; font-variant-numeric: tabular-nums; color: var(--color-text-muted); font-size: 12px; }
+    .vt-table td.v { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .vt-table td.missing { color: var(--color-text-muted); font-size: 12px; text-align: left; padding-left: 10px; }
+    .vt-table tr.cont th, .vt-table tr.cont td { border-top: none; }
+    .alert { color: var(--color-danger); }
+    td.v.alert { font-weight: 700; background: var(--color-danger-soft); border-radius: var(--radius-sm); }
+    .by-staff-tag { display: block; font-size: 9px; color: var(--color-staff); font-weight: 400; }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-heartbeat"></i></span>
+        バイタル
+      </h1>
+      <p>利用者さんが自分の画面で入れた、体温・血圧・脈拍と、前日のお風呂・シャワーを見られます</p>
+    </div>
+
+    <div class="card">
+      <div class="date-row">
+        <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
+        <span class="date-label" id="dateLabel"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
+        <input type="date" id="dateInput" aria-label="日にち">
+        <button type="button" class="btn btn-ghost btn-sm" id="todayBtn">今日</button>
+      </div>
+      <div class="chips house-chips" id="houseChips"></div>
+      <div id="loadStatus" class="status-msg center"></div>
+      <div id="vtNote"></div>
+    </div>
+
+    <div id="houseCards"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/meals.js"></script>
+<script src="js/vitals.js"></script>
+<script>
+  const $ = function (id) { return document.getElementById(id); };
+  const esc = App.escapeHtml;
+  const HOUSE_KEY = 'gh_vitals_house';
+
+  let date = App.todayJST();
+  let houseSel = 'all';   // 'all' か ハウスの id
+  let rows = [];          // その日のバイタル(全員)
+
+  function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
+
+  // その日にハウスの部屋に入居している人(部屋の順)
+  function peopleOfHouse(hid) {
+    const out = [];
+    Rooms.roomsOf(hid, true).forEach(function (room) {
+      const a = Rooms.occupantOf(room.id, date);
+      const p = a ? Rooms.resident(a.resident_id) : null;
+      if (p) out.push({ resident: p, room: room });
+    });
+    return out;
+  }
+
+  // 目安を外れた値は赤
+  function cell(field, value, text) {
+    return '<td class="v' + (Vitals.alert(field, value) ? ' alert' : '') + '">' + (text ? esc(text) : '<span class="muted">-</span>') + '</td>';
+  }
+  function bpCell(r) {
+    if (!r.bp_high) return '<td class="v"><span class="muted">-</span></td>';
+    const a = Vitals.alert('bp_high', r.bp_high) || Vitals.alert('bp_low', r.bp_low);
+    return '<td class="v' + (a ? ' alert' : '') + '">' + esc(Vitals.bp(r)) + '</td>';
+  }
+
+  const NOTE = '<p class="vt-note"><span class="alert">赤</span> は目安を外れた値です' +
+    '(体温 ' + Vitals.LIMITS.temperature.high + '℃ 以上・' + Vitals.LIMITS.temperature.low + '℃ 未満、' +
+    '血圧の上 ' + Vitals.LIMITS.bp_high.high + ' 以上・' + Vitals.LIMITS.bp_high.low + ' 未満、下 ' + Vitals.LIMITS.bp_low.high + ' 以上、' +
+    '脈拍 ' + Vitals.LIMITS.pulse.high + ' 以上・' + Vitals.LIMITS.pulse.low + ' 未満)。入浴はきのうのことです</p>';
+
+  function houseCard(h) {
+    const people = peopleOfHouse(h.id);
+    const done = people.filter(function (p) { return rows.some(function (r) { return r.resident_id === p.resident.id; }); }).length;
+    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) +
+      '<span class="vt-sum">入力 ' + done + ' / ' + people.length + '人</span></h2>';
+    if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
+    t += '<table class="vt-table"><thead><tr><th class="name"></th><th class="t">時間</th><th>体温</th><th>血圧</th><th>脈拍</th><th class="bath">入浴<br>(前日)</th></tr></thead><tbody>';
+    people.forEach(function (p) {
+      const mine = rows.filter(function (r) { return r.resident_id === p.resident.id; });
+      const name = '<th class="name"' + (mine.length > 1 ? ' rowspan="' + mine.length + '"' : '') + '>' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
+      if (!mine.length) {
+        t += '<tr>' + name + '<td class="missing" colspan="5">未入力</td></tr>';
+        return;
+      }
+      mine.forEach(function (r, i) {
+        t += '<tr' + (i > 0 ? ' class="cont"' : '') + '>' + (i === 0 ? name : '') +
+          '<td class="t">' + esc(Vitals.time(r.measured_time)) + (r.entered_by === 'staff' ? '<span class="by-staff-tag">スタッフ</span>' : '') + '</td>' +
+          cell('temperature', r.temperature, Vitals.temp(r.temperature)) +
+          bpCell(r) +
+          cell('pulse', r.pulse, r.pulse ? String(r.pulse) : '') +
+          '<td class="bath">' + (r.bath_prev_day ? esc(Vitals.bath(r.bath_prev_day)) : '<span class="muted">-</span>') + '</td></tr>';
+      });
+    });
+    return t + '</tbody></table></div>';
+  }
+
+  function render() {
+    $('dateInput').value = date;
+    const lbl = $('dateLabel');
+    lbl.textContent = Meals.dateLabel(date) + (date === App.todayJST() ? ' きょう' : '');
+    lbl.className = 'date-label ' + Meals.dayClass(date);
+
+    const houses = activeHouses();
+    if (houseSel !== 'all' && !houses.some(function (h) { return h.id === houseSel; })) houseSel = 'all';
+    $('houseChips').innerHTML = [{ id: 'all', name: 'すべて' }].concat(houses).map(function (h) {
+      return '<button type="button" data-house="' + esc(h.id) + '"' + (h.id === houseSel ? ' class="active"' : '') + '>' + esc(h.name) + '</button>';
+    }).join('');
+    const show = houseSel === 'all' ? houses : houses.filter(function (h) { return h.id === houseSel; });
+    $('houseCards').innerHTML = show.length ? show.map(houseCard).join('') : '<div class="card empty-msg">ハウスが登録されていません</div>';
+  }
+
+  async function load() {
+    App.setStatus($('loadStatus'), '');
+    try {
+      rows = await App.rpc('get_vitals', { p_from: date, p_to: date });
+    } catch (err) {
+      console.error(err);
+      rows = [];
+      App.setStatus($('loadStatus'), 'バイタルを読み込めませんでした', 'err');
+    }
+    render();
+  }
+
+  async function goDate(d) {
+    if (!d) return;
+    date = d;
+    await load();
+  }
+
+  App.boot({
+    active: 'vitals',
+    onReady: async function () {
+      await Rooms.load();
+      $('vtNote').innerHTML = NOTE;
+      $('prevDay').addEventListener('click', function () { goDate(Meals.addDays(date, -1)); });
+      $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, 1)); });
+      $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
+      $('dateInput').addEventListener('change', function () { goDate(this.value); });
+      $('houseChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-house]');
+        if (!b) return;
+        houseSel = b.dataset.house;
+        try { localStorage.setItem(HOUSE_KEY, houseSel); } catch (e2) { /* noop */ }
+        render();
+      });
+      try { houseSel = localStorage.getItem(HOUSE_KEY) || 'all'; } catch (e) { /* noop */ }
+      await load();
+    },
+  });
+</script>
+
+</body>
+</html>
