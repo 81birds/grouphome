@@ -38,6 +38,33 @@
     .me-bar .me-place { font-size: 12px; color: var(--color-text-muted); }
     .me-bar .spacer { flex: 1; }
 
+    /* ----- 外出・もどり ----- */
+    .out-state {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: var(--radius-md); margin-bottom: 12px;
+      font-size: 16px; font-weight: 700;
+      background: var(--color-primary-soft); color: var(--color-primary-dark);
+    }
+    .out-state i { font-size: 22px; }
+    .out-state small { display: block; font-size: 12px; font-weight: 500; }
+    .out-state.out { background: var(--color-work-soft); color: var(--color-work-dark); }
+    .out-label { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+    .dest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+    .dest-btn {
+      font-family: var(--font-base); font-size: 14px; font-weight: 700; cursor: pointer;
+      padding: 10px 4px; border-radius: var(--radius-md);
+      border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .dest-btn i { font-size: 20px; color: var(--color-primary-dark); }
+    .dest-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .dest-btn.active i { color: #fff; }
+    #destOther { margin-bottom: 10px; }
+    .out-btn { padding: 13px 14px; font-size: 16px; }
+    .out-hist { list-style: none; margin: 12px 0 0; padding: 0; font-size: 13px; }
+    .out-hist li { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid var(--color-border); }
+    .out-hist .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3em; }
+
     /* ----- 食事表 ----- */
     .meal-note { font-size: 12px; color: var(--color-text-muted); margin: -6px 0 10px; }
     .meal-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -113,6 +140,25 @@
         <div class="empty-msg">まだ予定はありません</div>
       </div>
 
+      <!-- 外出・もどり(日々の記録に「外出」「もどり」として残る) -->
+      <div class="card">
+        <h2><i class="ti ti-door-exit"></i>外出・もどり</h2>
+        <div class="out-state" id="outState"></div>
+
+        <div id="goBox">
+          <p class="out-label">どこへ行きますか?</p>
+          <div class="dest-grid" id="destGrid"></div>
+          <input type="text" id="destOther" placeholder="行き先(なくてもよい)" hidden>
+          <button type="button" class="btn btn-block out-btn" id="goBtn" disabled><i class="ti ti-walk"></i>外出する</button>
+        </div>
+        <div id="backBox" hidden>
+          <button type="button" class="btn btn-block out-btn" id="returnBtn"><i class="ti ti-home"></i>もどりました</button>
+        </div>
+        <div id="outStatus" class="status-msg center"></div>
+
+        <ul class="out-hist" id="outHist"></ul>
+      </div>
+
       <!-- 食事表 -->
       <div class="card">
         <h2><i class="ti ti-tools-kitchen-2"></i>食事表</h2>
@@ -142,6 +188,17 @@
   let houseId = null;
   let meId = null;
   let plans = {};                        // Meals.index の形
+  let outRecs = [];                      // きょうの「外出」「もどり」(この人の分)
+  let dest = null;                       // 選んでいる行き先
+
+  // 外出の行き先。日々の記録には kind「外出」、コメントに行き先を入れる
+  const DESTS = [
+    { name: '通所',   icon: 'ti-bus' },
+    { name: '会社',   icon: 'ti-briefcase' },
+    { name: '買い物', icon: 'ti-shopping-cart' },
+    { name: '散歩',   icon: 'ti-walk' },
+    { name: 'その他', icon: 'ti-dots' },
+  ];
 
   function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
 
@@ -197,10 +254,87 @@
     $('mePlace').textContent = Rooms.placeText(cur);
     window.scrollTo(0, 0);
 
-    await Promise.all([StaffDay.loadShifts(today), loadPlans()]);
+    dest = null;
+    $('destOther').value = '';
+    App.setStatus($('outStatus'), '');
+    await Promise.all([StaffDay.loadShifts(today), loadPlans(), loadOut()]);
     $('visitTitle').textContent = StaffDay.title(today);
     $('visitSum').textContent = StaffDay.render($('visitList'), houseId, today);
+    renderOut();
     renderMeals();
+  }
+
+  // ===== 外出・もどり =====
+  function hhmm(t) { return String(t).slice(0, 5); }
+  function nowTime() { return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(11, 16); }
+
+  async function loadOut() {
+    try {
+      const recs = await App.rpc('get_daily_records', { p_house_id: houseId, p_date: today });
+      outRecs = recs.filter(function (r) { return r.resident_id === meId && (r.kind === '外出' || r.kind === 'もどり'); });
+    } catch (err) {
+      console.error(err);
+      outRecs = [];
+      App.setStatus($('outStatus'), '外出の記録を読み込めませんでした', 'err');
+    }
+  }
+
+  // 最後が「外出」なら外出中
+  function lastOut() {
+    const last = outRecs[outRecs.length - 1];
+    return last && last.kind === '外出' ? last : null;
+  }
+
+  function renderOut() {
+    const out = lastOut();
+    const st = $('outState');
+    st.className = 'out-state' + (out ? ' out' : '');
+    st.innerHTML = out
+      ? '<i class="ti ti-walk"></i><div>外出中<small>' + esc((out.note || '行き先なし') + '・' + hhmm(out.record_time) + ' から') + '</small></div>'
+      : '<i class="ti ti-home"></i><div>ハウスにいます</div>';
+    $('goBox').hidden = !!out;
+    $('backBox').hidden = !out;
+
+    $('destGrid').innerHTML = DESTS.map(function (d) {
+      return '<button type="button" class="dest-btn' + (d.name === dest ? ' active' : '') + '" data-dest="' + esc(d.name) + '" aria-pressed="' + (d.name === dest) + '">' +
+        '<i class="ti ' + d.icon + '"></i>' + esc(d.name) + '</button>';
+    }).join('');
+    $('destOther').hidden = dest !== 'その他';
+    $('goBtn').disabled = !dest;
+
+    $('outHist').innerHTML = outRecs.slice().reverse().map(function (r) {
+      return '<li><span class="t">' + esc(hhmm(r.record_time)) + '</span><span>' + esc(r.kind) + (r.note ? '(' + esc(r.note) + ')' : '') + '</span></li>';
+    }).join('');
+  }
+
+  async function addOut(kind, note) {
+    const t = nowTime();
+    const btns = [$('goBtn'), $('returnBtn')];
+    btns.forEach(function (b) { b.disabled = true; });
+    try {
+      const added = await App.rpc('add_daily_records', {
+        p_resident_id: meId, p_house_id: houseId, p_date: today, p_time: t, p_kinds: [kind], p_note: note,
+      });
+      outRecs = outRecs.concat(added || []);
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('outStatus'), '記録できませんでした。通信状況を確認してください', 'err');
+      btns.forEach(function (b) { b.disabled = false; });
+      renderOut();
+      return;
+    }
+    $('returnBtn').disabled = false;
+    dest = null;
+    $('destOther').value = '';
+    App.setStatus($('outStatus'), t + ' に「' + kind + '」を記録しました', 'ok');
+    renderOut();
+  }
+
+  function onGo() {
+    if (!dest) return;
+    // その他は、書いてあればその行き先にする
+    const other = $('destOther').value.trim();
+    addOut('外出', dest === 'その他' ? (other ? 'その他: ' + other : 'その他') : dest);
   }
 
   async function loadPlans() {
@@ -275,6 +409,15 @@
         showPick();
       });
       $('mealTable').addEventListener('click', onMealClick);
+      $('destGrid').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-dest]');
+        if (!b) return;
+        dest = dest === b.dataset.dest ? null : b.dataset.dest;
+        renderOut();
+        if (dest === 'その他') $('destOther').focus();
+      });
+      $('goBtn').addEventListener('click', onGo);
+      $('returnBtn').addEventListener('click', function () { addOut('もどり', null); });
 
       // URL か、この端末で前に選んだ人がいれば、その人の画面から
       let want = new URLSearchParams(location.search).get('resident');
