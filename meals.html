@@ -27,8 +27,21 @@
     .count-big small { font-size: 11px; font-weight: 500; margin-left: 1px; }
     .count-sub { display: block; font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
     .count-none { font-size: 12px; color: var(--color-text-muted); }
-    .mark-cell { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-size: 16px; font-weight: 700; }
+    /* 押すと ○ → × → ○ と変えられる */
+    .mark-cell {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 44px; height: 36px; cursor: pointer;
+      border-radius: var(--radius-sm); border: 1px solid var(--color-border);
+      font-family: var(--font-base); font-size: 18px; font-weight: 700;
+    }
     .mark-cell.unset { font-size: 11px; }
+    .mark-cell:hover { box-shadow: var(--shadow-md); }
+
+    /* 色の説明 */
+    .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 11px; color: var(--color-text-muted); margin: -6px 0 8px; }
+    .legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .legend .mark-cell { width: 26px; height: 22px; font-size: 13px; cursor: default; }
+    .legend .mark-cell:hover { box-shadow: none; }
   </style>
 </head>
 <body>
@@ -47,7 +60,7 @@
         <span class="page-icon"><i class="ti ti-tools-kitchen-2"></i></span>
         食数管理
       </h1>
-      <p>利用者さんが選んだ「食べる ○・食べない ×」を、ハウスごとに数えます</p>
+      <p>利用者さんが選んだ「食べる ○・食べない ×」を、ハウスごとに数えます。スタッフも、○ × を押して変えられます</p>
     </div>
 
     <div class="card">
@@ -83,6 +96,14 @@
 
   let date = App.todayJST();
   let plans = {};
+  let byWho = {};    // 誰が選んだか(resident / staff)
+
+  // 色の説明(ハウスごとのカードの中に出す)
+  const LEGEND = '<div class="legend">' +
+    '<span><span class="mark-cell meal-mark eat">○</span><span class="mark-cell meal-mark skip">×</span>利用者さんが選んだ</span>' +
+    '<span><span class="mark-cell meal-mark eat by-staff">○</span><span class="mark-cell meal-mark skip by-staff">×</span>スタッフが変えた</span>' +
+    '<span><span class="mark-cell meal-mark unset">未</span>まだ選んでいない</span>' +
+    '<span>押すと ○ → × → ○ と変わります</span></div>';
 
   function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
 
@@ -135,12 +156,14 @@
     $('houseCards').innerHTML = houses.map(function (x) {
       let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(x.house.name) + '</h2>';
       if (!x.people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
-      t += '<table class="count-table">' + head + '<tbody>';
+      t += LEGEND + '<table class="count-table">' + head + '<tbody>';
       x.people.forEach(function (p) {
         t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
           meals.map(function (k) {
-            const v = plans[Meals.key(p.resident.id, date, k.key)];
-            return '<td><span class="mark-cell meal-mark ' + Meals.markClass(v) + '">' + Meals.mark(v) + '</span></td>';
+            const key = Meals.key(p.resident.id, date, k.key);
+            const v = plans[key];
+            return '<td><button type="button" class="mark-cell meal-mark ' + Meals.cellClass(v, byWho[key]) + '" data-resident="' + esc(p.resident.id) + '" data-meal="' + k.key + '"' +
+              ' aria-label="' + esc(p.resident.name) + ' さん ' + k.label + ' ' + Meals.mark(v) + '">' + Meals.mark(v) + '</button></td>';
           }).join('') + '</tr>';
       });
       t += '</tbody><tfoot><tr><th class="name">○ の数</th>' +
@@ -152,13 +175,36 @@
   async function load() {
     App.setStatus($('loadStatus'), '');
     try {
-      plans = Meals.index(await App.rpc('get_meal_plans', { p_from: date, p_to: date }));
+      const rows = await App.rpc('get_meal_plans', { p_from: date, p_to: date });
+      plans = Meals.index(rows);
+      byWho = Meals.byIndex(rows);
     } catch (err) {
       console.error(err);
       plans = {};
+      byWho = {};
       App.setStatus($('loadStatus'), '食事の予定を読み込めませんでした', 'err');
     }
     render();
+  }
+
+  // スタッフが ○ × を変える(未 → ○ → × → ○ …)。スタッフが変えたものとして残す
+  async function onMarkClick(e) {
+    const b = e.target.closest('button[data-meal]');
+    if (!b) return;
+    const k = Meals.key(b.dataset.resident, date, b.dataset.meal);
+    const before = plans[k], beforeBy = byWho[k];
+    const next = before === true ? false : true;
+    plans[k] = next; byWho[k] = 'staff';
+    render();
+    App.setStatus($('loadStatus'), '');
+    try {
+      await App.rpc('set_meal_plan', { p_resident_id: b.dataset.resident, p_date: date, p_meal: b.dataset.meal, p_will_eat: next, p_by: 'staff' });
+    } catch (err) {
+      console.error(err);
+      if (before === undefined) { delete plans[k]; delete byWho[k]; } else { plans[k] = before; byWho[k] = beforeBy; }
+      render();
+      App.setStatus($('loadStatus'), '保存できませんでした。通信状況を確認してください', 'err');
+    }
   }
 
   async function goDate(d) {
@@ -175,6 +221,7 @@
       $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, 1)); });
       $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
       $('dateInput').addEventListener('change', function () { goDate(this.value); });
+      $('houseCards').addEventListener('click', onMarkClick);
       await load();
     },
   });

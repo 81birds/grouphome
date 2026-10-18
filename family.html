@@ -162,7 +162,7 @@
       <!-- 食事表 -->
       <div class="card">
         <h2><i class="ti ti-tools-kitchen-2"></i>食事表</h2>
-        <p class="meal-note">○ = 食べる、× = 食べない。押すたびに切り替わります。平日の昼食はありません</p>
+        <p class="meal-note">○ = 食べる、× = 食べない。押すたびに切り替わります。平日の昼食はありません。青い色はスタッフが変えたものです</p>
         <table class="meal-table" id="mealTable"></table>
         <div id="mealStatus" class="status-msg center"></div>
       </div>
@@ -188,6 +188,7 @@
   let houseId = null;
   let meId = null;
   let plans = {};                        // Meals.index の形
+  let byWho = {};                        // 誰が選んだか(スタッフが変えたものは青)
   let outRecs = [];                      // きょうの「外出」「もどり」(この人の分)
   let dest = null;                       // 選んでいる行き先
 
@@ -339,10 +340,13 @@
 
   async function loadPlans() {
     try {
-      plans = Meals.index(await App.rpc('get_meal_plans', { p_from: today, p_to: Meals.addDays(today, DAYS - 1), p_resident_id: meId }));
+      const rows = await App.rpc('get_meal_plans', { p_from: today, p_to: Meals.addDays(today, DAYS - 1), p_resident_id: meId });
+      plans = Meals.index(rows);
+      byWho = Meals.byIndex(rows);
     } catch (err) {
       console.error(err);
       plans = {};
+      byWho = {};
       App.setStatus($('mealStatus'), '食事表を読み込めませんでした', 'err');
     }
   }
@@ -360,7 +364,7 @@
       Meals.KINDS.forEach(function (k) {
         if (!Meals.hasMeal(d, k.key)) { html += '<td><span class="meal-none">—</span></td>'; return; }
         const v = plans[Meals.key(meId, d, k.key)];
-        html += '<td><button type="button" class="meal-btn meal-mark ' + Meals.markClass(v) + '" data-date="' + d + '" data-meal="' + k.key + '"' +
+        html += '<td><button type="button" class="meal-btn meal-mark ' + Meals.cellClass(v, byWho[Meals.key(meId, d, k.key)]) + '" data-date="' + d + '" data-meal="' + k.key + '"' +
           ' aria-label="' + Meals.dateLabel(d) + ' ' + k.label + ' ' + Meals.mark(v) + '">' + (v === undefined ? '' : Meals.mark(v)) + '</button></td>';
       });
       html += '</tr>';
@@ -373,16 +377,16 @@
     const b = e.target.closest('button[data-meal]');
     if (!b) return;
     const k = Meals.key(meId, b.dataset.date, b.dataset.meal);
-    const before = plans[k];
+    const before = plans[k], beforeBy = byWho[k];
     const next = before === true ? false : true;
-    plans[k] = next;
+    plans[k] = next; byWho[k] = 'resident';
     renderMeals();
     App.setStatus($('mealStatus'), '');
     try {
-      await App.rpc('set_meal_plan', { p_resident_id: meId, p_date: b.dataset.date, p_meal: b.dataset.meal, p_will_eat: next });
+      await App.rpc('set_meal_plan', { p_resident_id: meId, p_date: b.dataset.date, p_meal: b.dataset.meal, p_will_eat: next, p_by: 'resident' });
     } catch (err) {
       console.error(err);
-      if (before === undefined) delete plans[k]; else plans[k] = before;
+      if (before === undefined) { delete plans[k]; delete byWho[k]; } else { plans[k] = before; byWho[k] = beforeBy; }
       renderMeals();
       App.setStatus($('mealStatus'), '保存できませんでした。通信状況を確認してください', 'err');
     }

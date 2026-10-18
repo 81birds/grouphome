@@ -24,7 +24,7 @@ shifts.html       勤務表。タブで「勤務表(月の表・ダイアログ�
 myshift.html      前のブックマーク用。shifts.html の「個人の勤務」タブへ転送するだけ
 records.html      日々の記録(施設→本日のスタッフを表示→利用者→その日の記録→「新しい入力」のダイアログで時刻ホイール・内容チップ・コメント。スマホ向け)
 family.html       利用者さんの画面(作成中)。ハウス→名前を選ぶとその人の画面: 本日のスタッフ・本日の予定(まだ空)・外出・もどり・食事表(○×)。スマホ向け
-meals.html        食数管理。日ごとに、ハウス×食事の ○ の数と、利用者さんごとの ○×
+meals.html        食数管理。日ごとに、ハウス×食事の ○ の数と、利用者さんごとの ○×(スタッフも変えられる)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
 js/common.js      Supabase クライアント、合言葉の確認、上部タブ、共通関数(window.App)
@@ -119,6 +119,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 1 行は `meal_plans`(resident_id・meal_date・meal・will_eat)。meal は breakfast / lunch / dinner。true = ○ 食べる、false = × 食べない、行なし = 未回答
 - 土日は朝・昼・夕の 3 食、平日は朝と夕(平日の昼は `set_meal_plan` が止める)
 - 利用者さんの画面で、押すたびに ○ → × → ○ と切り替わり、すぐ保存する
+- 食数管理(meals.html)ではスタッフも押して変えられる。誰が選んだかを `set_by`(resident / staff)に残し、スタッフが変えたものは青の背景(`.meal-mark.by-staff`、色は `--color-staff`)。色の説明はハウスごとのカードに出す
 - ハウスは持たない。その日に入居している部屋から決める(食数管理もそうやって数える)
 
 ## 個人情報の扱い

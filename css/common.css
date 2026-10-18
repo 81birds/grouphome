@@ -27,6 +27,10 @@
   --color-night: #4a4677;
   --color-night-soft: #e6e4f2;
 
+  /* 食事の ○ × をスタッフが変えたときの青(利用者さんが選んだものと見分ける) */
+  --color-staff: #3f6c96;
+  --color-staff-soft: #dbe7f4;
+
   /* 入力中(作業中)を知らせるオレンジ */
   --color-work: #d9822b;
   --color-work-dark: #7a4512;
@@ -330,6 +334,9 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
 .meal-mark.eat   { background: var(--color-primary-soft); border-color: var(--color-primary); color: var(--color-primary-dark); }
 .meal-mark.skip  { background: var(--color-danger-soft); border-color: var(--color-danger); color: var(--color-danger); }
 .meal-mark.unset { background: var(--color-surface); color: var(--color-text-muted); }
+/* スタッフが変えたものは青の背景(○ は青、× は赤の字) */
+.meal-mark.eat.by-staff  { background: var(--color-staff-soft); border-color: var(--color-staff); color: var(--color-staff); }
+.meal-mark.skip.by-staff { background: var(--color-staff-soft); border-color: var(--color-staff); color: var(--color-danger); }
 
 /* 見出しの右に出す人数 */
 .visit-sum { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--color-text-muted); white-space: nowrap; }

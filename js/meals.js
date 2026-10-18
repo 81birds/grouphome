@@ -37,11 +37,19 @@
       (plans || []).forEach(function (p) { map[p.resident_id + '|' + p.meal_date + '|' + p.meal] = p.will_eat; });
       return map;
     },
+    // 同じ形で「誰が選んだか」(resident / staff)
+    byIndex: function (plans) {
+      const map = {};
+      (plans || []).forEach(function (p) { map[p.resident_id + '|' + p.meal_date + '|' + p.meal] = p.set_by || 'resident'; });
+      return map;
+    },
     key: function (residentId, date, meal) { return residentId + '|' + date + '|' + meal; },
 
     // ○ / × / 未 の表示
     mark: function (v) { return v === true ? '○' : v === false ? '×' : '未'; },
     markClass: function (v) { return v === true ? 'eat' : v === false ? 'skip' : 'unset'; },
+    // 背景の色分けまで含めた class(スタッフが変えたものは by-staff)
+    cellClass: function (v, by) { return M.markClass(v) + (v !== undefined && by === 'staff' ? ' by-staff' : ''); },
   };
 
   window.Meals = M;
