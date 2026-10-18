@@ -31,6 +31,12 @@
   --color-staff: #3f6c96;
   --color-staff-soft: #dbe7f4;
 
+  /* 日々の記録のチップの系統(薄い色) */
+  --color-cat-meal: #fbeedb;   /* 食事 */
+  --color-cat-out:  #e1edf8;   /* おでかけ */
+  --color-cat-med:  #fae4e8;   /* お薬 */
+  --color-cat-talk: #ebe7f6;   /* 会話・くらし */
+
   /* 入力中(作業中)を知らせるオレンジ */
   --color-work: #d9822b;
   --color-work-dark: #7a4512;

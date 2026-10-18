@@ -101,8 +101,11 @@
     .wheel-item.sel { color: var(--color-text); font-weight: 700; font-size: 26px; }
     .wheel-sep { position: relative; font-size: 24px; font-weight: 700; padding-bottom: 3px; }
 
-    /* ----- 内容のチップ(大きめ) ----- */
-    .kind-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 16px 0 14px; }
+    /* ----- 内容のチップ(系統ごとに薄い色) ----- */
+    .kind-groups { margin: 4px 0 0; }
+    .kind-group { margin-bottom: 10px; }
+    .kind-group-name { font-size: 11px; font-weight: 700; color: var(--color-text-muted); margin: 0 0 4px 2px; }
+    .kind-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .kind-btn {
       font-family: var(--font-base);
       font-size: 14px; font-weight: 700;
@@ -115,12 +118,22 @@
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
     .kind-btn i { font-size: 18px; color: var(--color-primary-dark); }
-    .kind-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .cat-meal .kind-btn { background: var(--color-cat-meal); }
+    .cat-out  .kind-btn { background: var(--color-cat-out); }
+    .cat-med  .kind-btn { background: var(--color-cat-med); }
+    .cat-talk .kind-btn { background: var(--color-cat-talk); }
+    .kind-group .kind-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
     .kind-btn.active i { color: #fff; }
+
+    /* ----- 時刻(外出・通所は 出発 と もどり の 2 つ) ----- */
+    .time-block { margin-top: 6px; }
+    .time-label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; margin: 0 0 2px; }
+    .time-label input { width: 18px; height: 18px; margin: 0; }
+    #backWheelWrap.off { opacity: 0.35; pointer-events: none; }
 
 
     /* ----- 入力のダイアログ ----- */
-    #inputModal .kind-grid { margin: 12px 0 0; }
+
     .modal-foot .status-msg { margin: 0 0 8px; }
     .modal-foot .status-msg:empty { display: none; }
 
@@ -130,6 +143,7 @@
       .wheel-col { padding: var(--item-h) 0; }
       .kind-btn { padding: 9px 8px; font-size: 13px; }
       .kind-grid { gap: 6px; }
+      .kind-group { margin-bottom: 6px; }
     }
 
     /* ----- PC: 左に施設・スタッフ・利用者さん、右にその人の記録 ----- */
@@ -280,21 +294,37 @@
     </div>
     <div class="modal-ctx working" id="inputCtx"></div>
 
-    <div class="wheel-wrap">
-      <div class="wheel" aria-label="時刻">
-        <div class="wheel-band"></div>
-        <div class="wheel-col" id="wheelH" aria-label="時"></div>
-        <div class="wheel-sep">:</div>
-        <div class="wheel-col" id="wheelM" aria-label="分"></div>
+    <div class="kind-groups" id="kindGrid"></div>
+
+    <div class="time-block">
+      <div class="time-label" id="departLabel">時刻</div>
+      <div class="wheel-wrap">
+        <div class="wheel" aria-label="時刻">
+          <div class="wheel-band"></div>
+          <div class="wheel-col" id="wheelH" aria-label="時"></div>
+          <div class="wheel-sep">:</div>
+          <div class="wheel-col" id="wheelM" aria-label="分"></div>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="nowBtn"><i class="ti ti-clock"></i>いま</button>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" id="nowBtn"><i class="ti ti-clock"></i>いま</button>
     </div>
 
-    <div class="kind-grid" id="kindGrid"></div>
+    <!-- 外出・通所のときだけ: もどりの時刻(一緒に「もどり」も記録する) -->
+    <div class="time-block" id="backBlock" hidden>
+      <label class="time-label"><input type="checkbox" id="backOn" checked>もどりも記録する</label>
+      <div class="wheel-wrap" id="backWheelWrap">
+        <div class="wheel" aria-label="もどりの時刻">
+          <div class="wheel-band"></div>
+          <div class="wheel-col" id="backWheelH" aria-label="時"></div>
+          <div class="wheel-sep">:</div>
+          <div class="wheel-col" id="backWheelM" aria-label="分"></div>
+        </div>
+      </div>
+    </div>
 
     <div class="field input-note">
       <label for="newNote">コメント(選んだ内容について。なくてもよい)</label>
-      <textarea id="newNote" rows="2" placeholder="例: 半分ほど食べました"></textarea>
+      <textarea id="newNote" rows="3" placeholder="内容を選ぶと、よく使う文が入ります。そのまま記録しても、書きかえてもかまいません"></textarea>
     </div>
 
     <!-- 「記録する」はダイアログの下に固定(スマホで画面の外に出ないように) -->
@@ -341,17 +371,32 @@
 <script src="js/staffday.js"></script>
 <script>
   // ----- 記録の内容(チップ)。ここに足せば画面に増える -----
-  const KINDS = [
-    { name: '朝食',         icon: 'ti-sunrise' },
-    { name: '昼食',         icon: 'ti-sun' },
-    { name: '夕食',         icon: 'ti-moon' },
-    { name: '外出',         icon: 'ti-walk' },
-    { name: 'もどり',       icon: 'ti-home' },
-    { name: '出勤',         icon: 'ti-briefcase' },
-    { name: '通所',         icon: 'ti-bus' },
-    { name: 'お薬おわたし', icon: 'ti-pill' },
-    { name: 'お薬空包確認', icon: 'ti-clipboard-check' },
+  // 系統(色分け)ごとに並べる。note はコメント欄に最初から入る文(そのまま記録してもよい)
+  const KIND_GROUPS = [
+    { name: '食事', cls: 'meal', kinds: [
+      { name: '朝食',   icon: 'ti-sunrise', note: 'ぜんぶ食べました' },
+      { name: '昼食',   icon: 'ti-sun',     note: 'ぜんぶ食べました' },
+      { name: '夕食',   icon: 'ti-moon',    note: 'ぜんぶ食べました' },
+      { name: 'おやつ', icon: 'ti-cookie',  note: 'おやつを食べました' },
+    ] },
+    { name: 'おでかけ', cls: 'out', kinds: [
+      { name: '外出',   icon: 'ti-walk', note: '元気に出かけました', back: true },
+      { name: '通所',   icon: 'ti-bus',  note: '元気に通所しました', back: true },
+      { name: 'もどり', icon: 'ti-home', note: '無事にもどりました' },
+    ] },
+    { name: 'お薬', cls: 'med', kinds: [
+      { name: 'お薬おわたし', icon: 'ti-pill',            note: 'お薬をおわたししました' },
+      { name: 'お薬空包確認', icon: 'ti-clipboard-check', note: '朝食前後薬 確認\n昼食前後薬 確認\n夕食前後薬 確認\n就寝薬 確認' },
+    ] },
+    { name: '会話・くらし', cls: 'talk', kinds: [
+      { name: 'たのしい雑談', icon: 'ti-mood-smile',      note: '楽しくおしゃべりしました' },
+      { name: 'おなやみ相談', icon: 'ti-heart-handshake', note: 'お話をうかがいました' },
+      { name: 'おこづかい',   icon: 'ti-coin',            note: 'おこづかいをおわたししました' },
+    ] },
   ];
+  const KINDS = KIND_GROUPS.reduce(function (a, g) { return a.concat(g.kinds); }, []);
+  // 今はチップにないが、前の記録に残っている内容のアイコン
+  const OLD_ICONS = { '出勤': 'ti-briefcase' };
   const HOUSE_KEY = 'gh_records_house';
   const ITEM_H = 40;
   const MIN_STEP = 10;          // 分は 10 分きざみ
@@ -367,7 +412,7 @@
 
   function kindIcon(name) {
     const k = KINDS.find(function (x) { return x.name === name; });
-    return k ? k.icon : 'ti-point';
+    return k ? k.icon : (OLD_ICONS[name] || 'ti-point');
   }
 
   // ===== 時刻のホイール =====
@@ -534,13 +579,48 @@
   }
 
   // ===== 入力と一覧 =====
+  function pickedKind() { return KINDS.find(function (k) { return picked.has(k.name); }) || null; }
+
   function renderKinds() {
-    $('kindGrid').innerHTML = KINDS.map(function (k) {
-      return '<button type="button" class="kind-btn' + (picked.has(k.name) ? ' active' : '') + '" data-kind="' + esc(k.name) + '" aria-pressed="' + picked.has(k.name) + '">' +
-        '<i class="ti ' + k.icon + '"></i>' + esc(k.name) + '</button>';
+    $('kindGrid').innerHTML = KIND_GROUPS.map(function (g) {
+      return '<div class="kind-group cat-' + g.cls + '"><div class="kind-group-name">' + esc(g.name) + '</div><div class="kind-grid">' +
+        g.kinds.map(function (k) {
+          return '<button type="button" class="kind-btn' + (picked.has(k.name) ? ' active' : '') + '" data-kind="' + esc(k.name) + '" aria-pressed="' + picked.has(k.name) + '">' +
+            '<i class="ti ' + k.icon + '"></i>' + esc(k.name) + '</button>';
+        }).join('') + '</div></div>';
     }).join('');
     $('saveBtn').disabled = !residentId || picked.size === 0;
+    renderTimes();
   }
+
+  // 外出・通所は「出発」と「もどり」の 2 つの時計
+  function renderTimes() {
+    const k = pickedKind();
+    const back = !!(k && k.back);
+    const wasHidden = $('backBlock').hidden;
+    $('departLabel').textContent = back ? '出発' : '時刻';
+    $('backBlock').hidden = !back;
+    $('backWheelWrap').classList.toggle('off', !$('backOn').checked);
+    // 開いたときは、出発の 1 時間あと
+    if (back && wasHidden && !$('inputModal').hidden) {
+      const t = (wheelValue($('wheelH')) * 60 + wheelValue($('wheelM')) * MIN_STEP + 60) % (24 * 60);
+      setTime(Math.floor(t / 60), (t % 60) / MIN_STEP, 'backWheel');
+    }
+  }
+
+  // コメント欄: 内容に合った文を入れる。自分で書きかえた文は消さない
+  let lastTemplate = '';
+  function fillNote() {
+    const k = pickedKind();
+    const box = $('newNote');
+    const cur = box.value.trim();
+    const next = k ? k.note : '';
+    if (!cur || cur === lastTemplate.trim()) box.value = next;
+    lastTemplate = next;
+    // 行の多い文(お薬空包確認など)も全部見えるように
+    box.rows = Math.max(3, box.value.split('\n').length + 1);
+  }
+
 
   // 選んだ人のその日の記録(メイン)
   function renderList() {
@@ -598,10 +678,12 @@
   function openInput() {
     if (!residentId) return;
     App.setStatus($('saveStatus'), '');
-    renderKinds();
     $('inputModal').hidden = false;
     // 非表示のあいだはスクロール位置が消えるので、覚えておいた時刻に合わせ直す
     setTime(savedH, savedM);
+    $('backBlock').hidden = true;   // renderKinds で開き直して、もどりの時刻を出発の 1 時間あとにする
+    renderKinds();
+    fillNote();
   }
   function closeInput() { $('inputModal').hidden = true; }
 
@@ -612,40 +694,51 @@
     savedH = wheelValue($('wheelH')); savedM = wheelValue($('wheelM'));
   }
 
+  function addRecords(kind, time, note) {
+    return App.rpc('add_daily_records', {
+      p_resident_id: residentId, p_house_id: houseId, p_date: date, p_time: time, p_kinds: [kind], p_note: note,
+    });
+  }
+
   async function onSave() {
-    if (!residentId || picked.size === 0) return;
+    const k = pickedKind();
+    if (!residentId || !k) return;
     const btn = $('saveBtn');
     const status = $('saveStatus');
-    const kinds = KINDS.map(function (k) { return k.name; }).filter(function (n) { return picked.has(n); });
     const t = timeText();
+    const withBack = !!k.back && $('backOn').checked;
+    const tb = withBack ? timeText('backWheel') : null;
+    if (withBack && tb <= t) return App.setStatus(status, 'もどりの時刻は、出発より後にしてください', 'err');
+
     btn.disabled = true;
+    let done = [];
     try {
-      const added = await App.rpc('add_daily_records', {
-        p_resident_id: residentId,
-        p_house_id: houseId,
-        p_date: date,
-        p_time: t,
-        p_kinds: kinds,
-        p_note: $('newNote').value.trim() || null,
-      });
-      records = records.concat(added || []);
-      sortRecords();
+      done = done.concat(await addRecords(k.name, t, $('newNote').value.trim() || null) || []);
+      if (withBack) done = done.concat(await addRecords('もどり', tb, null) || []);
     } catch (err) {
       console.error(err);
-      App.setStatus(status, '記録できませんでした。通信状況を確認してください', 'err');
+      records = records.concat(done);
+      sortRecords();
+      App.setStatus(status, done.length ? t + ' ' + k.name + ' は記録しましたが、もどりを記録できませんでした' : '記録できませんでした。通信状況を確認してください', 'err');
       btn.disabled = false;
+      renderPeople();
+      renderList();
       return;
     }
+    records = records.concat(done);
+    sortRecords();
     rememberTime();
     btn.disabled = false;
     // コメントはその記録だけのものなので消す(時刻と内容は残す)
     $('newNote').value = '';
+    lastTemplate = '';
     closeInput();
-    App.setStatus($('listStatus'), t + ' ' + kinds.join('・') + ' を記録しました', 'ok');
+    App.setStatus($('listStatus'), t + ' ' + k.name + (withBack ? '・' + tb + ' もどり' : '') + ' を記録しました', 'ok');
     // 時刻と内容はそのまま残す(次の利用者に同じ内容をすぐ記録できるように)
     renderPeople();
     renderList();
   }
+
 
   // ===== 記録の編集(コメント・取消) =====
   let editId = null;
@@ -722,6 +815,9 @@
 
       buildWheel($('wheelH'), 24, 1);
       buildWheel($('wheelM'), 60 / MIN_STEP, MIN_STEP);
+      buildWheel($('backWheelH'), 24, 1);
+      buildWheel($('backWheelM'), 60 / MIN_STEP, MIN_STEP);
+      $('backOn').addEventListener('change', renderTimes);
       buildWheel($('editWheelH'), 24, 1);
       buildWheel($('editWheelM'), 60 / MIN_STEP, MIN_STEP);
       $('wheelH').addEventListener('scroll', rememberTime, { passive: true });
@@ -745,6 +841,7 @@
         picked.clear();
         if (!was) picked.add(k);
         renderKinds();
+        fillNote();
       });
       $('recList').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-edit]');
