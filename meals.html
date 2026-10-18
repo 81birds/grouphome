@@ -75,6 +75,13 @@
       border: 1px solid var(--color-border); border-radius: var(--radius-sm);
     }
     .mini:hover { box-shadow: var(--shadow-md); }
+    /* 平日の昼(食事なし) */
+    .mini-none {
+      display: flex; align-items: center; justify-content: center; cursor: default;
+      background: var(--color-surface-alt); color: var(--color-text-muted); border-color: transparent; opacity: 0.6;
+    }
+    .mini-none:hover { box-shadow: none; }
+    .wk-sum .none { opacity: 0.5; }
     .week-table td.out { color: var(--color-text-muted); font-size: 11px; vertical-align: middle; }
     .wk-sum { font-size: 10px; line-height: 1.5; color: var(--color-text-muted); white-space: nowrap; }
     .wk-sum b { color: var(--color-primary-dark); font-size: 12px; }
@@ -85,6 +92,7 @@
     .legend span { display: inline-flex; align-items: center; gap: 4px; }
     .legend .mark-cell { width: 26px; height: 22px; font-size: 13px; cursor: default; }
     .legend .mark-cell:hover { box-shadow: none; }
+    .legend .mark-cell.unset { width: auto; padding: 0 5px; }
   </style>
 </head>
 <body>
@@ -156,7 +164,7 @@
   const LEGEND = '<div class="legend">' +
     '<span><span class="mark-cell meal-mark eat">○</span><span class="mark-cell meal-mark skip">×</span>利用者さんが選んだ</span>' +
     '<span><span class="mark-cell meal-mark eat by-staff">○</span><span class="mark-cell meal-mark skip by-staff">×</span>スタッフが変えた</span>' +
-    '<span><span class="mark-cell meal-mark unset">未</span>まだ選んでいない</span>' +
+    '<span><span class="mark-cell meal-mark unset">未定</span>まだ選んでいない</span>' +
     '<span>押すと ○ → × → ○ と変わります</span></div>';
 
   function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
@@ -199,7 +207,7 @@
   function addCount(a, b) { return { eat: a.eat + b.eat, skip: a.skip + b.skip, unset: a.unset + b.unset }; }
   function countCell(c) {
     return '<td><span class="count-big">' + c.eat + '<small>食</small></span>' +
-      '<span class="count-sub">× ' + c.skip + '・未 ' + c.unset + '</span></td>';
+      '<span class="count-sub">× ' + c.skip + '・未定 ' + c.unset + '</span></td>';
   }
   const NONE_CELL = '<td><span class="count-none">—</span></td>';
 
@@ -316,7 +324,9 @@
       ds.forEach(function (d) {
         // その日はこのハウスにいない(入居前・退居後・ほかのハウス)
         if (!peopleOfHouse(h.id, d).some(function (x) { return x.resident.id === p.resident.id; })) { t += '<td class="out">—</td>'; return; }
-        t += '<td><div class="wk-cell">' + Meals.KINDS.filter(function (k) { return Meals.hasMeal(d, k.key); }).map(function (k) {
+        // いつも 朝・昼・夕 の 3 段(夕食の位置をそろえる)。平日の昼は「-」をグレーで
+        t += '<td><div class="wk-cell">' + Meals.KINDS.map(function (k) {
+          if (!Meals.hasMeal(d, k.key)) return '<span class="mini mini-none">-</span>';
           const key = Meals.key(p.resident.id, d, k.key), v = plans[key];
           return markButton('mini meal-mark ' + Meals.cellClass(v, byWho[key]), p.resident.id, d, k.key,
             p.resident.name + ' さん ' + Meals.dateLabel(d) + ' ' + k.label + ' ' + Meals.mark(v), k.short + Meals.mark(v));
@@ -326,7 +336,8 @@
     });
     t += '</tbody><tfoot><tr><th class="name">○ の数</th>' + ds.map(function (d) {
       const ps = peopleOfHouse(h.id, d);
-      return '<td><div class="wk-sum">' + Meals.KINDS.filter(function (k) { return Meals.hasMeal(d, k.key); }).map(function (k) {
+      return '<td><div class="wk-sum">' + Meals.KINDS.map(function (k) {
+        if (!Meals.hasMeal(d, k.key)) return '<span class="none">' + k.short + ' -</span>';
         return k.short + ' <b>' + countOf(ps, d, k.key).eat + '</b>';
       }).join('<br>') + '</div></td>';
     }).join('') + '</tr></tfoot></table></div></div>';

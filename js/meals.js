@@ -46,7 +46,7 @@
     key: function (residentId, date, meal) { return residentId + '|' + date + '|' + meal; },
 
     // ○ / × / 未 の表示
-    mark: function (v) { return v === true ? '○' : v === false ? '×' : '未'; },
+    mark: function (v) { return v === true ? '○' : v === false ? '×' : '未定'; },
     markClass: function (v) { return v === true ? 'eat' : v === false ? 'skip' : 'unset'; },
     // 背景の色分けまで含めた class(スタッフが変えたものは by-staff)
     cellClass: function (v, by) { return M.markClass(v) + (v !== undefined && by === 'staff' ? ' by-staff' : ''); },
