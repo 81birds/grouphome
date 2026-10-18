@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>プロファイル</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .me-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .me-bar .me-icon { font-size: 44px; color: var(--color-primary-dark); }
+    .me-bar .me-name { font-size: 20px; font-weight: 700; line-height: 1.3; }
+    .me-bar .me-place { font-size: 12px; color: var(--color-text-muted); }
+    .back-link { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 13px; color: var(--color-primary-dark); text-decoration: none; }
+
+    .rt-note { font-size: 12px; color: var(--color-text-muted); margin: -6px 0 12px; line-height: 1.6; }
+    .rt-form { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
+    .rt-form .full { grid-column: 1 / -1; }
+    .rt-form input { font-size: 15px; padding: 9px 10px; }
+    .day-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .day-chips button {
+      font-family: var(--font-base); font-size: 13px; font-weight: 700; cursor: pointer;
+      min-width: 40px; padding: 7px 10px; border-radius: 999px;
+      border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text);
+    }
+    .day-chips button.sat { color: var(--color-sat); }
+    .day-chips button.sun { color: var(--color-danger); }
+    .day-chips button.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .rt-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+    .rt-list { list-style: none; margin: 0; padding: 0; }
+    .rt-list li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--color-border); }
+    .rt-list li:last-child { border-bottom: none; }
+    .rt-list li.editing { background: var(--color-primary-soft); border-radius: var(--radius-sm); }
+    .rt-list .t { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2em; }
+    .rt-list .what { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; }
+    .rt-list .what small { display: block; font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+    <a href="residents.html" class="back-link"><i class="ti ti-arrow-left"></i>利用者さんDB にもどる</a>
+
+    <div id="notFound" class="card empty-msg" hidden>利用者さんが見つかりません。利用者さんDB から開きなおしてください</div>
+
+    <div id="profile" hidden>
+      <div class="me-bar">
+        <i class="ti ti-user-circle me-icon"></i>
+        <div>
+          <div class="me-name" id="meName"></div>
+          <div class="me-place" id="mePlace"></div>
+        </div>
+      </div>
+
+      <!-- 日課 -->
+      <div class="card">
+        <h2><i class="ti ti-calendar-repeat"></i>日課</h2>
+        <p class="rt-note">ふだんの 1 日の予定です。ここで入れた日課は、利用者さんの画面の「本日の予定」と、日々の記録の「きょうの日課」に出ます</p>
+
+        <div class="rt-form">
+          <div class="field">
+            <label for="rtTime">時間</label>
+            <input type="time" id="rtTime">
+          </div>
+          <div class="field">
+            <label for="rtContent">内容</label>
+            <input type="text" id="rtContent" list="rtSamples" placeholder="例: 通所" autocomplete="off">
+          </div>
+          <div class="field full">
+            <label>曜日(どれも選ばなければ毎日)</label>
+            <div class="day-chips" id="dayChips"></div>
+          </div>
+        </div>
+        <!-- 内容の候補(自由に書いてもよい) -->
+        <datalist id="rtSamples">
+          <option value="起床"><option value="朝食"><option value="朝の薬"><option value="通所"><option value="出勤">
+          <option value="デイケア"><option value="通院"><option value="昼食"><option value="おやつ"><option value="入浴">
+          <option value="夕食"><option value="夜の薬"><option value="就寝">
+        </datalist>
+        <div class="rt-actions">
+          <button type="button" class="btn btn-ghost" id="rtCancel" hidden>やめる</button>
+          <button type="button" class="btn" id="rtSave"><i class="ti ti-plus"></i><span id="rtSaveText">日課を追加</span></button>
+        </div>
+        <div id="rtStatus" class="status-msg"></div>
+      </div>
+
+      <div class="card">
+        <h2><i class="ti ti-list-check"></i>登録している日課</h2>
+        <ul class="rt-list" id="rtList"></ul>
+        <div id="rtEmpty" class="empty-msg" hidden>まだ日課がありません。上から追加してください</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/routines.js"></script>
+<script>
+  const $ = function (id) { return document.getElementById(id); };
+  const esc = App.escapeHtml;
+
+  let meId = null;
+  let editingId = null;      // 変えている日課(null なら新しく追加)
+  let days = [];             // 選んでいる曜日(0 = 日 … 6 = 土)
+
+  function renderDays() {
+    $('dayChips').innerHTML = Routines.DOW.map(function (d, i) {
+      const cls = (i === 0 ? 'sun' : i === 6 ? 'sat' : '') + (days.indexOf(i) >= 0 ? ' active' : '');
+      return '<button type="button" class="' + cls + '" data-day="' + i + '" aria-pressed="' + (days.indexOf(i) >= 0) + '">' + d + '</button>';
+    }).join('');
+  }
+
+  function renderList() {
+    const list = Routines.list.slice().sort(function (a, b) { return a.routine_time < b.routine_time ? -1 : 1; });
+    $('rtList').innerHTML = list.map(function (r) {
+      return '<li' + (r.id === editingId ? ' class="editing"' : '') + '>' +
+        '<span class="t">' + esc(Routines.time(r.routine_time)) + '</span>' +
+        '<span class="what">' + esc(r.content) + '<small>' + esc(Routines.daysText(r.weekdays)) + '</small></span>' +
+        '<button type="button" class="icon-btn" data-edit="' + esc(r.id) + '" aria-label="変える"><i class="ti ti-pencil"></i></button>' +
+        '<button type="button" class="icon-btn danger" data-end="' + esc(r.id) + '" aria-label="やめる"><i class="ti ti-trash"></i></button>' +
+        '</li>';
+    }).join('');
+    $('rtEmpty').hidden = list.length > 0;
+  }
+
+  function resetForm() {
+    editingId = null;
+    $('rtTime').value = '';
+    $('rtContent').value = '';
+    days = [];
+    $('rtSaveText').textContent = '日課を追加';
+    $('rtCancel').hidden = true;
+    renderDays();
+    renderList();
+  }
+
+  function startEdit(id) {
+    const r = Routines.list.find(function (x) { return x.id === id; });
+    if (!r) return;
+    editingId = id;
+    $('rtTime').value = Routines.time(r.routine_time);
+    $('rtContent').value = r.content;
+    days = (r.weekdays || []).slice();
+    $('rtSaveText').textContent = 'この日課を保存';
+    $('rtCancel').hidden = false;
+    App.setStatus($('rtStatus'), '');
+    renderDays();
+    renderList();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function onSave() {
+    const st = $('rtStatus');
+    const time = $('rtTime').value, content = $('rtContent').value.trim();
+    if (!time) return App.setStatus(st, '時間を入れてください', 'err');
+    if (!content) return App.setStatus(st, '内容を入れてください', 'err');
+    const btn = $('rtSave');
+    btn.disabled = true;
+    try {
+      await App.rpc('save_routine', { p_id: editingId, p_resident_id: meId, p_time: time, p_content: content, p_weekdays: days });
+      await Routines.load(meId);
+    } catch (err) {
+      console.error(err);
+      App.setStatus(st, '保存できませんでした。通信状況を確認してください', 'err');
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+    const msg = (editingId ? '変えました: ' : '追加しました: ') + time + ' ' + content;
+    resetForm();
+    App.setStatus(st, msg, 'ok');
+  }
+
+  async function onEnd(id) {
+    const r = Routines.list.find(function (x) { return x.id === id; });
+    if (!r || !confirm(Routines.time(r.routine_time) + ' ' + r.content + ' の日課をやめますか?')) return;
+    try {
+      await App.rpc('end_routine', { p_id: id });
+      await Routines.load(meId);
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('rtStatus'), 'やめられませんでした', 'err');
+      return;
+    }
+    if (editingId === id) resetForm(); else renderList();
+    App.setStatus($('rtStatus'), 'やめました: ' + Routines.time(r.routine_time) + ' ' + r.content, 'ok');
+  }
+
+  App.boot({
+    active: 'residents',
+    onReady: async function () {
+      meId = new URLSearchParams(location.search).get('resident');
+      await Rooms.load();
+      const p = meId ? Rooms.resident(meId) : null;
+      if (!p) { $('notFound').hidden = false; return; }
+
+      document.title = p.name + ' さんのプロファイル';
+      $('meName').textContent = p.name + ' さん';
+      const cur = Rooms.currentOf(meId, App.todayJST());
+      $('mePlace').textContent = cur ? Rooms.placeText(cur) : 'いまは部屋に入居していません';
+      $('profile').hidden = false;
+
+      try {
+        await Routines.load(meId);
+      } catch (err) {
+        console.error(err);
+        App.setStatus($('rtStatus'), '日課を読み込めませんでした', 'err');
+      }
+      resetForm();
+
+      $('dayChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-day]');
+        if (!b) return;
+        const d = +b.dataset.day;
+        days = days.indexOf(d) >= 0 ? days.filter(function (x) { return x !== d; }) : days.concat([d]);
+        renderDays();
+      });
+      $('rtSave').addEventListener('click', onSave);
+      $('rtCancel').addEventListener('click', function () { resetForm(); App.setStatus($('rtStatus'), ''); });
+      $('rtList').addEventListener('click', function (e) {
+        const ed = e.target.closest('button[data-edit]');
+        if (ed) return startEdit(ed.dataset.edit);
+        const en = e.target.closest('button[data-end]');
+        if (en) onEnd(en.dataset.end);
+      });
+    },
+  });
+</script>
+
+</body>
+</html>

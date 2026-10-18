@@ -12,6 +12,10 @@
   <style>
     #residentTable .col-place { width: 55%; }
     #residentTable td { vertical-align: middle; }
+    /* 名前の先頭に「プロファイル」(日課などを登録する画面へ) */
+    .name-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .name-cell input { flex: 1 1 110px; min-width: 0; }
+    .prof-btn { display: inline-flex; align-items: center; gap: 3px; padding: 4px 8px; font-size: 11px; text-decoration: none; white-space: nowrap; }
 
     .place-btn {
       width: 100%; text-align: left; cursor: pointer;
@@ -212,7 +216,8 @@
 
     document.getElementById('residentRows').innerHTML = rows.map(function (r) {
       return '<tr data-id="' + esc(r.id) + '">' +
-        '<td><input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '" aria-label="氏名"></td>' +
+        '<td><div class="name-cell"><a class="btn btn-ghost btn-sm prof-btn" href="profile.html?resident=' + encodeURIComponent(r.id) + '" title="日課などを登録する"><i class="ti ti-id"></i>プロファイル</a>' +
+        '<input type="text" class="autosave" data-field="name" value="' + esc(r.name) + '" aria-label="氏名"></div></td>' +
         '<td>' + placeButton(r) + '</td>' +
         '</tr>';
     }).join('');

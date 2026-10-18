@@ -154,6 +154,19 @@
     }
     .new-btn { margin-top: 12px; }
 
+    /* ----- きょうの日課 ----- */
+    .rt-today { background: var(--color-surface-alt); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 12px; }
+    .rt-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 4px; }
+    .rt-head i { color: var(--color-primary-dark); }
+    .rt-today ul { list-style: none; margin: 0; padding: 0; }
+    .rt-today li { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; border-top: 1px dashed var(--color-border); }
+    .rt-today li:first-child { border-top: none; }
+    .rt-today .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2em; }
+    .rt-today .c { flex: 1; min-width: 0; }
+    .rt-today .done { font-size: 11px; font-weight: 700; color: var(--color-primary-dark); white-space: nowrap; }
+    .rt-today .btn-sm { white-space: nowrap; }
+    .cat-routine .kind-btn { background: var(--color-primary-soft); }
+
     /* ----- その日の記録 ----- */
     .rec-list { list-style: none; margin: 0; padding: 0; }
     .rec-list li {
@@ -272,6 +285,11 @@
     <!-- その人のその日の記録 -->
     <div class="card" id="listCard" hidden>
       <h2><i class="ti ti-list"></i><span id="listTitle"></span></h2>
+      <!-- きょうの日課(利用者さんDB のプロファイルで入れたもの)。「記録」でその時刻・内容から入力できる -->
+      <div class="rt-today" id="rtToday" hidden>
+        <div class="rt-head"><i class="ti ti-calendar-repeat"></i>きょうの日課</div>
+        <ul id="rtTodayList"></ul>
+      </div>
       <ul class="rec-list" id="recList"></ul>
       <div id="listMsg" class="empty-msg" hidden>まだ記録はありません</div>
       <button type="button" class="btn btn-block new-btn" id="newBtn"><i class="ti ti-plus"></i>新しい入力</button>
@@ -369,6 +387,7 @@
 <script src="js/common.js"></script>
 <script src="js/rooms.js"></script>
 <script src="js/staffday.js"></script>
+<script src="js/routines.js"></script>
 <script>
   // ----- 記録の内容(チップ)。ここに足せば画面に増える -----
   // 系統(色分け)ごとに並べる。note はコメント欄に最初から入る文(そのまま記録してもよい)
@@ -412,8 +431,14 @@
 
   function kindIcon(name) {
     const k = KINDS.find(function (x) { return x.name === name; });
-    return k ? k.icon : (OLD_ICONS[name] || 'ti-point');
+    if (k) return k.icon;
+    if (OLD_ICONS[name]) return OLD_ICONS[name];
+    // 日課から記録したもの
+    return Routines.list.some(function (r) { return r.content === name; }) ? 'ti-calendar-check' : 'ti-point';
   }
+
+  // 日課から入力するとき、チップにない内容をその場だけのチップにする
+  let routineKind = null;
 
   // ===== 時刻のホイール =====
   function buildWheel(col, count, step) {
@@ -579,10 +604,14 @@
   }
 
   // ===== 入力と一覧 =====
-  function pickedKind() { return KINDS.find(function (k) { return picked.has(k.name); }) || null; }
+  function pickedKind() {
+    if (routineKind && picked.has(routineKind.name)) return routineKind;
+    return KINDS.find(function (k) { return picked.has(k.name); }) || null;
+  }
 
   function renderKinds() {
-    $('kindGrid').innerHTML = KIND_GROUPS.map(function (g) {
+    const groups = routineKind ? [{ name: '日課から', cls: 'routine', kinds: [routineKind] }].concat(KIND_GROUPS) : KIND_GROUPS;
+    $('kindGrid').innerHTML = groups.map(function (g) {
       return '<div class="kind-group cat-' + g.cls + '"><div class="kind-group-name">' + esc(g.name) + '</div><div class="kind-grid">' +
         g.kinds.map(function (k) {
           return '<button type="button" class="kind-btn' + (picked.has(k.name) ? ' active' : '') + '" data-kind="' + esc(k.name) + '" aria-pressed="' + picked.has(k.name) + '">' +
@@ -632,6 +661,17 @@
     $('listTitle').textContent = p.name + ' さんの記録(' + Rooms.dateText(date) + ')';
 
     const mine = records.filter(function (r) { return r.resident_id === residentId; });
+
+    // きょうの日課。同じ内容の記録がその日にあれば「記録済み」
+    const rts = Routines.ofDay(residentId, date);
+    $('rtToday').hidden = !rts.length;
+    $('rtTodayList').innerHTML = rts.map(function (rt) {
+      const done = mine.some(function (r) { return r.kind === rt.content; });
+      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '</span><span class="c">' + esc(rt.content) + '</span>' +
+        (done ? '<span class="done"><i class="ti ti-check"></i>記録済み</span>' : '') +
+        '<button type="button" class="btn btn-ghost btn-sm" data-routine="' + esc(rt.id) + '"><i class="ti ti-pencil"></i>記録</button></li>';
+    }).join('');
+
     $('recList').innerHTML = mine.map(function (r) {
       return '<li>' +
         '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
@@ -685,7 +725,30 @@
     renderKinds();
     fillNote();
   }
-  function closeInput() { $('inputModal').hidden = true; }
+  function closeInput() {
+    $('inputModal').hidden = true;
+    // 日課から開いたときのチップは、その場だけ
+    if (routineKind) {
+      if (picked.has(routineKind.name)) picked.clear();
+      routineKind = null;
+    }
+  }
+
+  // 日課の時刻と内容で、新しい入力を開く(そこから直して記録できる)
+  function openFromRoutine(id) {
+    const rt = Routines.list.find(function (x) { return x.id === id; });
+    if (!rt) return;
+    const t = Routines.time(rt.routine_time).split(':');
+    const n = roundTime(+t[0], +t[1]);
+    savedH = n[0]; savedM = n[1];
+    const chip = KINDS.find(function (k) { return k.name === rt.content; });
+    routineKind = chip ? null : { name: rt.content, icon: 'ti-calendar-check', note: '' };
+    picked.clear();
+    picked.add(rt.content);
+    $('newNote').value = '';
+    lastTemplate = '';
+    openInput();
+  }
 
   // ホイールが非表示のあいだも時刻を覚えておく
   let savedH = 0, savedM = 0;
@@ -811,7 +874,12 @@
   App.boot({
     active: 'records',
     onReady: async function () {
-      await Promise.all([Rooms.load(), StaffDay.loadMasters(), StaffDay.loadShifts(date)]);
+      await Promise.all([Rooms.load(), StaffDay.loadMasters(), StaffDay.loadShifts(date),
+        Routines.load().catch(function (err) { console.error(err); Routines.list = []; })]);
+      $('rtTodayList').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-routine]');
+        if (b) openFromRoutine(b.dataset.routine);
+      });
 
       buildWheel($('wheelH'), 24, 1);
       buildWheel($('wheelM'), 60 / MIN_STEP, MIN_STEP);

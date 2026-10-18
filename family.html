@@ -65,6 +65,13 @@
     .out-hist li { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid var(--color-border); }
     .out-hist .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3em; }
 
+    /* ----- 本日の予定 ----- */
+    .plan-list { list-style: none; margin: 0; padding: 0; }
+    .plan-list li { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid var(--color-border); font-size: 16px; font-weight: 600; }
+    .plan-list li:last-child { border-bottom: none; }
+    .plan-list .t { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--color-primary-dark); min-width: 3.2em; }
+    .plan-list li.past { opacity: 0.5; }
+
     /* ----- バイタル ----- */
     .vt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
     .vt-grid .full { grid-column: 1 / -1; }
@@ -145,10 +152,11 @@
         <div class="tl" id="visitList"></div>
       </div>
 
-      <!-- 本日の予定(通院・出勤などは本部で入れる。まだ作っていない) -->
+      <!-- 本日の予定(利用者さんDB のプロファイルで入れた日課のうち、きょうの曜日のもの) -->
       <div class="card">
         <h2><i class="ti ti-calendar-event"></i>本日の予定</h2>
-        <div class="empty-msg">まだ予定はありません</div>
+        <ul class="plan-list" id="planList"></ul>
+        <div class="empty-msg" id="planEmpty" hidden>きょうの予定はありません</div>
       </div>
 
       <!-- バイタル(バイタルの画面 vitals.html で見る) -->
@@ -225,6 +233,7 @@
 <script src="js/staffday.js"></script>
 <script src="js/meals.js"></script>
 <script src="js/vitals.js"></script>
+<script src="js/routines.js"></script>
 <script>
   const DAYS = 14;                       // 食事表は今日から 2 週間
   const ME_KEY = 'gh_family_resident';   // この端末で選んだ利用者さん
@@ -309,12 +318,32 @@
     $('destOther').value = '';
     App.setStatus($('outStatus'), '');
     resetVitalForm();
-    await Promise.all([StaffDay.loadShifts(today), loadPlans(), loadOut(), loadVitals()]);
+    await Promise.all([StaffDay.loadShifts(today), loadPlans(), loadOut(), loadVitals(), loadRoutines()]);
     $('visitTitle').textContent = StaffDay.title(today);
     $('visitSum').textContent = StaffDay.render($('visitList'), houseId, today);
     renderOut();
     renderVitals();
+    renderRoutines();
     renderMeals();
+  }
+
+  // ===== 本日の予定(日課) =====
+  async function loadRoutines() {
+    try {
+      await Routines.load(meId);
+    } catch (err) {
+      console.error(err);
+      Routines.list = [];
+    }
+  }
+  function renderRoutines() {
+    const list = Routines.ofDay(meId, today);
+    const now = nowTime();
+    $('planList').innerHTML = list.map(function (r) {
+      const t = Routines.time(r.routine_time);
+      return '<li' + (t < now ? ' class="past"' : '') + '><span class="t">' + esc(t) + '</span><span>' + esc(r.content) + '</span></li>';
+    }).join('');
+    $('planEmpty').hidden = list.length > 0;
   }
 
   // ===== バイタル =====
