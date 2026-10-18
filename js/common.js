@@ -133,6 +133,14 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  // 「中村 健一 さん」の HTML。狭い欄でも、改行は姓と名の間だけにして、「さん」は名前から離さない
+  function nameSan(name) {
+    const parts = String(name == null ? '' : name).trim().split(/[\s　]+/);
+    const last = parts.pop();
+    return parts.map(function (p) { return '<span class="nw">' + escapeHtml(p) + '</span> '; }).join('') +
+      '<span class="nw">' + escapeHtml(last) + '&nbsp;さん</span>';
+  }
+
   // 日本時間の今日を YYYY-MM-DD で返す(offsetDays で前後の日)
   function todayJST(offsetDays) {
     const d = new Date(Date.now() + 9 * 3600 * 1000 + (offsetDays || 0) * 86400 * 1000);
@@ -164,6 +172,7 @@
     checkPasscode: checkPasscode,
     logout: logout,
     escapeHtml: escapeHtml,
+    nameSan: nameSan,
     todayJST: todayJST,
     flashSaved: flashSaved,
     setStatus: setStatus,

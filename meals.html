@@ -44,18 +44,6 @@
     .mark-cell.mark-none:hover { box-shadow: none; }
     .mark-cell:hover { box-shadow: var(--shadow-md); }
 
-    /* ----- 1日 / 1週間 の切り替え ----- */
-    .mode-switch { display: flex; justify-content: center; margin-bottom: 12px; }
-    .mode-switch button {
-      display: flex; align-items: center; gap: 6px; cursor: pointer;
-      font-family: var(--font-base); font-size: 14px; font-weight: 700;
-      padding: 7px 18px; border: 1px solid var(--color-primary);
-      background: var(--color-surface); color: var(--color-primary-dark);
-    }
-    .mode-switch button:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
-    .mode-switch button:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none; }
-    .mode-switch button.active { background: var(--color-primary); color: #fff; }
-
     /* ----- 1週間の表 ----- */
     .count-table th.d { text-align: left; font-size: 13px; font-weight: 700; color: var(--color-text); white-space: nowrap; }
     .count-table th.d.sat, .week-table th.sat { color: var(--color-sat); }
@@ -68,7 +56,7 @@
     .week-table thead th.today { background: var(--color-primary-soft); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
     .week-table th.name {
       position: sticky; left: 0; z-index: 1; background: var(--color-surface);
-      width: 54px; text-align: left; font-size: 11px; font-weight: 700; color: var(--color-text); white-space: normal; word-break: break-all;
+      width: 54px; text-align: left; font-size: 11px; font-weight: 700; color: var(--color-text); white-space: normal;
     }
     .week-table th.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
     .wk-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
@@ -304,7 +292,7 @@
     const meals = Meals.KINDS;
     t += LEGEND + '<table class="count-table">' + mealHead(meals) + '<tbody>';
     people.forEach(function (p) {
-      t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
+      t += '<tr><th class="name">' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
         meals.map(function (k) {
           if (!Meals.hasMeal(date, k.key)) return '<td><span class="mark-cell mark-none">-</span></td>';
           const key = Meals.key(p.resident.id, date, k.key), v = plans[key];
@@ -327,7 +315,7 @@
         return '<th class="' + Meals.dayClass(d) + (d === today ? ' today' : '') + '">' + Meals.dateLabel(d).replace('(', '<br>(') + '</th>';
       }).join('') + '</tr></thead><tbody>';
     people.forEach(function (p) {
-      t += '<tr><th class="name">' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
+      t += '<tr><th class="name">' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
       ds.forEach(function (d) {
         // その日はこのハウスにいない(入居前・退居後・ほかのハウス)
         if (!peopleOfHouse(h.id, d).some(function (x) { return x.resident.id === p.resident.id; })) { t += '<td class="out">—</td>'; return; }

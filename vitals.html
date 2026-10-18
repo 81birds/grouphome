@@ -34,6 +34,22 @@
     .vt-table tr.cont th, .vt-table tr.cont td { border-top: none; }
     .alert { color: var(--color-danger); }
     td.v.alert { font-weight: 700; background: var(--color-danger-soft); border-radius: var(--radius-sm); }
+    /* ----- 過去1週間の表(利用者さん × 日) ----- */
+    .vw-table { width: 100%; min-width: 300px; border-collapse: collapse; table-layout: fixed; }
+    .vw-table th, .vw-table td { border-bottom: 1px solid var(--color-border); padding: 5px 1px; text-align: center; vertical-align: top; }
+    .vw-table thead th { font-size: 10px; color: var(--color-text-muted); line-height: 1.3; white-space: normal; }
+    .vw-table thead th.sat { color: var(--color-sat); }
+    .vw-table thead th.sun { color: var(--color-danger); }
+    .vw-table thead th.today { background: var(--color-primary-soft); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+    .vw-table th.name { width: 54px; text-align: left; font-size: 11px; font-weight: 700; color: var(--color-text); white-space: normal; vertical-align: top; }
+    .vw-table th.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .vw-cell { display: flex; flex-direction: column; gap: 1px; font-size: 10px; line-height: 1.35; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
+    .vw-cell .alert { font-weight: 700; background: var(--color-danger-soft); border-radius: 3px; }
+    .vw-cell .more { color: var(--color-text-muted); font-size: 9px; }
+    .vw-cell i { font-size: 12px; color: var(--color-text-muted); }
+    .vw-table td.none { color: var(--color-text-muted); font-size: 10px; vertical-align: middle; }
+    .vw-table td.out { background: var(--color-surface-alt); color: var(--color-text-muted); vertical-align: middle; }
+
     .by-staff-tag { display: block; font-size: 9px; color: var(--color-staff); font-weight: 400; }
   </style>
 </head>
@@ -57,10 +73,15 @@
     </div>
 
     <div class="card">
+      <!-- 1日 / 過去1週間 -->
+      <div class="mode-switch" id="modeSwitch" role="group" aria-label="表示する期間">
+        <button type="button" data-mode="day"><i class="ti ti-calendar-event"></i>1日</button>
+        <button type="button" data-mode="week"><i class="ti ti-calendar-week"></i>過去1週間</button>
+      </div>
       <div class="date-row">
-        <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前の日"><i class="ti ti-chevron-left"></i></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="prevDay" aria-label="前へ"><i class="ti ti-chevron-left"></i></button>
         <span class="date-label" id="dateLabel"></span>
-        <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次の日"><i class="ti ti-chevron-right"></i></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="nextDay" aria-label="次へ"><i class="ti ti-chevron-right"></i></button>
         <input type="date" id="dateInput" aria-label="日にち">
         <button type="button" class="btn btn-ghost btn-sm" id="todayBtn">今日</button>
       </div>
@@ -83,6 +104,8 @@
   const $ = function (id) { return document.getElementById(id); };
   const esc = App.escapeHtml;
   const HOUSE_KEY = 'gh_vitals_house';
+  const MODE_KEY = 'gh_vitals_mode';
+  let mode = 'day';       // 'day'(1日)か 'week'(選んだ日までの過去1週間)
 
   let date = App.todayJST();
   let houseSel = 'all';   // 'all' か ハウスの id
@@ -90,11 +113,19 @@
 
   function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
 
+  // 表示する日(過去1週間は、選んだ日を最後にした 7 日)
+  function days() {
+    if (mode === 'day') return [date];
+    const out = [];
+    for (let i = 6; i >= 0; i--) out.push(Meals.addDays(date, -i));
+    return out;
+  }
+
   // その日にハウスの部屋に入居している人(部屋の順)
-  function peopleOfHouse(hid) {
+  function peopleOfHouse(hid, d) {
     const out = [];
     Rooms.roomsOf(hid, true).forEach(function (room) {
-      const a = Rooms.occupantOf(room.id, date);
+      const a = Rooms.occupantOf(room.id, d || date);
       const p = a ? Rooms.resident(a.resident_id) : null;
       if (p) out.push({ resident: p, room: room });
     });
@@ -116,16 +147,57 @@
     '血圧の上 ' + Vitals.LIMITS.bp_high.high + ' 以上・' + Vitals.LIMITS.bp_high.low + ' 未満、下 ' + Vitals.LIMITS.bp_low.high + ' 以上、' +
     '脈拍 ' + Vitals.LIMITS.pulse.high + ' 以上・' + Vitals.LIMITS.pulse.low + ' 未満)。入浴はきのうのことです</p>';
 
+  // 過去1週間: 期間のどこかで入居している人
+  function peopleOfWeek(hid, ds) {
+    const seen = {}, out = [];
+    ds.forEach(function (d) {
+      peopleOfHouse(hid, d).forEach(function (x) { if (!seen[x.resident.id]) { seen[x.resident.id] = true; out.push(x); } });
+    });
+    return out;
+  }
+
+  // 過去1週間のハウス: 利用者さん × 日。1 マスにその日のいちばん新しい値
+  function houseWeekCard(h, ds) {
+    const today = App.todayJST();
+    const people = peopleOfWeek(h.id, ds);
+    const n = rows.filter(function (r) { return people.some(function (p) { return p.resident.id === r.resident_id; }); }).length;
+    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '<span class="vt-sum">' + n + ' 件</span></h2>';
+    if (!people.length) return t + '<div class="empty-msg">この期間に入居している利用者さんはいません</div></div>';
+    t += '<table class="vw-table"><thead><tr><th class="name"></th>' + ds.map(function (d) {
+      return '<th class="' + Meals.dayClass(d) + (d === today ? ' today' : '') + '">' + Meals.dateLabel(d).replace('(', '<br>(') + '</th>';
+    }).join('') + '</tr></thead><tbody>';
+    people.forEach(function (p) {
+      t += '<tr><th class="name">' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
+      ds.forEach(function (d) {
+        if (!peopleOfHouse(h.id, d).some(function (x) { return x.resident.id === p.resident.id; })) { t += '<td class="out">-</td>'; return; }
+        const mine = rows.filter(function (r) { return r.resident_id === p.resident.id && r.measured_date === d; });
+        if (!mine.length) { t += '<td class="none">未入力</td>'; return; }
+        const r = mine[mine.length - 1];
+        const line = function (field, value, text) { return text ? '<span class="' + (Vitals.alert(field, value) ? 'alert' : '') + '">' + esc(text) + '</span>' : ''; };
+        const bpAlert = r.bp_high && (Vitals.alert('bp_high', r.bp_high) || Vitals.alert('bp_low', r.bp_low));
+        t += '<td><div class="vw-cell">' +
+          line('temperature', r.temperature, r.temperature !== null ? Number(r.temperature).toFixed(1) : '') +
+          (r.bp_high ? '<span class="' + (bpAlert ? 'alert' : '') + '">' + esc(Vitals.bp(r)) + '</span>' : '') +
+          line('pulse', r.pulse, r.pulse ? String(r.pulse) : '') +
+          (r.bath_prev_day ? '<span title="前日: ' + esc(Vitals.bath(r.bath_prev_day)) + '"><i class="ti ' + (r.bath_prev_day === 'bath' ? 'ti-bath' : 'ti-droplet') + '"></i></span>' : '') +
+          (mine.length > 1 ? '<span class="more">ほか' + (mine.length - 1) + '回</span>' : '') +
+          '</div></td>';
+      });
+      t += '</tr>';
+    });
+    return t + '</tbody></table></div>';
+  }
+
   function houseCard(h) {
     const people = peopleOfHouse(h.id);
-    const done = people.filter(function (p) { return rows.some(function (r) { return r.resident_id === p.resident.id; }); }).length;
+    const done = people.filter(function (p) { return rows.some(function (r) { return r.resident_id === p.resident.id && r.measured_date === date; }); }).length;
     let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) +
       '<span class="vt-sum">入力 ' + done + ' / ' + people.length + '人</span></h2>';
     if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
     t += '<table class="vt-table"><thead><tr><th class="name"></th><th class="t">時間</th><th>体温</th><th>血圧</th><th>脈拍</th><th class="bath">入浴<br>(前日)</th></tr></thead><tbody>';
     people.forEach(function (p) {
-      const mine = rows.filter(function (r) { return r.resident_id === p.resident.id; });
-      const name = '<th class="name"' + (mine.length > 1 ? ' rowspan="' + mine.length + '"' : '') + '>' + esc(p.resident.name) + ' さん<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
+      const mine = rows.filter(function (r) { return r.resident_id === p.resident.id && r.measured_date === date; });
+      const name = '<th class="name"' + (mine.length > 1 ? ' rowspan="' + mine.length + '"' : '') + '>' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
       if (!mine.length) {
         t += '<tr>' + name + '<td class="missing" colspan="5">未入力</td></tr>';
         return;
@@ -143,10 +215,18 @@
   }
 
   function render() {
+    const ds = days();
     $('dateInput').value = date;
     const lbl = $('dateLabel');
-    lbl.textContent = Meals.dateLabel(date) + (date === App.todayJST() ? ' きょう' : '');
-    lbl.className = 'date-label ' + Meals.dayClass(date);
+    if (mode === 'day') {
+      lbl.textContent = Meals.dateLabel(date) + (date === App.todayJST() ? ' きょう' : '');
+      lbl.className = 'date-label ' + Meals.dayClass(date);
+    } else {
+      lbl.textContent = Meals.dateLabel(ds[0]) + '〜' + Meals.dateLabel(ds[6]);
+      lbl.className = 'date-label';
+    }
+    $('modeSwitch').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.mode === mode); });
+    $('vtNote').innerHTML = NOTE + (mode === 'week' ? '<p class="vt-note">1 マスは上から 体温・血圧・脈拍・前日の入浴(<i class="ti ti-bath"></i> お風呂 / <i class="ti ti-droplet"></i> シャワー)。何回か入れた日は、いちばん新しい値です</p>' : '');
 
     const houses = activeHouses();
     if (houseSel !== 'all' && !houses.some(function (h) { return h.id === houseSel; })) houseSel = 'all';
@@ -154,13 +234,16 @@
       return '<button type="button" data-house="' + esc(h.id) + '"' + (h.id === houseSel ? ' class="active"' : '') + '>' + esc(h.name) + '</button>';
     }).join('');
     const show = houseSel === 'all' ? houses : houses.filter(function (h) { return h.id === houseSel; });
-    $('houseCards').innerHTML = show.length ? show.map(houseCard).join('') : '<div class="card empty-msg">ハウスが登録されていません</div>';
+    $('houseCards').innerHTML = show.length
+      ? show.map(function (h) { return mode === 'day' ? houseCard(h) : houseWeekCard(h, ds); }).join('')
+      : '<div class="card empty-msg">ハウスが登録されていません</div>';
   }
 
   async function load() {
     App.setStatus($('loadStatus'), '');
     try {
-      rows = await App.rpc('get_vitals', { p_from: date, p_to: date });
+      const ds = days();
+      rows = await App.rpc('get_vitals', { p_from: ds[0], p_to: ds[ds.length - 1] });
     } catch (err) {
       console.error(err);
       rows = [];
@@ -179,9 +262,16 @@
     active: 'vitals',
     onReady: async function () {
       await Rooms.load();
-      $('vtNote').innerHTML = NOTE;
-      $('prevDay').addEventListener('click', function () { goDate(Meals.addDays(date, -1)); });
-      $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, 1)); });
+      // 前へ・次へは、1日なら 1 日、過去1週間なら 7 日
+      $('prevDay').addEventListener('click', function () { goDate(Meals.addDays(date, mode === 'day' ? -1 : -7)); });
+      $('nextDay').addEventListener('click', function () { goDate(Meals.addDays(date, mode === 'day' ? 1 : 7)); });
+      $('modeSwitch').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-mode]');
+        if (!b || b.dataset.mode === mode) return;
+        mode = b.dataset.mode;
+        try { localStorage.setItem(MODE_KEY, mode); } catch (e2) { /* noop */ }
+        load();
+      });
       $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
       $('dateInput').addEventListener('change', function () { goDate(this.value); });
       $('houseChips').addEventListener('click', function (e) {
@@ -191,7 +281,10 @@
         try { localStorage.setItem(HOUSE_KEY, houseSel); } catch (e2) { /* noop */ }
         render();
       });
-      try { houseSel = localStorage.getItem(HOUSE_KEY) || 'all'; } catch (e) { /* noop */ }
+      try {
+        houseSel = localStorage.getItem(HOUSE_KEY) || 'all';
+        mode = localStorage.getItem(MODE_KEY) === 'week' ? 'week' : 'day';
+      } catch (e) { /* noop */ }
       await load();
     },
   });
