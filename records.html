@@ -42,6 +42,20 @@
       background: var(--color-primary-soft); color: var(--color-primary-dark);
     }
     .person-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    /* 空室(押せない) */
+    .person-btn.vacant { cursor: default; background: transparent; border-style: dashed; color: var(--color-text-muted); }
+    .person-btn.vacant .p-name { font-weight: 500; }
+
+    /* ----- 施設のカードの中の、本日のスタッフ(小さめ) ----- */
+    .visit-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--color-border); }
+    .visit-head { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 4px; }
+    .visit-head i { color: var(--color-primary-dark); }
+    .visit-box .tl-scale, .visit-box .tl-row { grid-template-columns: 76px 1fr; }
+    .visit-box .tl-row { padding: 3px 0; }
+    .visit-box .tl-name { font-size: 12px; }
+    .visit-box .tl-track { height: 18px; }
+    .visit-box .tl-time { font-size: 10px; margin-top: 1px; }
+    .visit-box .empty-msg { padding: 8px; font-size: 12px; }
     .person-btn.active .p-room { color: #fff; opacity: 0.85; }
     .person-btn.active .p-count { background: var(--color-surface); }
 
@@ -216,12 +230,12 @@
       </div>
       <h2><i class="ti ti-building-community"></i>施設</h2>
       <div class="chips" id="houseChips"></div>
-    </div>
 
-    <!-- 本日のスタッフ -->
-    <div class="card" id="visitCard" hidden>
-      <h2><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span></h2>
-      <div class="tl" id="visitList"></div>
+      <!-- 本日のスタッフ(選んだ施設の。同じカードの中に小さく出す) -->
+      <div class="visit-box" id="visitCard" hidden>
+        <h3 class="visit-head"><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span></h3>
+        <div class="tl" id="visitList"></div>
+      </div>
     </div>
 
     <!-- 利用者 -->
@@ -475,23 +489,29 @@
 
   // ===== 利用者 =====
   // その日にこの施設のどこかの部屋に入居している人(部屋の順)
-  function peopleOfHouse() {
+  // 部屋ごとの枠。入居している人がいなければ resident は null(空室)
+  function roomSlots() {
     if (!houseId) return [];
     const out = [];
     Rooms.roomsOf(houseId, true).forEach(function (room) {
       const a = Rooms.occupantOf(room.id, date);
-      if (!a) return;
-      const p = Rooms.resident(a.resident_id);
-      if (p) out.push({ resident: p, room: room });
+      const p = a ? Rooms.resident(a.resident_id) : null;
+      if (!p && !room.is_active) return;   // 使っていない部屋は出さない
+      out.push({ resident: p, room: room });
     });
     return out;
   }
   function renderPeople() {
     $('personCard').hidden = !houseId;
     if (!houseId) return;
-    const people = peopleOfHouse();
+    const slots = roomSlots();
+    const people = slots.filter(function (x) { return x.resident; });
     if (residentId && !people.some(function (x) { return x.resident.id === residentId; })) residentId = null;
-    $('personGrid').innerHTML = people.map(function (x) {
+    // 部屋の数だけ並べる。人がいない部屋は「空室」
+    $('personGrid').innerHTML = slots.map(function (x) {
+      if (!x.resident) {
+        return '<div class="person-btn vacant"><span class="p-name">空室</span><span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span></div>';
+      }
       const n = records.filter(function (r) { return r.resident_id === x.resident.id; }).length;
       return '<button type="button" class="person-btn' + (x.resident.id === residentId ? ' active' : '') + '" data-resident="' + esc(x.resident.id) + '">' +
         '<span class="p-name">' + esc(x.resident.name) + ' さん</span>' +
@@ -500,8 +520,8 @@
         '</button>';
     }).join('');
     const msg = $('personMsg');
-    msg.hidden = people.length > 0;
-    msg.textContent = 'この日、この施設に入居している利用者さんがいません。利用者さんの画面で入居を登録してください';
+    msg.hidden = slots.length > 0;
+    msg.textContent = 'この施設には部屋が登録されていません。施設DB の画面で部屋を追加してください';
   }
 
   // ===== 入力と一覧 =====
