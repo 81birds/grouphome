@@ -15,6 +15,10 @@
     .date-row .date-label { font-size: 15px; font-weight: 700; }
     .date-row .date-label.sat { color: var(--color-sat); }
     .date-row .date-label.sun { color: var(--color-danger); }
+    .view-chips { justify-content: center; margin: 12px 0 0; }
+    .view-chips button { font-size: 13px; padding: 7px 14px; }
+    /* まとめの表のハウス名は、押すとそのハウスへ */
+    .house-link { font: inherit; color: var(--color-primary-dark); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-align: left; }
 
     /* ----- まとめ・ハウスごとの表 ----- */
     .count-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -71,11 +75,13 @@
         <input type="date" id="dateInput" aria-label="日にち">
         <button type="button" class="btn btn-ghost btn-sm" id="todayBtn">今日</button>
       </div>
+      <!-- まとめ・各ハウスを切り替える -->
+      <div class="chips view-chips" id="viewChips"></div>
       <div id="loadStatus" class="status-msg center"></div>
     </div>
 
     <!-- まとめ(ハウス × 食事の ○ の数) -->
-    <div class="card">
+    <div class="card" id="sumCard">
       <h2><i class="ti ti-sum"></i>まとめ</h2>
       <table class="count-table" id="sumTable"></table>
     </div>
@@ -96,6 +102,8 @@
 
   let date = App.todayJST();
   let plans = {};
+  const VIEW_KEY = 'gh_meals_view';
+  let view = 'sum';   // 'sum'(まとめ)か、ハウスの id
   let byWho = {};    // 誰が選んだか(resident / staff)
 
   // 色の説明(ハウスごとのカードの中に出す)
@@ -142,9 +150,17 @@
 
     // まとめ
     const houses = activeHouses().map(function (h) { return { house: h, people: peopleOfHouse(h.id) }; });
+    if (view !== 'sum' && !houses.some(function (x) { return x.house.id === view; })) view = 'sum';
+
+    // 切り替えのチップ
+    $('viewChips').innerHTML = [{ id: 'sum', name: 'まとめ' }].concat(houses.map(function (x) { return { id: x.house.id, name: x.house.name }; })).map(function (it) {
+      return '<button type="button" data-view="' + esc(it.id) + '"' + (it.id === view ? ' class="active"' : '') + '>' +
+        (it.id === 'sum' ? '<i class="ti ti-sum"></i> ' : '') + esc(it.name) + '</button>';
+    }).join('');
+    $('sumCard').hidden = view !== 'sum';
     let sum = head + '<tbody>';
     houses.forEach(function (x) {
-      sum += '<tr><th class="name">' + esc(x.house.name) + '<small>入居 ' + x.people.length + '人</small></th>' +
+      sum += '<tr><th class="name"><button type="button" class="house-link" data-view="' + esc(x.house.id) + '">' + esc(x.house.name) + '</button><small>入居 ' + x.people.length + '人</small></th>' +
         meals.map(function (k) { return countCell(countOf(x.people, k.key)); }).join('') + '</tr>';
     });
     const all = houses.reduce(function (a, x) { return a.concat(x.people); }, []);
@@ -152,8 +168,8 @@
       meals.map(function (k) { return countCell(countOf(all, k.key)); }).join('') + '</tr></tfoot>';
     $('sumTable').innerHTML = houses.length ? sum : '<tr><td class="empty-msg">ハウスが登録されていません</td></tr>';
 
-    // ハウスごと
-    $('houseCards').innerHTML = houses.map(function (x) {
+    // 選んだハウスだけ出す
+    $('houseCards').innerHTML = houses.filter(function (x) { return x.house.id === view; }).map(function (x) {
       let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(x.house.name) + '</h2>';
       if (!x.people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
       t += LEGEND + '<table class="count-table">' + head + '<tbody>';
@@ -222,6 +238,17 @@
       $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
       $('dateInput').addEventListener('change', function () { goDate(this.value); });
       $('houseCards').addEventListener('click', onMarkClick);
+      // チップと、まとめのハウス名で切り替える
+      function onView(e) {
+        const b = e.target.closest('button[data-view]');
+        if (!b) return;
+        view = b.dataset.view;
+        try { localStorage.setItem(VIEW_KEY, view); } catch (e2) { /* noop */ }
+        render();
+      }
+      $('viewChips').addEventListener('click', onView);
+      $('sumTable').addEventListener('click', onView);
+      try { view = localStorage.getItem(VIEW_KEY) || 'sum'; } catch (e) { /* noop */ }
       await load();
     },
   });
