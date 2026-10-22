@@ -50,6 +50,7 @@
     .vw-table td.none { color: var(--color-text-muted); font-size: 10px; vertical-align: middle; }
     .vw-table td.out { background: var(--color-surface-alt); color: var(--color-text-muted); vertical-align: middle; }
 
+    .vt-in-btn { display: inline-flex; margin-top: 3px; padding: 2px 8px; font-size: 11px; }
     .by-staff-tag { display: block; font-size: 9px; color: var(--color-staff); font-weight: 400; }
   </style>
 </head>
@@ -69,7 +70,7 @@
         <span class="page-icon"><i class="ti ti-heartbeat"></i></span>
         バイタル
       </h1>
-      <p>利用者さんが自分の画面で入れた、体温・血圧・脈拍と、前日のお風呂・シャワーを見られます</p>
+      <p>利用者さんが自分の画面で入れた、体温・血圧・脈拍と、前日のお風呂・シャワーを見られます。「1日」の表の <i class="ti ti-pencil"></i> から、スタッフも入力できます</p>
     </div>
 
     <div class="card">
@@ -197,7 +198,8 @@
     t += '<table class="vt-table"><thead><tr><th class="name"></th><th class="t">時間</th><th>体温</th><th>血圧</th><th>脈拍</th><th class="bath">入浴<br>(前日)</th></tr></thead><tbody>';
     people.forEach(function (p) {
       const mine = rows.filter(function (r) { return r.resident_id === p.resident.id && r.measured_date === date; });
-      const name = '<th class="name"' + (mine.length > 1 ? ' rowspan="' + mine.length + '"' : '') + '>' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
+      const name = '<th class="name"' + (mine.length > 1 ? ' rowspan="' + mine.length + '"' : '') + '>' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small>' +
+        '<button type="button" class="btn btn-ghost btn-sm vt-in-btn" data-input="' + esc(p.resident.id) + '" aria-label="' + esc(p.resident.name) + ' さんのバイタルを入力"><i class="ti ti-pencil"></i>入力</button></th>';
       if (!mine.length) {
         t += '<tr>' + name + '<td class="missing" colspan="5">未入力</td></tr>';
         return;
@@ -274,6 +276,19 @@
       });
       $('todayBtn').addEventListener('click', function () { goDate(App.todayJST()); });
       $('dateInput').addEventListener('change', function () { goDate(this.value); });
+      // スタッフの入力(js/vitals.js のダイアログ)。記録・取消のあとは表を読み直す
+      $('houseCards').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-input]');
+        if (!b) return;
+        const p = Rooms.resident(b.dataset.input);
+        if (!p) return;
+        Vitals.openForm({
+          residentId: p.id, name: p.name, date: date,
+          onChange: function (list, msg) {
+            load().then(function () { if (msg) App.setStatus($('loadStatus'), msg, 'ok'); });
+          },
+        });
+      });
       $('houseChips').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-house]');
         if (!b) return;

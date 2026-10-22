@@ -25,7 +25,7 @@ shifts.html       勤務表。タブで「勤務表(月の表・ダイアログ�
 myshift.html      前のブックマーク用。shifts.html の「個人の勤務」タブへ転送するだけ
 records.html      日々の記録(施設→本日のスタッフを表示→利用者→その日の記録→「新しい入力」のダイアログで時刻ホイール・内容チップ・コメント。スマホ向け)
 family.html       利用者さんの画面(作成中)。ハウス→名前を選ぶとその人の画面: 本日のスタッフ・本日の予定(日課)・バイタル・外出・もどり・食事表(○×)。スマホ向け
-vitals.html       バイタル。「1日 / 過去1週間」で、日付とハウスを選んで、利用者さんが入れた体温・血圧・脈拍・前日の入浴を見る。目安を外れた値は赤
+vitals.html       バイタル。「1日 / 過去1週間」で、日付とハウスを選んで、利用者さんが入れた体温・血圧・脈拍・前日の入浴を見る。目安を外れた値は赤。「1日」の表の「入力」からスタッフも入れられる
 meals.html        食数管理。「1日 / 1週間(月〜日)」と「まとめ / 各ハウス」を切り替えて、○ の数と利用者さんごとの ○×(スタッフも変えられる)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
@@ -34,7 +34,7 @@ js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html・r
 js/staffday.js    本日のスタッフ(その日・その施設の勤務の帯。window.StaffDay)。records.html・family.html で使う
 js/meals.js       食事の予定の共通処理(window.Meals)。family.html・meals.html で使う(日付の表示にも)
 js/routines.js    日課の共通処理(window.Routines。その日の日課・曜日の表示)。profile.html・family.html・records.html で使う
-js/vitals.js      バイタルの共通処理(window.Vitals。表示と注意の目安 LIMITS)。family.html・vitals.html で使う
+js/vitals.js      バイタルの共通処理(window.Vitals。表示と注意の目安 LIMITS、スタッフ用の入力ダイアログ openForm)。family.html・vitals.html・records.html で使う
 sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ```
 
@@ -107,6 +107,8 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 利用者のボタンは部屋の数だけ並べる。その日その施設の部屋に入居している人(`Rooms.occupantOf`)を出し、いない部屋は「空室」(押せない)
 - `house_id` は記録したときの施設。部屋を移っても過去の記録の施設は変えない
 - 入力中も施設と日にちが必ず見えるようにする。施設のカードが上に隠れたら上部に帯(施設・日にち・利用者)を出し、ダイアログにも施設と日にちを出す。オレンジの「〇〇さんの記録を入力中です」は新しい入力のダイアログだけ
+- 新しい入力のダイアログは、上からオレンジの帯 → 時計 → 内容のチップ → コメント → 「記録する」。オレンジの帯(`.modal-sticky`)と「記録する」は中をスクロールしても消えない
+- 「お薬」の先頭の「バイタル」チップは、押すとバイタルの入力ダイアログ(`Vitals.openForm`)を開く。`vitals` に入り(entered_by = staff)、日々の記録の一覧にもバイタルの行として時刻順に出る
 - 新しい入力ではコメント(`note`)も一緒に入れられる。記録したあと、時刻と内容は残し、コメントは消す
 - 施設を選ぶと、同じカードの中に「本日のスタッフ」(その日その施設の勤務。前日からの夜勤も含む)を出す
 - 利用者を選ぶと、その人のその日の記録を出す。「新しい入力」でダイアログを開き、時刻と内容を選んで記録する
@@ -130,7 +132,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ## バイタルのルール
 
 - 1 行は `vitals`(resident_id・measured_date・measured_time・体温・血圧の上下・脈拍・bath_prev_day・entered_by)。はかったものだけ入れる(1 つ以上必要。血圧は上下そろえる)
-- 利用者さんの画面で入れ、バイタル(vitals.html)で見る。前日の入浴は お風呂(bath)/ シャワー(shower)/ 空
+- 利用者さんの画面で入れ、バイタル(vitals.html)で見る。スタッフは日々の記録の「バイタル」チップか、vitals.html の「入力」から入れる(`Vitals.openForm`、entered_by = staff)。前日の入浴は お風呂(bath)/ シャワー(shower)/ 空
 - 注意の目安は `js/vitals.js` の `LIMITS`(体温 37.5℃ 以上など)。医療の判断ではなく、気づくための目安
 - 記録は消さない。間違いは `void_vital` で取り消す(voided_at)
 

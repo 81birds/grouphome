@@ -430,6 +430,44 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
   box-shadow: 0 -10px 10px -10px rgba(30, 30, 20, 0.15);
 }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+/* 中をスクロールしても上に残しておく段(「入力中です」の帯など)。左右の余白まで背景で覆う */
+.modal-sticky {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--color-surface);
+  margin: 0 -16px; padding: 0 16px 10px;
+  box-shadow: 0 10px 10px -10px rgba(30, 30, 20, 0.15);
+}
+
+/* ===== バイタルの入力ダイアログ(js/vitals.js の Vitals.openForm) ===== */
+.vtf-ctx {
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--color-work-soft); border-left: 4px solid var(--color-work); color: var(--color-work-dark);
+  font-size: 14px; font-weight: 700;
+}
+.vtf-ctx i, .vtf-ctx .today, .vtf-ctx .sep { color: var(--color-work-dark); }
+.vtf-ctx .sep { font-weight: 400; }
+.vtf-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vtf-note { font-size: 12px; color: var(--color-text-muted); margin: 2px 0 10px; }
+.vtf-label { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+.vt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.vt-grid input { font-size: 18px; padding: 9px 10px; text-align: center; }
+.bp-row { display: flex; align-items: center; gap: 6px; }
+.bp-row span { font-size: 18px; color: var(--color-text-muted); }
+.vt-bath-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.vt-bath-btn {
+  font-family: var(--font-base); font-size: 14px; font-weight: 700; cursor: pointer;
+  padding: 10px 4px; border-radius: var(--radius-md);
+  border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.vt-bath-btn i { font-size: 20px; color: var(--color-primary-dark); }
+.vt-bath-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.vt-bath-btn.active i { color: #fff; }
+.vtf-hist-head { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin: 4px 0 2px; }
+.vtf-hist { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.vtf-hist li { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--color-border); }
+.vtf-hist .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3em; }
+.vtf-hist .vals { flex: 1; min-width: 0; white-space: pre-wrap; }
 
 /* スマホ: 下から出るシート。画面の下までいっぱいに使う */
 @media (max-width: 599px) {
@@ -445,5 +483,6 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
 /* PC: 画面が広いときはダイアログも大きく */
 @media (min-width: 900px) {
   .modal { max-width: 560px; padding: 22px 24px 0; }
+  .modal-sticky { margin: 0 -24px; padding: 0 24px 10px; }
   .modal-head h2 { font-size: 17px; }
 }

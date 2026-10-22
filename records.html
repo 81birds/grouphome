@@ -135,6 +135,8 @@
     /* ----- 入力のダイアログ ----- */
 
     .modal-foot .status-msg { margin: 0 0 8px; }
+    #inputModal .modal-sticky .modal-ctx { margin: 0; }
+    #inputModal .kind-groups { margin-top: 12px; }
     .modal-foot .status-msg:empty { display: none; }
 
     /* 背の低いスマホ: ホイールを 3 段にし、チップを小さめにして、ダイアログに収める */
@@ -310,9 +312,8 @@
       <h2 id="inputHead"><i class="ti ti-pencil"></i><span id="inputTitle"></span></h2>
       <button type="button" class="icon-btn" id="inputClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
     </div>
-    <div class="modal-ctx working" id="inputCtx"></div>
-
-    <div class="kind-groups" id="kindGrid"></div>
+    <!-- 「〇〇さんの記録を入力中です」は、中をスクロールしても上に残す -->
+    <div class="modal-sticky"><div class="modal-ctx working" id="inputCtx"></div></div>
 
     <div class="time-block">
       <div class="time-label" id="departLabel">時刻</div>
@@ -339,6 +340,9 @@
         </div>
       </div>
     </div>
+
+    <!-- 内容(時計の下) -->
+    <div class="kind-groups" id="kindGrid"></div>
 
     <div class="field input-note">
       <label for="newNote">コメント(選んだ内容について。なくてもよい)</label>
@@ -388,6 +392,7 @@
 <script src="js/rooms.js"></script>
 <script src="js/staffday.js"></script>
 <script src="js/routines.js"></script>
+<script src="js/vitals.js"></script>
 <script>
   // ----- 記録の内容(チップ)。ここに足せば画面に増える -----
   // 系統(色分け)ごとに並べる。note はコメント欄に最初から入る文(そのまま記録してもよい)
@@ -404,6 +409,8 @@
       { name: 'もどり', icon: 'ti-home', note: '無事にもどりました' },
     ] },
     { name: 'お薬', cls: 'med', kinds: [
+      // バイタルは押すと別のダイアログで体温・血圧などを入れる(vitals に入る。日々の記録の行にはならない)
+      { name: 'バイタル',     icon: 'ti-heartbeat',       vital: true },
       { name: 'お薬おわたし', icon: 'ti-pill',            note: 'お薬をおわたししました' },
       { name: 'お薬空包確認', icon: 'ti-clipboard-check', note: '朝食前後薬 確認\n昼食前後薬 確認\n夕食前後薬 確認\n就寝薬 確認' },
     ] },
@@ -424,6 +431,7 @@
   let date = App.todayJST();
   let residentId = null;
   let records = [];             // 選んだ施設・日の記録
+  let vitals = [];              // 選んだ日のバイタル(全員分。この施設の人だけ使う)
   let picked = new Set();       // 選んでいる内容(1 つだけ)
 
   const $ = function (id) { return document.getElementById(id); };
@@ -591,7 +599,8 @@
       if (!x.resident) {
         return '<div class="person-btn vacant"><span class="p-name">空室</span><span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span></div>';
       }
-      const n = records.filter(function (r) { return r.resident_id === x.resident.id; }).length;
+      const n = records.filter(function (r) { return r.resident_id === x.resident.id; }).length +
+        vitals.filter(function (v) { return v.resident_id === x.resident.id; }).length;
       return '<button type="button" class="person-btn' + (x.resident.id === residentId ? ' active' : '') + '" data-resident="' + esc(x.resident.id) + '">' +
         '<span class="p-name">' + esc(x.resident.name) + ' さん</span>' +
         '<span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span>' +
@@ -661,18 +670,33 @@
     $('listTitle').textContent = p.name + ' さんの記録(' + Rooms.dateText(date) + ')';
 
     const mine = records.filter(function (r) { return r.resident_id === residentId; });
+    const myVitals = vitals.filter(function (v) { return v.resident_id === residentId; });
 
     // きょうの日課。同じ内容の記録がその日にあれば「記録済み」
     const rts = Routines.ofDay(residentId, date);
     $('rtToday').hidden = !rts.length;
     $('rtTodayList').innerHTML = rts.map(function (rt) {
-      const done = mine.some(function (r) { return r.kind === rt.content; });
+      const done = mine.some(function (r) { return r.kind === rt.content; }) ||
+        (rt.content === 'バイタル' && myVitals.length > 0);
       return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '</span><span class="c">' + esc(rt.content) + '</span>' +
         (done ? '<span class="done"><i class="ti ti-check"></i>記録済み</span>' : '') +
         '<button type="button" class="btn btn-ghost btn-sm" data-routine="' + esc(rt.id) + '"><i class="ti ti-pencil"></i>記録</button></li>';
     }).join('');
 
-    $('recList').innerHTML = mine.map(function (r) {
+    // 記録とバイタルを時刻の順に並べる
+    const items = mine.map(function (r) { return { t: String(r.record_time).slice(0, 5), r: r }; })
+      .concat(myVitals.map(function (v) { return { t: Vitals.time(v.measured_time), v: v }; }))
+      .sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });
+    $('recList').innerHTML = items.map(function (it) {
+      if (it.v) {
+        return '<li>' +
+          '<span class="rec-time">' + esc(it.t) + '</span>' +
+          '<span class="rec-kind"><i class="ti ti-heartbeat"></i>バイタル' +
+            '<span class="rec-note">' + esc(Vitals.summary(it.v)) + '</span></span>' +
+          '<button type="button" class="icon-btn" data-vital="1" title="バイタルを見る・取消" aria-label="バイタル"><i class="ti ti-pencil"></i></button>' +
+          '</li>';
+      }
+      const r = it.r;
       return '<li>' +
         '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
         '<span class="rec-kind"><i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind) +
@@ -680,11 +704,17 @@
         '<button type="button" class="icon-btn" data-edit="' + esc(r.id) + '" title="時刻・コメント・取消" aria-label="編集"><i class="ti ti-pencil"></i></button>' +
         '</li>';
     }).join('');
-    $('listMsg').hidden = mine.length > 0;
+    $('listMsg').hidden = items.length > 0;
   }
 
   async function loadRecords() {
     records = houseId ? await App.rpc('get_daily_records', { p_house_id: houseId, p_date: date }) : [];
+    try {
+      vitals = houseId ? await App.rpc('get_vitals', { p_from: date, p_to: date }) : [];
+    } catch (err) {
+      console.error(err);
+      vitals = [];
+    }
   }
 
   async function selectHouse(id) {
@@ -742,12 +772,31 @@
     const n = roundTime(+t[0], +t[1]);
     savedH = n[0]; savedM = n[1];
     const chip = KINDS.find(function (k) { return k.name === rt.content; });
+    if (chip && chip.vital) { openVital(Routines.time(rt.routine_time)); return; }
     routineKind = chip ? null : { name: rt.content, icon: 'ti-calendar-check', note: '' };
     picked.clear();
     picked.add(rt.content);
     $('newNote').value = '';
     lastTemplate = '';
     openInput();
+  }
+
+  // バイタルのダイアログ(js/vitals.js)。新しい入力からは、その時刻で開く
+  function openVital(time) {
+    const p = residentId ? Rooms.resident(residentId) : null;
+    if (!p) return;
+    closeInput();
+    Vitals.openForm({
+      residentId: p.id, name: p.name, date: date, time: time,
+      ctxHtml: '<div class="ctx-doing"><i class="ti ti-heartbeat"></i>' + esc(p.name) + ' さんのバイタルを入力中です</div>' + ctxLine(),
+      onChange: function (rows, msg) {
+        const id = p.id;
+        vitals = vitals.filter(function (v) { return v.resident_id !== id; }).concat(rows);
+        if (msg) App.setStatus($('listStatus'), msg, 'ok');
+        renderPeople();
+        renderList();
+      },
+    });
   }
 
   // ホイールが非表示のあいだも時刻を覚えておく
@@ -904,6 +953,8 @@
         const b = e.target.closest('button[data-kind]');
         if (!b) return;
         const k = b.dataset.kind;
+        const kd = KINDS.find(function (x) { return x.name === k; });
+        if (kd && kd.vital) { openVital(timeText()); return; }
         // 選べるのは 1 つだけ。同じものをもう一度押すと外れる
         const was = picked.has(k);
         picked.clear();
@@ -914,6 +965,7 @@
       $('recList').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-edit]');
         if (b) openEdit(b.dataset.edit);
+        if (e.target.closest('button[data-vital]')) openVital();
       });
       $('saveBtn').addEventListener('click', onSave);
       $('ctxBar').addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
