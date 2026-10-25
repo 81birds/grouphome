@@ -701,8 +701,12 @@
     });
     // 日課がない日も出して、プロファイルの日課へ行けるようにする
     $('rtToday').hidden = false;
-    $('rtNone').hidden = todo.length > 0;
-    $('rtNone').textContent = rts.length ? 'きょうの日課はすべて記録しました' : 'きょうの日課はありません';
+    // 記録済みで一覧から外した日課があるときは、その数も出す(「出ていない」と思われないように)
+    const doneN = rts.length - todo.length;
+    $('rtNone').hidden = rts.length > 0 && doneN === 0;
+    $('rtNone').textContent = !rts.length ? 'きょうの日課はありません'
+      : !todo.length ? 'きょうの日課はすべて記録しました(下の記録に「日課」の印)'
+      : '記録済みの日課が ' + doneN + ' 件あります(下の記録に「日課」の印)';
     $('rtEditLink').href = 'profile.html?resident=' + encodeURIComponent(residentId) + '&from=records#routines';
     $('rtTodayList').innerHTML = todo.map(function (rt) {
       return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '</span><span class="c">' + esc(rt.content) + '</span>' +
@@ -950,6 +954,12 @@
       $('rtTodayList').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-routine]');
         if (b) openFromRoutine(b.dataset.routine);
+      });
+      // プロファイルで日課を変えて「もどる」で帰ってきたとき、ブラウザが前の画面をそのまま出すことがあるので読み直す
+      window.addEventListener('pageshow', async function (e) {
+        if (!e.persisted) return;
+        try { await Routines.load(); } catch (err) { console.error(err); return; }
+        if (residentId) renderList();
       });
 
       buildWheel($('wheelH'), 24, 1);
