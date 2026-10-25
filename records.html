@@ -167,7 +167,6 @@
     .rt-today li:first-child { border-top: none; }
     .rt-today .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2em; }
     .rt-today .c { flex: 1; min-width: 0; }
-    .rt-today .done { font-size: 11px; font-weight: 700; color: var(--color-primary-dark); white-space: nowrap; }
     .rt-today .btn-sm { white-space: nowrap; }
     .cat-routine .kind-btn { background: var(--color-primary-soft); }
 
@@ -188,6 +187,13 @@
       white-space: pre-wrap; word-break: break-word;
     }
     .rec-note i { font-size: 12px; color: var(--color-text-muted); }
+    /* 日課から記録したもの(日課の内容と同じ記録) */
+    .rec-routine {
+      display: inline-flex; align-items: center; gap: 2px;
+      font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+      background: var(--color-primary-soft); color: var(--color-primary-dark);
+    }
+    .rec-kind .rec-routine i { font-size: 12px; }
 
     /* ----- いまの施設・日にち(下にスクロールしても上に出しておく) ----- */
     .ctx-bar {
@@ -677,29 +683,37 @@
     const mine = records.filter(function (r) { return r.resident_id === residentId; });
     const myVitals = vitals.filter(function (v) { return v.resident_id === residentId; });
 
-    // きょうの日課。同じ内容の記録がその日にあれば「記録済み」
-    const rts = Routines.ofDay(residentId, date);
-    // 日課がない日も出して、プロファイルの日課へ行けるようにする
-    $('rtToday').hidden = false;
-    $('rtNone').hidden = rts.length > 0;
-    $('rtEditLink').href = 'profile.html?resident=' + encodeURIComponent(residentId) + '&from=records#routines';
-    $('rtTodayList').innerHTML = rts.map(function (rt) {
-      const done = mine.some(function (r) { return r.kind === rt.content; }) ||
-        (rt.content === 'バイタル' && myVitals.length > 0);
-      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '</span><span class="c">' + esc(rt.content) + '</span>' +
-        (done ? '<span class="done"><i class="ti ti-check"></i>記録済み</span>' : '') +
-        '<button type="button" class="btn btn-ghost btn-sm" data-routine="' + esc(rt.id) + '"><i class="ti ti-pencil"></i>記録</button></li>';
-    }).join('');
-
     // 記録とバイタルを時刻の順に並べる
     const items = mine.map(function (r) { return { t: String(r.record_time).slice(0, 5), r: r }; })
       .concat(myVitals.map(function (v) { return { t: Vitals.time(v.measured_time), v: v }; }))
       .sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });
+
+    // きょうの日課。同じ内容の記録がその日にあれば記録済みとして日課の一覧から外し、
+    // その記録(日課 1 つにつき 1 件)に「日課」の印を付ける
+    const rts = Routines.ofDay(residentId, date);
+    const fromRoutine = new Set();
+    const todo = rts.filter(function (rt) {
+      const hit = items.find(function (it) {
+        return !fromRoutine.has(it) && (it.v ? rt.content === 'バイタル' : it.r.kind === rt.content);
+      });
+      if (hit) fromRoutine.add(hit);
+      return !hit;
+    });
+    // 日課がない日も出して、プロファイルの日課へ行けるようにする
+    $('rtToday').hidden = false;
+    $('rtNone').hidden = todo.length > 0;
+    $('rtNone').textContent = rts.length ? 'きょうの日課はすべて記録しました' : 'きょうの日課はありません';
+    $('rtEditLink').href = 'profile.html?resident=' + encodeURIComponent(residentId) + '&from=records#routines';
+    $('rtTodayList').innerHTML = todo.map(function (rt) {
+      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '</span><span class="c">' + esc(rt.content) + '</span>' +
+        '<button type="button" class="btn btn-ghost btn-sm" data-routine="' + esc(rt.id) + '"><i class="ti ti-pencil"></i>記録</button></li>';
+    }).join('');
+    const routineMark = '<span class="rec-routine"><i class="ti ti-calendar-repeat"></i>日課</span>';
     $('recList').innerHTML = items.map(function (it) {
       if (it.v) {
         return '<li>' +
           '<span class="rec-time">' + esc(it.t) + '</span>' +
-          '<span class="rec-kind"><i class="ti ti-heartbeat"></i>バイタル' +
+          '<span class="rec-kind"><i class="ti ti-heartbeat"></i>バイタル' + (fromRoutine.has(it) ? routineMark : '') +
             '<span class="rec-note">' + esc(Vitals.summary(it.v)) + '</span></span>' +
           '<button type="button" class="icon-btn" data-vital="1" title="バイタルを見る・取消" aria-label="バイタル"><i class="ti ti-pencil"></i></button>' +
           '</li>';
@@ -707,7 +721,7 @@
       const r = it.r;
       return '<li>' +
         '<span class="rec-time">' + esc(String(r.record_time).slice(0, 5)) + '</span>' +
-        '<span class="rec-kind"><i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind) +
+        '<span class="rec-kind"><i class="ti ' + kindIcon(r.kind) + '"></i>' + esc(r.kind) + (fromRoutine.has(it) ? routineMark : '') +
           (r.note ? '<span class="rec-note"><i class="ti ti-message"></i> ' + esc(r.note) + '</span>' : '') + '</span>' +
         '<button type="button" class="icon-btn" data-edit="' + esc(r.id) + '" title="時刻・コメント・取消" aria-label="編集"><i class="ti ti-pencil"></i></button>' +
         '</li>';

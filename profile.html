@@ -15,6 +15,14 @@
     .me-bar .me-name { font-size: 20px; font-weight: 700; line-height: 1.3; }
     .me-bar .me-place { font-size: 12px; color: var(--color-text-muted); }
     .back-link { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 13px; color: var(--color-primary-dark); text-decoration: none; }
+    /* 日々の記録から来たとき: もどるボタンを目立たせ、下にも固定して出す */
+    .back-link.btn { color: #fff; font-size: 15px; padding: 10px 16px; margin-bottom: 14px; }
+    .back-bar {
+      position: sticky; bottom: 0; z-index: 10;
+      margin-top: 16px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
+    }
+    .back-bar .btn { font-size: 15px; }
 
     .rt-note { font-size: 12px; color: var(--color-text-muted); margin: -6px 0 12px; line-height: 1.6; }
     .rt-form { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
@@ -100,6 +108,10 @@
         <h2><i class="ti ti-list-check"></i>登録している日課</h2>
         <ul class="rt-list" id="rtList"></ul>
         <div id="rtEmpty" class="empty-msg" hidden>まだ日課がありません。上から追加してください</div>
+      </div>
+
+      <div class="back-bar" id="backBar" hidden>
+        <a href="records.html" class="btn btn-block" id="backBarBtn"><i class="ti ti-arrow-left"></i>日々の記録にもどる</a>
       </div>
     </div>
   </div>
@@ -209,9 +221,13 @@
       // 日々の記録から来たときは、日々の記録にもどる(ブラウザの「戻る」と同じにして、前の画面をなるべくそのまま出す)
       if (params.get('from') === 'records') {
         $('backLink').href = 'records.html';
+        $('backLink').classList.add('btn');
         $('backText').textContent = '日々の記録にもどる';
-        $('backLink').addEventListener('click', function (e) {
-          if (history.length > 1) { e.preventDefault(); history.back(); }
+        $('backBar').hidden = false;
+        [$('backLink'), $('backBarBtn')].forEach(function (a) {
+          a.addEventListener('click', function (e) {
+            if (history.length > 1) { e.preventDefault(); history.back(); }
+          });
         });
       }
       await Rooms.load();
