@@ -160,6 +160,8 @@
     .rt-today { background: var(--color-surface-alt); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 12px; }
     .rt-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 4px; }
     .rt-head i { color: var(--color-primary-dark); }
+    .rt-head .rt-edit { margin-left: auto; white-space: nowrap; }
+    .rt-none { font-size: 13px; color: var(--color-text-muted); padding: 2px 0 4px; }
     .rt-today ul { list-style: none; margin: 0; padding: 0; }
     .rt-today li { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; border-top: 1px dashed var(--color-border); }
     .rt-today li:first-child { border-top: none; }
@@ -289,8 +291,11 @@
       <h2><i class="ti ti-list"></i><span id="listTitle"></span></h2>
       <!-- きょうの日課(利用者さんDB のプロファイルで入れたもの)。「記録」でその時刻・内容から入力できる -->
       <div class="rt-today" id="rtToday" hidden>
-        <div class="rt-head"><i class="ti ti-calendar-repeat"></i>きょうの日課</div>
+        <div class="rt-head"><i class="ti ti-calendar-repeat"></i>きょうの日課
+          <a class="btn btn-ghost btn-sm rt-edit" id="rtEditLink" href="profile.html"><i class="ti ti-settings"></i>日課を編集</a>
+        </div>
         <ul id="rtTodayList"></ul>
+        <div class="rt-none" id="rtNone" hidden>きょうの日課はありません</div>
       </div>
       <ul class="rec-list" id="recList"></ul>
       <div id="listMsg" class="empty-msg" hidden>まだ記録はありません</div>
@@ -674,7 +679,10 @@
 
     // きょうの日課。同じ内容の記録がその日にあれば「記録済み」
     const rts = Routines.ofDay(residentId, date);
-    $('rtToday').hidden = !rts.length;
+    // 日課がない日も出して、プロファイルの日課へ行けるようにする
+    $('rtToday').hidden = false;
+    $('rtNone').hidden = rts.length > 0;
+    $('rtEditLink').href = 'profile.html?resident=' + encodeURIComponent(residentId) + '&from=records#routines';
     $('rtTodayList').innerHTML = rts.map(function (rt) {
       const done = mine.some(function (r) { return r.kind === rt.content; }) ||
         (rt.content === 'バイタル' && myVitals.length > 0);

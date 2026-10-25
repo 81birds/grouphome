@@ -127,6 +127,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 1 行は `resident_routines`(resident_id・routine_time・content・weekdays)。content は自由に書く。weekdays は 0 = 日 … 6 = 土、空なら毎日
 - 利用者さんDB のプロファイル(profile.html)で登録する。やめた日課は消さずに `end_routine`(is_active = false)
 - 利用者さんの画面の「本日の予定」と、日々の記録の「きょうの日課」に、その日の曜日のものを出す
+- 日々の記録の「きょうの日課」の「日課を編集」で、その人のプロファイルの日課(`profile.html?resident=…&from=records#routines`)へ行ける。日課がない日も「きょうの日課」の枠は出す
 - 日々の記録で日課の「記録」を押すと、その時刻と内容で新しい入力が開く(チップにない内容は「日課から」のチップになり、kind にそのまま入る)。同じ内容の記録がその日にあれば「記録済み」
 
 ## バイタルのルール

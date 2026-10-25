@@ -51,7 +51,7 @@
 
 <div id="mainContent" hidden>
   <div class="wrap">
-    <a href="residents.html" class="back-link"><i class="ti ti-arrow-left"></i>利用者さんDB にもどる</a>
+    <a href="residents.html" class="back-link" id="backLink"><i class="ti ti-arrow-left"></i><span id="backText">利用者さんDB にもどる</span></a>
 
     <div id="notFound" class="card empty-msg" hidden>利用者さんが見つかりません。利用者さんDB から開きなおしてください</div>
 
@@ -64,8 +64,8 @@
         </div>
       </div>
 
-      <!-- 日課 -->
-      <div class="card">
+      <!-- 日課(日々の記録の「日課を編集」から #routines で来る) -->
+      <div class="card" id="routines">
         <h2><i class="ti ti-calendar-repeat"></i>日課</h2>
         <p class="rt-note">ふだんの 1 日の予定です。ここで入れた日課は、利用者さんの画面の「本日の予定」と、日々の記録の「きょうの日課」に出ます</p>
 
@@ -204,7 +204,16 @@
   App.boot({
     active: 'residents',
     onReady: async function () {
-      meId = new URLSearchParams(location.search).get('resident');
+      const params = new URLSearchParams(location.search);
+      meId = params.get('resident');
+      // 日々の記録から来たときは、日々の記録にもどる(ブラウザの「戻る」と同じにして、前の画面をなるべくそのまま出す)
+      if (params.get('from') === 'records') {
+        $('backLink').href = 'records.html';
+        $('backText').textContent = '日々の記録にもどる';
+        $('backLink').addEventListener('click', function (e) {
+          if (history.length > 1) { e.preventDefault(); history.back(); }
+        });
+      }
       await Rooms.load();
       const p = meId ? Rooms.resident(meId) : null;
       if (!p) { $('notFound').hidden = false; return; }
@@ -222,6 +231,8 @@
         App.setStatus($('rtStatus'), '日課を読み込めませんでした', 'err');
       }
       resetForm();
+      // 読み込みが終わるまで隠れているので、ここで日課のところへ移る
+      if (location.hash === '#routines') $('routines').scrollIntoView();
 
       $('dayChips').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-day]');
