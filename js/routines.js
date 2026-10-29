@@ -27,10 +27,24 @@
       return r.weekdays.indexOf(w) >= 0;
     },
 
-    // ある人のその日の日課(時間の順)
+    // 起床はかならず 1 日のはじめ、就寝はかならず終わりに並べる(就寝が 0:30 でも最後)
+    rank: function (content) {
+      const c = String(content || '');
+      if (c.indexOf('起床') >= 0) return -1;
+      if (c.indexOf('就寝') >= 0) return 1;
+      return 0;
+    },
+    // 内容と時刻で並べる(日課・記録の一覧で使う)
+    compare: function (contentA, timeA, contentB, timeB) {
+      const d = R.rank(contentA) - R.rank(contentB);
+      if (d) return d;
+      return timeA < timeB ? -1 : timeA > timeB ? 1 : 0;
+    },
+
+    // ある人のその日の日課(時間の順。起床が最初・就寝が最後)
     ofDay: function (residentId, date) {
       return R.list.filter(function (r) { return r.resident_id === residentId && R.on(r, date); })
-        .sort(function (a, b) { return a.routine_time < b.routine_time ? -1 : a.routine_time > b.routine_time ? 1 : 0; });
+        .sort(function (a, b) { return R.compare(a.content, a.routine_time, b.content, b.routine_time); });
     },
 
     // 「毎日」「平日」「土日」「月・水・金」

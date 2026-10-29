@@ -138,7 +138,7 @@
   }
 
   function renderList() {
-    const list = Routines.list.slice().sort(function (a, b) { return a.routine_time < b.routine_time ? -1 : 1; });
+    const list = Routines.list.slice().sort(function (a, b) { return Routines.compare(a.content, a.routine_time, b.content, b.routine_time); });
     $('rtList').innerHTML = list.map(function (r) {
       return '<li' + (r.id === editingId ? ' class="editing"' : '') + '>' +
         '<span class="t">' + esc(Routines.time(r.routine_time)) + '</span>' +

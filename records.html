@@ -691,10 +691,10 @@
     const mine = records.filter(function (r) { return r.resident_id === residentId; });
     const myVitals = vitals.filter(function (v) { return v.resident_id === residentId; });
 
-    // 記録とバイタルを時刻の順に並べる
+    // 記録とバイタルを時刻の順に並べる(起床は最初・就寝は最後)
     const items = mine.map(function (r) { return { t: String(r.record_time).slice(0, 5), r: r }; })
       .concat(myVitals.map(function (v) { return { t: Vitals.time(v.measured_time), v: v }; }))
-      .sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });
+      .sort(function (a, b) { return Routines.compare(a.r ? a.r.kind : '', a.t, b.r ? b.r.kind : '', b.t); });
 
     // きょうの日課。同じ内容の記録がその日にあれば記録済みとして日課の一覧から外し、
     // その記録(日課 1 つにつき 1 件)に「日課」の印を付ける
