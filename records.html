@@ -458,6 +458,13 @@
 
   // 日課から入力するとき、チップにない内容をその場だけのチップにする
   let routineKind = null;
+  // 日課のうち、この言葉が入っているものは出かけてもどる(もどりの時計も出す。例: 通院・作業所)
+  const BACK_WORDS = ['外出', '通所', '通院', '受診', '買い物', '散歩', '会社', '仕事', '作業所', 'デイ', '病院'];
+  function routineBack(content) {
+    return BACK_WORDS.some(function (w) { return content.indexOf(w) >= 0; });
+  }
+  // 日課から開いたときの、もどりの時刻(分。null なら出発の 1 時間あと)
+  let backDefault = null;
 
   // ===== 時刻のホイール =====
   function buildWheel(col, count, step) {
@@ -650,9 +657,10 @@
     $('departLabel').textContent = back ? '出発' : '時刻';
     $('backBlock').hidden = !back;
     $('backWheelWrap').classList.toggle('off', !$('backOn').checked);
-    // 開いたときは、出発の 1 時間あと
+    // 開いたときは、出発の 1 時間あと(日課に「もどり」があれば、その時刻)
     if (back && wasHidden && !$('inputModal').hidden) {
-      const t = (wheelValue($('wheelH')) * 60 + wheelValue($('wheelM')) * MIN_STEP + 60) % (24 * 60);
+      const t = backDefault != null ? backDefault
+        : (wheelValue($('wheelH')) * 60 + wheelValue($('wheelM')) * MIN_STEP + 60) % (24 * 60);
       setTime(Math.floor(t / 60), (t % 60) / MIN_STEP, 'backWheel');
     }
   }
@@ -783,6 +791,7 @@
   }
   function closeInput() {
     $('inputModal').hidden = true;
+    backDefault = null;
     // 日課から開いたときのチップは、その場だけ
     if (routineKind) {
       if (picked.has(routineKind.name)) picked.clear();
@@ -799,7 +808,19 @@
     savedH = n[0]; savedM = n[1];
     const chip = KINDS.find(function (k) { return k.name === rt.content; });
     if (chip && chip.vital) { openVital(Routines.time(rt.routine_time)); return; }
-    routineKind = chip ? null : { name: rt.content, icon: 'ti-calendar-check', note: '' };
+    routineKind = chip ? null : { name: rt.content, icon: 'ti-calendar-check', note: '', back: routineBack(rt.content) };
+    // 出かける日課は、もどりもセットで記録する。その日の後の日課に「もどり」があれば、その時刻をもどりにする
+    if ((chip || routineKind).back) {
+      const rb = Routines.ofDay(residentId, date).find(function (x) {
+        return x.content.indexOf('もどり') >= 0 && x.routine_time > rt.routine_time;
+      });
+      if (rb) {
+        const b = Routines.time(rb.routine_time).split(':');
+        const nb = roundTime(+b[0], +b[1]);
+        backDefault = nb[0] * 60 + nb[1] * MIN_STEP;
+      }
+      $('backOn').checked = true;
+    }
     picked.clear();
     picked.add(rt.content);
     $('newNote').value = '';
