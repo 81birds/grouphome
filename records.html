@@ -842,6 +842,7 @@
         if (msg) App.setStatus($('listStatus'), msg, 'ok');
         renderPeople();
         renderList();
+        if (msg) fixDayEnds();
       },
     });
   }
@@ -851,6 +852,47 @@
   function rememberTime() {
     if ($('inputModal').hidden) return;
     savedH = wheelValue($('wheelH')); savedM = wheelValue($('wheelM'));
+  }
+
+  // 起床は 1 日のはじめ、就寝は終わり。ほかの記録より後の起床・前の就寝は、時刻を直して知らせる
+  // (5:00 より前の記録は夜中のものとして比べない。0:30 の就寝などはそのまま)
+  const DAY_FROM = '05:00';
+  async function fixDayEnds() {
+    const rid = residentId;
+    const mine = records.filter(function (r) { return r.resident_id === rid; });
+    const times = mine.filter(function (r) { return !Routines.rank(r.kind); })
+      .map(function (r) { return String(r.record_time).slice(0, 5); })
+      .concat(vitals.filter(function (v) { return v.resident_id === rid; }).map(function (v) { return Vitals.time(v.measured_time); }))
+      .filter(function (t) { return t >= DAY_FROM; })
+      .sort();
+    if (!times.length) return;
+    const first = times[0], last = times[times.length - 1];
+    const fixes = [];
+    mine.forEach(function (r) {
+      const t = String(r.record_time).slice(0, 5);
+      const rank = Routines.rank(r.kind);
+      if (rank < 0 && t > first) fixes.push({ r: r, from: t, to: first, why: '1 日のはじめ' });
+      if (rank > 0 && t >= DAY_FROM && t < last) fixes.push({ r: r, from: t, to: last, why: '1 日の終わり' });
+    });
+    if (!fixes.length) return;
+    const done = [];
+    for (const f of fixes) {
+      try {
+        const row = await App.rpc('update_daily_record', { p_id: f.r.id, p_time: f.to, p_note: f.r.note || '' });
+        if (row) f.r.record_time = row.record_time;
+        done.push(f);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    sortRecords();
+    renderList();
+    if (done.length) {
+      alert(done.map(function (f) {
+        return f.r.kind + ' は' + f.why + 'なので、時刻を ' + f.from + ' から ' + f.to + ' に直しました';
+      }).join('\n'));
+    }
+    if (done.length < fixes.length) App.setStatus($('listStatus'), '起床・就寝の時刻を直せませんでした。通信状況を確認してください', 'err');
   }
 
   function addRecords(kind, time, note) {
@@ -896,6 +938,7 @@
     // 時刻と内容はそのまま残す(次の利用者に同じ内容をすぐ記録できるように)
     renderPeople();
     renderList();
+    await fixDayEnds();
   }
 
 
@@ -946,6 +989,7 @@
     closeEdit();
     App.setStatus($('listStatus'), '記録を直しました', 'ok');
     renderList();
+    await fixDayEnds();
   }
 
   async function onVoid() {
