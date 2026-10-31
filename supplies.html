@@ -14,10 +14,37 @@
     .place-grid { display: grid; gap: 0 16px; }
     @media (min-width: 1000px) { .place-grid { grid-template-columns: 1fr 1fr; } }
     .sup-list { list-style: none; margin: 0; padding: 0; }
-    .sup-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--color-border); }
+    .sup-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; padding: 8px 0; border-top: 1px solid var(--color-border); }
     .sup-row:first-child { border-top: none; }
-    .sup-row.changed { background: var(--color-work-soft); margin: 0 -8px; padding: 7px 8px; border-radius: var(--radius-sm); }
-    .sup-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 500; }
+    .sup-row.changed { background: var(--color-work-soft); margin: 0 -8px; padding: 8px; border-radius: var(--radius-sm); }
+    .sup-name { flex: 1 1 150px; min-width: 0; font-size: 14px; font-weight: 500; }
+    .sup-ctrl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .sup-help { font-size: 11px; color: var(--color-text-muted); margin: -6px 0 6px; }
+    /* 在庫のチップ: 足りない(基準より少ない)は赤、ちょうど基準はオレンジ、足りているは緑 */
+    .stock-chip {
+      display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+      min-width: 64px; height: 36px; padding: 0 8px; cursor: pointer;
+      font-family: var(--font-base); font-size: 14px; font-weight: 700; line-height: 1.1;
+      border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+    }
+    .stock-chip small { font-size: 9px; font-weight: 500; }
+    .stock-chip:hover { box-shadow: var(--shadow-md); }
+    .stock-low  { background: var(--color-danger-soft); border-color: var(--color-danger); color: var(--color-danger); }
+    .stock-near { background: var(--color-work-soft); border-color: var(--color-work); color: var(--color-work-dark); }
+    .stock-ok   { background: var(--color-primary-soft); border-color: var(--color-primary); color: var(--color-primary-dark); }
+    .use-btn { height: 36px; }
+    .stock-keys { margin: 0 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .stock-key { display: inline-block; min-width: 26px; padding: 0 6px; border-radius: 999px; border: 1px solid transparent; font-weight: 700; text-align: center; }
+    .stock-keys .stock-key:not(:first-child) { margin-left: 10px; }
+    .house-sum .low { color: var(--color-danger); font-weight: 700; }
+    /* 使ったあとに出る知らせ(取り消せる) */
+    .toast {
+      position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20;
+      display: flex; align-items: center; gap: 10px; max-width: calc(100% - 20px);
+      padding: 8px 8px 8px 14px; border-radius: var(--radius-md);
+      background: var(--color-text); color: var(--color-surface); font-size: 13px; box-shadow: var(--shadow-md);
+    }
+    .toast button { flex: 0 0 auto; }
     .sup-name small { font-size: 11px; font-weight: 400; color: var(--color-text-muted); margin-left: 4px; }
     .sup-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
     .sup-tag { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
@@ -61,7 +88,22 @@
     .req-table .houses { font-size: 12px; color: var(--color-text-muted); }
     .req-table .date { font-size: 11px; color: var(--color-text-muted); white-space: nowrap; width: 1%; }
     .status-chips button .n { margin-left: 4px; font-size: 11px; opacity: 0.8; }
-    #itemTable { min-width: 560px; }
+    /* 在庫の一覧(備品 × 施設) */
+    .stock-table { width: 100%; min-width: 560px; border-collapse: collapse; }
+    .stock-table th, .stock-table td { border-bottom: 1px solid var(--color-border); padding: 6px 4px; text-align: center; font-size: 13px; }
+    .stock-table thead th { font-size: 11px; color: var(--color-text-muted); font-weight: 500; vertical-align: bottom; }
+    .stock-table th.name { position: sticky; left: 0; z-index: 1; background: var(--color-surface); text-align: left; font-weight: 500; color: var(--color-text); min-width: 120px; }
+    .stock-table th.name small { font-size: 10px; color: var(--color-text-muted); margin-left: 3px; }
+    .stock-table .place-row th { background: var(--color-surface-alt); font-size: 12px; color: var(--color-primary-dark); text-align: left; padding: 4px 6px; }
+    .stock-table td.min { color: var(--color-text-muted); }
+    .stock-table td .stock-low, .stock-table td .stock-near, .stock-table td .stock-ok {
+      display: inline-block; min-width: 34px; padding: 2px 6px; border-radius: 999px; border: 1px solid transparent; font-weight: 700;
+    }
+    .stock-table td .stock-ok { background: none; border-color: transparent; }
+    .stock-table tfoot th, .stock-table tfoot td { border-bottom: none; border-top: 2px solid var(--color-border); font-size: 12px; }
+    .stock-table tfoot .low { color: var(--color-danger); font-weight: 700; }
+    #itemTable { min-width: 620px; }
+    #itemTable .col-min { width: 80px; }
     #itemTable .col-place { width: 22%; }
     #itemTable .col-spec { width: 20%; }
     #itemTable tr.inactive input { color: var(--color-text-muted); background: var(--color-surface-alt); }
@@ -83,7 +125,7 @@
         <span class="page-icon"><i class="ti ti-package"></i></span>
         備品管理
       </h1>
-      <p>施設で足りなくなった備品を本部にお願いします。本部は手配して、届けたら記録します</p>
+      <p>施設の在庫を見て、使ったら「使った」を押します。足りないものは本部にお願いし、本部は全施設の在庫を見て手配します</p>
     </div>
 
     <div class="tabs">
@@ -97,9 +139,17 @@
         <h2><i class="ti ti-building-community"></i>施設</h2>
         <div class="chips" id="houseChips"></div>
         <p class="house-sum" id="houseSum"></p>
+        <div class="mode-switch" id="houseFilter" role="group" aria-label="表示する備品" style="margin:12px 0 0;">
+          <button type="button" data-filter="all" class="active"><i class="ti ti-list"></i>すべて</button>
+          <button type="button" data-filter="low"><i class="ti ti-alert-triangle"></i>足りないものだけ</button>
+        </div>
         <div id="houseStatus" class="status-msg"></div>
       </div>
       <div class="place-grid" id="houseItems"></div>
+      <div class="toast" id="toast" hidden role="status">
+        <span id="toastMsg"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="toastUndo"><i class="ti ti-arrow-back-up"></i>取り消す</button>
+      </div>
       <div class="save-bar" id="saveBar" hidden>
         <span class="msg" id="saveMsg"></span>
         <button type="button" class="btn btn-ghost" id="resetBtn"><i class="ti ti-arrow-back-up"></i>もとにもどす</button>
@@ -110,11 +160,25 @@
     <!-- 本部の管理 -->
     <div id="panel-hq" class="tab-panel">
       <div class="mode-switch" id="hqSwitch" role="group" aria-label="本部の管理の切り替え">
-        <button type="button" data-mode="requests" class="active"><i class="ti ti-clipboard-list"></i>お願いの一覧</button>
+        <button type="button" data-mode="stocks" class="active"><i class="ti ti-packages"></i>在庫の一覧</button>
+        <button type="button" data-mode="requests"><i class="ti ti-clipboard-list"></i>お願いの一覧</button>
         <button type="button" data-mode="items"><i class="ti ti-list-details"></i>備品リスト</button>
       </div>
 
-      <div id="hqRequests">
+      <div id="hqStocks">
+        <div class="card">
+          <h2><i class="ti ti-packages"></i>全施設の在庫</h2>
+          <div class="chips" id="stockFilter">
+            <button type="button" data-filter="all" class="active">すべて</button>
+            <button type="button" data-filter="low"><i class="ti ti-alert-triangle"></i> 足りないものがある備品だけ</button>
+          </div>
+          <p class="sup-help stock-keys"><span class="stock-key stock-low">3</span>最低ストックより少ない
+            <span class="stock-key stock-near">3</span>ちょうど最低ストック</p>
+          <div class="table-scroll"><table class="stock-table" id="stockTable"></table></div>
+        </div>
+      </div>
+
+      <div id="hqRequests" hidden>
         <div class="card">
           <div class="chips status-chips" id="statusChips"></div>
           <div id="hqStatus" class="status-msg"></div>
@@ -141,6 +205,10 @@
               <label for="newSpec">種類・メモ</label>
               <input type="text" id="newSpec" placeholder="チューブ・缶詰 など">
             </div>
+            <div class="field narrow">
+              <label for="newMin">最低ストック</label>
+              <input type="number" id="newMin" min="0" max="999" value="1" inputmode="numeric">
+            </div>
             <button type="submit" id="addBtn" class="btn"><i class="ti ti-plus"></i>足す</button>
           </div>
           <div id="addStatus" class="status-msg"></div>
@@ -148,7 +216,7 @@
 
         <div class="card">
           <h2><i class="ti ti-list-details"></i>備品リスト</h2>
-          <p class="muted text-sm" style="margin-top:0;">直した内容はすぐに保存されます。使わなくなった備品は「やめる」で施設の入力から外れます</p>
+          <p class="muted text-sm" style="margin-top:0;">直した内容はすぐに保存されます。最低ストックより在庫が少ないと「足りない」になります。使わなくなった備品は「やめる」で施設の入力から外れます</p>
           <div class="table-scroll">
             <table class="compact-table" id="itemTable">
               <thead>
@@ -156,6 +224,7 @@
                   <th class="col-place">使用場所</th>
                   <th>商品名</th>
                   <th class="col-spec">種類・メモ</th>
+                  <th class="col-min">最低ストック</th>
                   <th class="col-center"></th>
                 </tr>
               </thead>
@@ -194,10 +263,15 @@
   let houses = [];
   let items = [];
   let requests = [];
+  let stocks = {};        // 在庫 { 'house_id|item_id': 数 }
+  let usages = [];        // きょうの「使った」の記録
   let house = null;       // 施設の入力で選んでいる施設の id
   let draft = {};         // 施設の入力で変えた数 { item_id: 数 }
-  let hqMode = 'requests';
+  let houseFilter = 'all';
+  let hqMode = 'stocks';
   let hqStatus = 'requested';
+  let stockFilter = 'all';
+  let lastUse = null;     // 取り消せる最後の「使った」
 
   function activeHouses() { return houses.filter(function (h) { return h.is_active; }); }
   function houseName(id) { const h = houses.find(function (x) { return x.id === id; }); return h ? h.name : '(不明な施設)'; }
@@ -221,13 +295,29 @@
     return out;
   }
 
+  // ----- 在庫 -----
+  function stockKey(hid, iid) { return hid + '|' + iid; }
+  function stockOf(hid, iid) { return stocks[stockKey(hid, iid)] || 0; }
+  // low = 最低ストックより少ない / near = ちょうど最低ストック / ok = 足りている
+  function stockLevel(q, it) {
+    if (q < it.min_stock) return 'low';
+    if (it.min_stock > 0 && q === it.min_stock) return 'near';
+    return 'ok';
+  }
+  function isLow(hid, it) { return stockOf(hid, it.id) < it.min_stock; }
+
   async function loadAll() {
     const r = await Promise.all([
       App.rpc('get_houses'),
       App.rpc('get_supply_items'),
       App.rpc('get_supply_requests', { p_since: App.todayJST(-DELIVERED_DAYS) }),
+      App.rpc('get_supply_stocks'),
+      App.rpc('get_supply_usages', { p_since: App.todayJST() }),
     ]);
     houses = r[0]; items = r[1]; requests = r[2];
+    stocks = {};
+    r[3].forEach(function (s) { stocks[stockKey(s.house_id, s.item_id)] = s.quantity; });
+    usages = r[4];
   }
   async function reload() {
     await loadAll();
@@ -262,32 +352,116 @@
       renderSaveBar();
       return;
     }
-    const mine = requests.filter(function (q) { return q.house_id === house; });
-    const n = function (s) { return mine.filter(function (q) { return q.status === s; }).length; };
-    $('houseSum').textContent = 'お願い中 ' + n('requested') + ' 品・手配済み ' + n('ordered') + ' 品・届いた(2週間) ' + n('delivered') + ' 品。' +
-      '足りないものの数を + で入れて、下の「本部にお願いする」を押してください';
+    const active = items.filter(function (it) { return it.is_active; });
+    renderHouseSum();
+    $('houseFilter').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.filter === houseFilter); });
 
-    $('houseItems').innerHTML = groupByPlace(items.filter(function (it) { return it.is_active; })).map(function (g) {
-      return '<div class="card"><h2><i class="ti ' + placeIcon(g.place) + '"></i>' + esc(g.place) + '</h2><ul class="sup-list">' +
+    const shown = houseFilter === 'low' ? active.filter(function (it) { return isLow(house, it); }) : active;
+    const help = '<p class="sup-help">在庫のチップを押すと数を直せます。「使った」で 1 つ減ります。+ − は本部にお願いする数です</p>';
+    $('houseItems').innerHTML = groupByPlace(shown).map(function (g) {
+      return '<div class="card"><h2><i class="ti ' + placeIcon(g.place) + '"></i>' + esc(g.place) + '</h2>' + help + '<ul class="sup-list">' +
         g.items.map(houseRow).join('') + '</ul></div>';
-    }).join('') || '<div class="card"><div class="empty-msg">備品リストが空です。「本部の管理」の「備品リスト」で足してください</div></div>';
+    }).join('') || '<div class="card"><div class="empty-msg">' +
+      (active.length ? '最低ストックより少ない備品はありません' : '備品リストが空です。「本部の管理」の「備品リスト」で足してください') + '</div></div>';
     renderSaveBar();
   }
 
   function houseRow(it) {
     const q = qtyOf(it.id);
     const changed = q !== savedQty(it.id);
+    const stock = stockOf(house, it.id);
+    const used = usages.filter(function (u) { return u.house_id === house && u.item_id === it.id; }).length;
     const tags = [];
     if (savedQty(it.id)) tags.push('<span class="sup-tag requested">お願い中 ' + savedQty(it.id) + '</span>');
     requestsOf(house, it.id, 'ordered').forEach(function (r) { tags.push('<span class="sup-tag ordered">手配済み ' + r.quantity + '</span>'); });
     requestsOf(house, it.id, 'delivered').forEach(function (r) { tags.push('<span class="sup-tag delivered">' + md(r.delivered_at) + ' 届いた ' + r.quantity + '</span>'); });
-    return '<li class="sup-row' + (changed ? ' changed' : '') + '">' +
+    if (used) tags.push('<span class="sup-tag ordered">きょう ' + used + ' 回使った</span>');
+    return '<li class="sup-row' + (changed ? ' changed' : '') + '" data-row="' + esc(it.id) + '">' +
       '<div class="sup-name">' + itemLabel(it) + (tags.length ? '<div class="sup-tags">' + tags.join('') + '</div>' : '') + '</div>' +
+      '<div class="sup-ctrl">' +
+      '<button type="button" class="stock-chip stock-' + stockLevel(stock, it) + '" data-stock="' + esc(it.id) + '" title="押すと在庫の数を直せます" aria-label="' + esc(it.name) + ' 在庫 ' + stock + '。押すと数を直せます">' +
+        '在庫 ' + stock + '<small>最低 ' + it.min_stock + '</small></button>' +
+      '<button type="button" class="btn btn-ghost btn-sm use-btn" data-use="' + esc(it.id) + '"' + (stock ? '' : ' disabled') + '><i class="ti ti-hand-finger"></i>使った</button>' +
       '<div class="stepper">' +
         '<button type="button" data-item="' + esc(it.id) + '" data-step="-1"' + (q ? '' : ' disabled') + ' aria-label="' + esc(it.name) + 'を 1 つ減らす"><i class="ti ti-minus"></i></button>' +
         '<span class="qty' + (q ? '' : ' zero') + '">' + q + '</span>' +
         '<button type="button" data-item="' + esc(it.id) + '" data-step="1" aria-label="' + esc(it.name) + 'を 1 つ増やす"><i class="ti ti-plus"></i></button>' +
-      '</div></li>';
+      '</div></div></li>';
+  }
+  function rerenderRow(iid) {
+    const li = $('houseItems').querySelector('[data-row="' + iid + '"]');
+    if (li) li.outerHTML = houseRow(itemOf(iid));
+  }
+
+  // 「使った」: 在庫を 1 減らし、記録を残す。下の知らせから取り消せる
+  async function onUse(b) {
+    const iid = b.dataset.use, hid = house, it = itemOf(iid);
+    const k = stockKey(hid, iid);
+    b.disabled = true;
+    App.setStatus($('houseStatus'), '');
+    try {
+      const row = await App.rpc('use_supply', { p_house_id: hid, p_item_id: iid });
+      stocks[k] = Math.max(0, stockOf(hid, iid) - 1);
+      usages.push(row);
+      lastUse = row;
+      showToast(it.name + ' を 1 つ使いました(在庫 ' + stocks[k] + ')');
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('houseStatus'), /在庫が 0/.test(err.message) ? '在庫が 0 です。在庫のチップを押して数を直してください' : '記録できませんでした。通信状況を確認してください', 'err');
+    }
+    if (hid === house) { rerenderRow(iid); renderHouseSum(); }
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    $('toastMsg').textContent = msg;
+    $('toast').hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $('toast').hidden = true; lastUse = null; }, 6000);
+  }
+  async function onUndoUse() {
+    const u = lastUse;
+    if (!u) return;
+    $('toast').hidden = true;
+    lastUse = null;
+    try {
+      await App.rpc('void_supply_usage', { p_id: u.id });
+      stocks[stockKey(u.house_id, u.item_id)] = stockOf(u.house_id, u.item_id) + u.quantity;
+      usages = usages.filter(function (x) { return x.id !== u.id; });
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('houseStatus'), '取り消せませんでした。通信状況を確認してください', 'err');
+    }
+    if (u.house_id === house) { rerenderRow(u.item_id); renderHouseSum(); }
+  }
+
+  // 在庫のチップ: 数を数えて直す
+  async function onStock(b) {
+    const iid = b.dataset.stock, it = itemOf(iid);
+    const before = stockOf(house, iid);
+    const s = prompt(it.name + ' はいくつありますか?(数えた数を入れてください)', String(before));
+    if (s == null) return;
+    const v = s.trim().replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+    if (!/^\d{1,4}$/.test(v)) { alert('0〜9999 の数で入れてください'); return; }
+    const hid = house;
+    try {
+      await App.rpc('set_supply_stock', { p_house_id: hid, p_item_id: iid, p_quantity: Number(v) });
+      stocks[stockKey(hid, iid)] = Number(v);
+      App.setStatus($('houseStatus'), it.name + ' の在庫を ' + v + ' にしました', 'ok');
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('houseStatus'), '直せませんでした。通信状況を確認してください', 'err');
+    }
+    if (hid === house) { rerenderRow(iid); renderHouseSum(); }
+  }
+
+  // 上の「足りない n 品」だけ描き直す(行は描き直さない)
+  function renderHouseSum() {
+    const mine = requests.filter(function (q) { return q.house_id === house; });
+    const n = function (s) { return mine.filter(function (q) { return q.status === s; }).length; };
+    const lows = items.filter(function (it) { return it.is_active && isLow(house, it); }).length;
+    $('houseSum').innerHTML = (lows ? '<span class="low">最低ストックより少ない ' + lows + ' 品</span>' : '足りない備品はありません') +
+      '・お願い中 ' + n('requested') + ' 品・手配済み ' + n('ordered') + ' 品・届いた(2週間) ' + n('delivered') + ' 品';
   }
 
   function renderSaveBar() {
@@ -296,13 +470,17 @@
     $('saveMsg').textContent = ids.length + ' 品を変えました(まだ送っていません)';
   }
 
-  function onStep(e) {
+  function onHouseClick(e) {
+    const use = e.target.closest('button[data-use]');
+    if (use) return onUse(use);
+    const st = e.target.closest('button[data-stock]');
+    if (st) return onStock(st);
     const b = e.target.closest('button[data-step]');
     if (!b) return;
     const id = b.dataset.item;
     draft[id] = Math.max(0, Math.min(999, qtyOf(id) + Number(b.dataset.step)));
     // その行だけ描き直す(スマホで軽く)
-    b.closest('.sup-row').outerHTML = houseRow(itemOf(id));
+    rerenderRow(id);
     renderSaveBar();
   }
 
@@ -336,9 +514,48 @@
   // ===== 本部の管理 =====
   function renderHq() {
     $('hqSwitch').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.mode === hqMode); });
+    $('hqStocks').hidden = hqMode !== 'stocks';
     $('hqRequests').hidden = hqMode !== 'requests';
     $('hqItems').hidden = hqMode !== 'items';
-    if (hqMode === 'requests') renderRequests(); else renderItems();
+    if (hqMode === 'stocks') renderStocks();
+    else if (hqMode === 'requests') renderRequests();
+    else renderItems();
+  }
+
+  // 在庫の一覧: 備品 × 施設。最低ストックより少ないものは赤
+  function renderStocks() {
+    $('stockFilter').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.filter === stockFilter); });
+    const hs = activeHouses();
+    const active = items.filter(function (it) { return it.is_active; });
+    if (!hs.length || !active.length) {
+      $('stockTable').innerHTML = '<tr><td class="empty-msg">' + (hs.length ? '備品リストが空です' : '施設が登録されていません') + '</td></tr>';
+      return;
+    }
+    const shown = stockFilter === 'low'
+      ? active.filter(function (it) { return hs.some(function (h) { return isLow(h.id, it); }); })
+      : active;
+    const cols = hs.length + 3;
+    let t = '<thead><tr><th class="name">備品</th><th>最低</th>' +
+      hs.map(function (h) { return '<th>' + esc(h.name) + '</th>'; }).join('') + '<th>合計</th></tr></thead><tbody>';
+    groupByPlace(shown).forEach(function (g) {
+      t += '<tr class="place-row"><th colspan="' + cols + '"><i class="ti ' + placeIcon(g.place) + '"></i> ' + esc(g.place) + '</th></tr>';
+      g.items.forEach(function (it) {
+        let total = 0;
+        t += '<tr><th class="name">' + itemLabel(it) + '</th><td class="min">' + it.min_stock + '</td>' +
+          hs.map(function (h) {
+            const q = stockOf(h.id, it.id);
+            total += q;
+            return '<td><span class="stock-' + stockLevel(q, it) + '">' + q + '</span></td>';
+          }).join('') + '<td>' + total + '</td></tr>';
+      });
+    });
+    if (!shown.length) t += '<tr><td colspan="' + cols + '" class="empty-msg">最低ストックより少ない備品はありません</td></tr>';
+    // 施設ごとの「足りない品数」
+    t += '</tbody><tfoot><tr><th class="name">足りない品数</th><td></td>' + hs.map(function (h) {
+      const n = active.filter(function (it) { return isLow(h.id, it); }).length;
+      return '<td' + (n ? ' class="low"' : '') + '>' + n + ' 品</td>';
+    }).join('') + '<td></td></tr></tfoot>';
+    $('stockTable').innerHTML = t;
   }
 
   function renderRequests() {
@@ -432,11 +649,12 @@
         '<td><input type="text" class="autosave" data-field="place" list="placeList" value="' + esc(it.place) + '"></td>' +
         '<td><input type="text" class="autosave" data-field="name" value="' + esc(it.name) + '"></td>' +
         '<td><input type="text" class="autosave" data-field="spec" value="' + esc(it.spec) + '"></td>' +
+        '<td><input type="number" class="autosave" data-field="min_stock" min="0" max="999" inputmode="numeric" value="' + esc(it.min_stock) + '"></td>' +
         '<td class="col-center">' + (it.is_active
           ? '<button type="button" class="btn btn-ghost btn-sm" data-active="false"><i class="ti ti-player-pause"></i>やめる</button>'
           : '<button type="button" class="btn btn-sm" data-active="true"><i class="ti ti-player-play"></i>また使う</button>') + '</td>' +
         '</tr>';
-    }).join('') || '<tr><td colspan="4" class="empty-msg">まだ備品がありません</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="empty-msg">まだ備品がありません</td></tr>';
   }
 
   async function onItemChange(e) {
@@ -447,8 +665,13 @@
     const it = itemOf(tr.dataset.id);
     const value = input.value.trim();
     if (field !== 'spec' && !value) {
-      alert(field === 'place' ? '使用場所は空にできません' : '商品名は空にできません');
+      alert({ place: '使用場所', name: '商品名', min_stock: '最低ストック' }[field] + 'は空にできません');
       input.value = it ? it[field] : '';
+      return;
+    }
+    if (field === 'min_stock' && !/^\d{1,3}$/.test(value)) {
+      alert('最低ストックは 0〜999 の数で入れてください');
+      input.value = it ? it.min_stock : '';
       return;
     }
     try {
@@ -458,9 +681,9 @@
       App.flashSaved(input, false);
       return;
     }
-    if (it) it[field] = value || null;
+    if (it) it[field] = field === 'min_stock' ? Number(value) : (value || null);
     App.flashSaved(input, true);
-    if (field === 'place') renderHouse();
+    if (field !== 'spec') renderHouse();
   }
 
   async function onItemActive(e) {
@@ -483,11 +706,16 @@
     e.preventDefault();
     const status = $('addStatus');
     const place = $('newPlace').value.trim(), name = $('newName').value.trim();
+    const min = $('newMin').value.trim() || '1';
     if (!place || !name) { App.setStatus(status, '使用場所と商品名を入れてください', 'err'); return; }
+    if (!/^\d{1,3}$/.test(min)) { App.setStatus(status, '最低ストックは 0〜999 の数で入れてください', 'err'); return; }
     const btn = $('addBtn');
     btn.disabled = true;
     try {
-      await App.rpc('add_supply_item', { p_place: place, p_name: name, p_spec: $('newSpec').value.trim() || null });
+      const row = await App.rpc('add_supply_item', { p_place: place, p_name: name, p_spec: $('newSpec').value.trim() || null });
+      if (Number(min) !== row.min_stock) {
+        await App.rpc('update_supply_item_field', { p_id: row.id, p_field: 'min_stock', p_value: min });
+      }
     } catch (err) {
       console.error(err);
       App.setStatus(status, '足せませんでした', 'err');
@@ -523,7 +751,20 @@
         App.setStatus($('houseStatus'), '');
         renderHouse();
       });
-      $('houseItems').addEventListener('click', onStep);
+      $('houseItems').addEventListener('click', onHouseClick);
+      $('toastUndo').addEventListener('click', onUndoUse);
+      $('houseFilter').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-filter]');
+        if (!b) return;
+        houseFilter = b.dataset.filter;
+        renderHouse();
+      });
+      $('stockFilter').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-filter]');
+        if (!b) return;
+        stockFilter = b.dataset.filter;
+        renderStocks();
+      });
       $('saveBtn').addEventListener('click', onSave);
       $('resetBtn').addEventListener('click', function () { draft = {}; renderHouse(); });
       window.addEventListener('beforeunload', function (e) {
