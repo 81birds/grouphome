@@ -51,6 +51,16 @@
     .visit-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--color-border); }
     .visit-head { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 4px; }
     .visit-head i { color: var(--color-primary-dark); }
+    /* 開け閉めのスイッチ(見出しの行ぜんぶが押せる。最初は閉じている) */
+    .visit-toggle {
+      display: flex; align-items: center; gap: 6px; width: 100%;
+      min-height: 36px; padding: 4px 6px; margin: 0 -6px;
+      background: none; border: 0; border-radius: var(--radius-sm);
+      font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer;
+    }
+    .visit-toggle:hover { background: var(--color-bg); }
+    .visit-chev { transition: transform .15s; }
+    .visit-toggle[aria-expanded="true"] .visit-chev { transform: rotate(90deg); }
     .visit-box .tl-scale, .visit-box .tl-row { grid-template-columns: 76px 1fr; }
     .visit-box .tl-row { padding: 3px 0; }
     .visit-box .tl-name { font-size: 12px; }
@@ -277,8 +287,12 @@
 
       <!-- 本日のスタッフ(選んだ施設の。同じカードの中に小さく出す) -->
       <div class="visit-box" id="visitCard" hidden>
-        <h3 class="visit-head"><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span></h3>
-        <div class="tl" id="visitList"></div>
+        <h3 class="visit-head">
+          <button type="button" class="visit-toggle" id="visitToggle" aria-expanded="false" aria-controls="visitList">
+            <i class="ti ti-chevron-right visit-chev"></i><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span>
+          </button>
+        </h3>
+        <div class="tl" id="visitList" hidden></div>
       </div>
     </div>
 
@@ -584,6 +598,15 @@
   }
 
   // ===== 本日のスタッフ(js/staffday.js) =====
+  // 最初は閉じておく(スマホですぐ利用者さんのボタンが見えるように)。開けると施設・日にちを変えても開いたまま
+  let visitOpen = false;
+  function setVisitOpen(open) {
+    visitOpen = open;
+    $('visitToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('visitList').hidden = !open;
+  }
+  $('visitToggle').addEventListener('click', () => setVisitOpen(!visitOpen));
+
   function renderVisits() {
     $('visitCard').hidden = !houseId;
     if (!houseId) return;
