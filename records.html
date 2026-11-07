@@ -175,10 +175,13 @@
     .rt-today ul { list-style: none; margin: 0; padding: 0; }
     .rt-today li { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; border-top: 1px dashed var(--color-border); }
     .rt-today li:first-child { border-top: none; }
-    .rt-today .t { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3.2em; }
+    .rt-today .t { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .rt-today .t small { font-size: 11px; font-weight: 500; color: var(--color-text-muted); margin-left: 2px; }
     .rt-today .c { flex: 1; min-width: 0; }
-    .rt-today .btn-sm { white-space: nowrap; }
-    .cat-routine .kind-btn { background: var(--color-primary-soft); }
+    /* 「↓」: 予定の時刻で下の記録に入れる */
+    .rt-go { min-width: 44px; min-height: 36px; padding: 4px 12px; font-size: 18px; }
+    /* 日課と記録のあいだの「新しい入力」 */
+    .new-btn-top { margin: 0 0 12px; }
 
     /* ----- その日の記録 ----- */
     .rec-list { list-style: none; margin: 0; padding: 0; }
@@ -309,7 +312,7 @@
     <!-- その人のその日の記録 -->
     <div class="card" id="listCard" hidden>
       <h2><i class="ti ti-list"></i><span id="listTitle"></span></h2>
-      <!-- きょうの日課(利用者さんDB のプロファイルで入れたもの)。「記録」でその時刻・内容から入力できる -->
+      <!-- きょうの日課(利用者さんDB のプロファイルで入れたもの)。「↓」でその時刻・内容のまま記録する -->
       <div class="rt-today" id="rtToday" hidden>
         <div class="rt-head"><i class="ti ti-calendar-repeat"></i>きょうの日課
           <a class="btn btn-ghost btn-sm rt-edit" id="rtEditLink" href="profile.html"><i class="ti ti-settings"></i>日課を編集</a>
@@ -317,6 +320,7 @@
         <ul id="rtTodayList"></ul>
         <div class="rt-none" id="rtNone" hidden>きょうの日課はありません</div>
       </div>
+      <button type="button" class="btn btn-block new-btn-top" id="newBtnTop"><i class="ti ti-plus"></i>新しい入力</button>
       <ul class="rec-list" id="recList"></ul>
       <div id="listMsg" class="empty-msg" hidden>まだ記録はありません</div>
       <button type="button" class="btn btn-block new-btn" id="newBtn"><i class="ti ti-plus"></i>新しい入力</button>
@@ -470,15 +474,11 @@
     return Routines.list.some(function (r) { return r.content === name; }) ? 'ti-calendar-check' : 'ti-point';
   }
 
-  // 日課から入力するとき、チップにない内容をその場だけのチップにする
-  let routineKind = null;
-  // 日課のうち、この言葉が入っているものは出かけてもどる(もどりの時計も出す。例: 通院・作業所)
+  // 日課のうち、この言葉が入っているものは出かけてもどる(もどりも一緒に記録する。例: 通院・作業所)
   const BACK_WORDS = ['外出', '通所', '通院', '受診', '買い物', '散歩', '会社', '仕事', '作業所', 'デイ', '病院'];
   function routineBack(content) {
     return BACK_WORDS.some(function (w) { return content.indexOf(w) >= 0; });
   }
-  // 日課から開いたときの、もどりの時刻(分。null なら出発の 1 時間あと)
-  let backDefault = null;
 
   // ===== 時刻のホイール =====
   function buildWheel(col, count, step) {
@@ -655,13 +655,11 @@
 
   // ===== 入力と一覧 =====
   function pickedKind() {
-    if (routineKind && picked.has(routineKind.name)) return routineKind;
     return KINDS.find(function (k) { return picked.has(k.name); }) || null;
   }
 
   function renderKinds() {
-    const groups = routineKind ? [{ name: '日課から', cls: 'routine', kinds: [routineKind] }].concat(KIND_GROUPS) : KIND_GROUPS;
-    $('kindGrid').innerHTML = groups.map(function (g) {
+    $('kindGrid').innerHTML = KIND_GROUPS.map(function (g) {
       return '<div class="kind-group cat-' + g.cls + '"><div class="kind-group-name">' + esc(g.name) + '</div><div class="kind-grid">' +
         g.kinds.map(function (k) {
           return '<button type="button" class="kind-btn' + (picked.has(k.name) ? ' active' : '') + '" data-kind="' + esc(k.name) + '" aria-pressed="' + picked.has(k.name) + '">' +
@@ -680,10 +678,9 @@
     $('departLabel').textContent = back ? '出発' : '時刻';
     $('backBlock').hidden = !back;
     $('backWheelWrap').classList.toggle('off', !$('backOn').checked);
-    // 開いたときは、出発の 1 時間あと(日課に「もどり」があれば、その時刻)
+    // 開いたときは、出発の 1 時間あと
     if (back && wasHidden && !$('inputModal').hidden) {
-      const t = backDefault != null ? backDefault
-        : (wheelValue($('wheelH')) * 60 + wheelValue($('wheelM')) * MIN_STEP + 60) % (24 * 60);
+      const t = (wheelValue($('wheelH')) * 60 + wheelValue($('wheelM')) * MIN_STEP + 60) % (24 * 60);
       setTime(Math.floor(t / 60), (t % 60) / MIN_STEP, 'backWheel');
     }
   }
@@ -740,8 +737,8 @@
       : '記録済みの日課が ' + doneN + ' 件あります(下の記録に「日課」の印)';
     $('rtEditLink').href = 'profile.html?resident=' + encodeURIComponent(residentId) + '&from=records#routines';
     $('rtTodayList').innerHTML = todo.map(function (rt) {
-      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '</span><span class="c">' + esc(rt.content) + '</span>' +
-        '<button type="button" class="btn btn-ghost btn-sm" data-routine="' + esc(rt.id) + '"><i class="ti ti-pencil"></i>記録</button></li>';
+      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '<small>頃予定</small></span><span class="c">' + esc(rt.content) + '</span>' +
+        '<button type="button" class="btn btn-sm rt-go" data-routine="' + esc(rt.id) + '" title="予定の時刻で記録する" aria-label="' + esc(rt.content) + ' を予定の時刻で記録する"><i class="ti ti-arrow-down"></i></button></li>';
     }).join('');
     const routineMark = '<span class="rec-routine"><i class="ti ti-calendar-repeat"></i>日課</span>';
     $('recList').innerHTML = items.map(function (it) {
@@ -814,41 +811,53 @@
   }
   function closeInput() {
     $('inputModal').hidden = true;
-    backDefault = null;
-    // 日課から開いたときのチップは、その場だけ
-    if (routineKind) {
-      if (picked.has(routineKind.name)) picked.clear();
-      routineKind = null;
-    }
   }
 
-  // 日課の時刻と内容で、新しい入力を開く(そこから直して記録できる)
-  function openFromRoutine(id) {
+  // 日課の「↓」: 予定の時刻と内容のまま記録する(時刻やコメントは、記録の鉛筆で直す)
+  let routineSaving = false;
+  async function recordFromRoutine(id, btn) {
     const rt = Routines.list.find(function (x) { return x.id === id; });
-    if (!rt) return;
-    const t = Routines.time(rt.routine_time).split(':');
-    const n = roundTime(+t[0], +t[1]);
-    savedH = n[0]; savedM = n[1];
+    if (!rt || !residentId || routineSaving) return;
+    const t = Routines.time(rt.routine_time);
     const chip = KINDS.find(function (k) { return k.name === rt.content; });
-    if (chip && chip.vital) { openVital(Routines.time(rt.routine_time)); return; }
-    routineKind = chip ? null : { name: rt.content, icon: 'ti-calendar-check', note: '', back: routineBack(rt.content) };
-    // 出かける日課は、もどりもセットで記録する。その日の後の日課に「もどり」があれば、その時刻をもどりにする
-    if ((chip || routineKind).back) {
+    // バイタルは値がないと記録できないので、その時刻で入力のダイアログを開く
+    if (chip && chip.vital) { openVital(t); return; }
+    // 出かけてもどる日課は、もどりも一緒に記録する。その日の後の日課に「もどり」があればその時刻、なければ 1 時間あと
+    let tb = null;
+    if ((chip && chip.back) || routineBack(rt.content)) {
       const rb = Routines.ofDay(residentId, date).find(function (x) {
         return x.content.indexOf('もどり') >= 0 && x.routine_time > rt.routine_time;
       });
-      if (rb) {
-        const b = Routines.time(rb.routine_time).split(':');
-        const nb = roundTime(+b[0], +b[1]);
-        backDefault = nb[0] * 60 + nb[1] * MIN_STEP;
+      if (rb) tb = Routines.time(rb.routine_time);
+      else {
+        const m = (+t.slice(0, 2)) * 60 + (+t.slice(3, 5)) + 60;
+        if (m < 24 * 60) tb = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
       }
-      $('backOn').checked = true;
     }
-    picked.clear();
-    picked.add(rt.content);
-    $('newNote').value = '';
-    lastTemplate = '';
-    openInput();
+
+    routineSaving = true;
+    btn.disabled = true;
+    let done = [];
+    let failed = false;
+    try {
+      done = done.concat(await addRecords(rt.content, t, null) || []);
+      if (tb) done = done.concat(await addRecords('もどり', tb, null) || []);
+    } catch (err) {
+      console.error(err);
+      failed = true;
+    }
+    routineSaving = false;
+    btn.disabled = false;
+    records = records.concat(done);
+    sortRecords();
+    if (failed) {
+      App.setStatus($('listStatus'), done.length ? t + ' ' + rt.content + ' は記録しましたが、もどりを記録できませんでした' : '記録できませんでした。通信状況を確認してください', 'err');
+    } else {
+      App.setStatus($('listStatus'), t + ' ' + rt.content + (tb ? '・' + tb + ' もどり' : '') + ' を記録しました。時刻やコメントは鉛筆で直せます', 'ok');
+    }
+    renderPeople();
+    renderList();
+    if (done.length) await fixDayEnds();
   }
 
   // バイタルのダイアログ(js/vitals.js)。新しい入力からは、その時刻で開く
@@ -1041,7 +1050,7 @@
         Routines.load().catch(function (err) { console.error(err); Routines.list = []; })]);
       $('rtTodayList').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-routine]');
-        if (b) openFromRoutine(b.dataset.routine);
+        if (b) recordFromRoutine(b.dataset.routine, b);
       });
       // プロファイルで日課を変えて「もどる」で帰ってきたとき、ブラウザが前の画面をそのまま出すことがあるので読み直す
       window.addEventListener('pageshow', async function (e) {
@@ -1091,6 +1100,7 @@
       $('ctxBar').addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
       watchHouseCard();
       $('newBtn').addEventListener('click', openInput);
+      $('newBtnTop').addEventListener('click', openInput);
       $('inputClose').addEventListener('click', closeInput);
       $('inputModal').addEventListener('click', function (e) { if (e.target === this) closeInput(); });
       $('editClose').addEventListener('click', closeEdit);
