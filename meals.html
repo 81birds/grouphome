@@ -26,7 +26,9 @@
     .count-table thead th { font-size: 12px; color: var(--color-text-muted); }
     .count-table th.name { text-align: left; width: 38%; font-size: 13px; font-weight: 700; color: var(--color-text); }
     .count-table th.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
-    .count-table tfoot th, .count-table tfoot td { border-bottom: none; border-top: 2px solid var(--color-border); }
+    /* 合計の行はいつも表のいちばん上(見出しのすぐ下) */
+    .count-table tbody.total th, .count-table tbody.total td,
+    .week-table tbody.total th, .week-table tbody.total td { background: var(--color-primary-soft); border-bottom: 2px solid var(--color-border); }
     .count-big { font-size: 20px; font-weight: 700; color: var(--color-primary-dark); }
     .count-big small { font-size: 11px; font-weight: 500; margin-left: 1px; }
     .count-sub { display: block; font-size: 10px; color: var(--color-text-muted); white-space: nowrap; }
@@ -76,7 +78,6 @@
     .week-table td.out { color: var(--color-text-muted); font-size: 11px; vertical-align: middle; }
     .wk-sum { font-size: 10px; line-height: 1.5; color: var(--color-text-muted); white-space: nowrap; }
     .wk-sum b { color: var(--color-primary-dark); font-size: 12px; }
-    .week-table tfoot th, .week-table tfoot td { border-bottom: none; border-top: 2px solid var(--color-border); }
 
     /* 色の説明 */
     .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 11px; color: var(--color-text-muted); margin: -6px 0 8px; }
@@ -251,27 +252,27 @@
     // 平日も昼食の列は出し、「-」をグレーで(ほかの表と列をそろえる)
     const meals = Meals.KINDS;
     const cell = function (people, k) { return Meals.hasMeal(date, k.key) ? countCell(countOf(people, date, k.key)) : NONE_CELL; };
-    let t = mealHead(meals) + '<tbody>';
+    let rows = '';
     let all = [];
     houses.forEach(function (h) {
       const people = peopleOfHouse(h.id, date);
       all = all.concat(people);
-      t += '<tr><th class="name"><button type="button" class="house-link" data-view="' + esc(h.id) + '">' + esc(h.name) + '</button><small>入居 ' + people.length + '人</small></th>' +
+      rows += '<tr><th class="name"><button type="button" class="house-link" data-view="' + esc(h.id) + '">' + esc(h.name) + '</button><small>入居 ' + people.length + '人</small></th>' +
         meals.map(function (k) { return cell(people, k); }).join('') + '</tr>';
     });
-    return t + '</tbody><tfoot><tr><th class="name">合計<small>入居 ' + all.length + '人</small></th>' +
-      meals.map(function (k) { return cell(all, k); }).join('') + '</tr></tfoot>';
+    return mealHead(meals) + '<tbody class="total"><tr><th class="name">合計<small>入居 ' + all.length + '人</small></th>' +
+      meals.map(function (k) { return cell(all, k); }).join('') + '</tr></tbody><tbody>' + rows + '</tbody>';
   }
 
   // 1週間のまとめ: 日 × 食事(全ハウスの合計)
   function sumWeek(houses, ds) {
     const today = App.todayJST();
-    let t = mealHead(Meals.KINDS) + '<tbody>';
+    let rows = '';
     const total = {};
     Meals.KINDS.forEach(function (k) { total[k.key] = { eat: 0, skip: 0, unset: 0 }; });
     ds.forEach(function (d) {
       const all = houses.reduce(function (a, h) { return a.concat(peopleOfHouse(h.id, d)); }, []);
-      t += '<tr' + (d === today ? ' class="today"' : '') + '><th class="name d ' + Meals.dayClass(d) + '">' + Meals.dateLabel(d) + '</th>' +
+      rows += '<tr' + (d === today ? ' class="today"' : '') + '><th class="name d ' + Meals.dayClass(d) + '">' + Meals.dateLabel(d) + '</th>' +
         Meals.KINDS.map(function (k) {
           if (!Meals.hasMeal(d, k.key)) return NONE_CELL;
           const c = countOf(all, d, k.key);
@@ -279,8 +280,8 @@
           return countCell(c);
         }).join('') + '</tr>';
     });
-    return t + '</tbody><tfoot><tr><th class="name">週の合計</th>' +
-      Meals.KINDS.map(function (k) { return countCell(total[k.key]); }).join('') + '</tr></tfoot>';
+    return mealHead(Meals.KINDS) + '<tbody class="total"><tr><th class="name">週の合計</th>' +
+      Meals.KINDS.map(function (k) { return countCell(total[k.key]); }).join('') + '</tr></tbody><tbody>' + rows + '</tbody>';
   }
 
   // 1日のハウス: 利用者さん × 食事(押して変えられる)
@@ -290,7 +291,9 @@
     if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
     // 平日も昼食の列は出し、「-」をグレーで
     const meals = Meals.KINDS;
-    t += LEGEND + '<table class="count-table">' + mealHead(meals) + '<tbody>';
+    t += LEGEND + '<table class="count-table">' + mealHead(meals) +
+      '<tbody class="total"><tr><th class="name">○ の数</th>' +
+      meals.map(function (k) { return Meals.hasMeal(date, k.key) ? countCell(countOf(people, date, k.key)) : NONE_CELL; }).join('') + '</tr></tbody><tbody>';
     people.forEach(function (p) {
       t += '<tr><th class="name">' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>' +
         meals.map(function (k) {
@@ -300,8 +303,7 @@
             p.resident.name + ' さん ' + k.label + ' ' + Meals.mark(v), Meals.mark(v)) + '</td>';
         }).join('') + '</tr>';
     });
-    return t + '</tbody><tfoot><tr><th class="name">○ の数</th>' +
-      meals.map(function (k) { return Meals.hasMeal(date, k.key) ? countCell(countOf(people, date, k.key)) : NONE_CELL; }).join('') + '</tr></tfoot></table></div>';
+    return t + '</tbody></table></div>';
   }
 
   // 1週間のハウス: 利用者さん × 日(1マスに朝・(昼)・夕。押して変えられる)
@@ -313,7 +315,13 @@
     t += LEGEND + '<div class="week-scroll"><table class="week-table"><thead><tr><th class="name"></th>' +
       ds.map(function (d) {
         return '<th class="' + Meals.dayClass(d) + (d === today ? ' today' : '') + '">' + Meals.dateLabel(d).replace('(', '<br>(') + '</th>';
-      }).join('') + '</tr></thead><tbody>';
+      }).join('') + '</tr></thead><tbody class="total"><tr><th class="name">○ の数</th>' + ds.map(function (d) {
+      const ps = peopleOfHouse(h.id, d);
+      return '<td><div class="wk-sum">' + Meals.KINDS.map(function (k) {
+        if (!Meals.hasMeal(d, k.key)) return '<span class="none">' + k.short + ' -</span>';
+        return k.short + ' <b>' + countOf(ps, d, k.key).eat + '</b>';
+      }).join('<br>') + '</div></td>';
+    }).join('') + '</tr></tbody><tbody>';
     people.forEach(function (p) {
       t += '<tr><th class="name">' + App.nameSan(p.resident.name) + '<small>' + esc(Rooms.roomName(p.room)) + '</small></th>';
       ds.forEach(function (d) {
@@ -329,13 +337,7 @@
       });
       t += '</tr>';
     });
-    t += '</tbody><tfoot><tr><th class="name">○ の数</th>' + ds.map(function (d) {
-      const ps = peopleOfHouse(h.id, d);
-      return '<td><div class="wk-sum">' + Meals.KINDS.map(function (k) {
-        if (!Meals.hasMeal(d, k.key)) return '<span class="none">' + k.short + ' -</span>';
-        return k.short + ' <b>' + countOf(ps, d, k.key).eat + '</b>';
-      }).join('<br>') + '</div></td>';
-    }).join('') + '</tr></tfoot></table></div></div>';
+    t += '</tbody></table></div></div>';
     return t;
   }
 
