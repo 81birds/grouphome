@@ -56,6 +56,9 @@ VS Code でこのフォルダを開き、`index.html` を右クリック → **O
 - **データベース**: Supabase(PostgreSQL)
   - テーブルへの直接アクセスは許可していません。画面からは `rpc` で関数(`get_residents` など)を呼びます
   - どの関数も最初に `check_passcode` で合言葉を確認します。合言葉はブラウザの localStorage に保存されます
+- **スワイプで戻らない**: 表の横スクロールや時刻のホイールで誤って前の画面に戻らないよう、`css/common.css` で画面全体に `overscroll-behavior-x: none` を付けています(Chrome・Edge・Firefox・Android で有効)
+  - そのため、これらのブラウザではスワイプで前の画面に戻れません。画面の移動は上部タブを使います
+  - iPhone・iPad・Mac の Safari では、ブラウザの戻るスワイプはページ側から止められません。気になるときは、iPhone はホーム画面に追加して開く、Mac はトラックパッドの設定で「ページ間をスワイプ」をオフにします
 
 ## データベースの変更
 

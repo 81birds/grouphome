@@ -56,6 +56,10 @@
 
 * { box-sizing: border-box; }
 
+/* 横にドラッグ・スワイプしたとき、ブラウザが前の画面にもどらないようにする
+   (表の横スクロールやホイールの操作で誤って戻るのを防ぐ。縦の引っぱって更新はそのまま) */
+html, body { overscroll-behavior-x: none; }
+
 body {
   font-family: var(--font-base);
   background-color: var(--color-bg);
