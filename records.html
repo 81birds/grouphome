@@ -59,9 +59,9 @@
       font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer;
     }
     .visit-toggle:hover { background: var(--color-bg); }
-    /* 右はしの「ひらく / とじる」 */
+    /* 「本日のスタッフ」のすぐ右の「みる / とじる」 */
     .visit-open {
-      margin-left: auto; flex-shrink: 0;
+      flex-shrink: 0;
       padding: 2px 10px; border: 1px solid var(--color-border); border-radius: 999px;
       background: var(--color-surface); font-size: 12px; font-weight: 700; color: var(--color-primary-dark);
     }
@@ -301,7 +301,7 @@
       <div class="visit-box" id="visitCard" hidden>
         <h3 class="visit-head">
           <button type="button" class="visit-toggle" id="visitToggle" aria-expanded="false" aria-controls="visitList">
-            <i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span><span class="visit-open" id="visitOpenLabel">ひらく</span>
+            <i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-open" id="visitOpenLabel">みる</span><span class="visit-sum" id="visitSum"></span>
           </button>
         </h3>
         <div class="tl" id="visitList" hidden></div>
@@ -624,7 +624,7 @@
     visitOpen = open;
     $('visitToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
     $('visitList').hidden = !open;
-    $('visitOpenLabel').textContent = open ? 'とじる' : 'ひらく';
+    $('visitOpenLabel').textContent = open ? 'とじる' : 'みる';
   }
   $('visitToggle').addEventListener('click', () => setVisitOpen(!visitOpen));
 
