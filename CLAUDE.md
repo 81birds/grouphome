@@ -144,6 +144,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 
 - 1 行は `vitals`(resident_id・measured_date・measured_time・体温・血圧の上下・脈拍・bath_prev_day・entered_by)。はかったものだけ入れる(1 つ以上必要。血圧は上下そろえる)
 - 利用者さんの画面で入れ、バイタル(vitals.html)で見る。スタッフは日々の記録の「バイタル」チップか、vitals.html の「入力」から入れる(`Vitals.openForm`、entered_by = staff)。前日の入浴は お風呂(bath)/ シャワー(shower)/ 空
+- 体温・血圧・脈拍はダイヤル(ホイール)で入れる(`Vitals.dials`。利用者さんの画面とスタッフ用ダイアログで共通)。範囲とはじめの値は `js/vitals.js` の `DIALS`(体温 34〜42・血圧 上 60〜220 / 下 30〜140・脈拍 30〜180)。はじめは「入れない」(うすい色)で、回すか値を押すと入る。× で入れないにもどす
 - 注意の目安は `js/vitals.js` の `LIMITS`(体温 37.5℃ 以上など)。医療の判断ではなく、気づくための目安
 - 記録は消さない。間違いは `void_vital` で取り消す(voided_at)
 

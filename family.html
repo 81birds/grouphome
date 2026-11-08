@@ -93,11 +93,6 @@
     .plan-list li.past { opacity: 0.5; }
 
     /* ----- バイタル ----- */
-    .vt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-    .vt-grid .full { grid-column: 1 / -1; }
-    .vt-grid input { font-size: 18px; padding: 9px 10px; text-align: center; }
-    .bp-row { display: flex; align-items: center; gap: 6px; }
-    .bp-row span { font-size: 18px; color: var(--color-text-muted); }
     .bath-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
     .vt-hist li { flex-wrap: wrap; align-items: center; }
     .vt-hist .vals { flex: 1; display: flex; flex-wrap: wrap; gap: 2px 10px; }
@@ -208,29 +203,12 @@
       <!-- バイタル(バイタルの画面 vitals.html で見る) -->
       <div class="card">
         <h2><i class="ti ti-heartbeat"></i>バイタル</h2>
-        <p class="meal-note">はかったら入れてください。はかっていないものは空のままでかまいません</p>
-        <div class="vt-grid">
-          <div class="field">
-            <label for="vtTime">はかった時間</label>
-            <input type="time" id="vtTime">
-          </div>
-          <div class="field">
-            <label for="vtTemp">体温(℃)</label>
-            <input type="number" id="vtTemp" inputmode="decimal" step="0.1" min="34" max="42" placeholder="36.5">
-          </div>
-          <div class="field">
-            <label for="vtHigh">血圧(上 / 下)</label>
-            <div class="bp-row">
-              <input type="number" id="vtHigh" inputmode="numeric" min="50" max="260" placeholder="120" aria-label="血圧の上">
-              <span>/</span>
-              <input type="number" id="vtLow" inputmode="numeric" min="30" max="160" placeholder="80" aria-label="血圧の下">
-            </div>
-          </div>
-          <div class="field">
-            <label for="vtPulse">脈拍(回/分)</label>
-            <input type="number" id="vtPulse" inputmode="numeric" min="30" max="200" placeholder="70">
-          </div>
+        <p class="meal-note">はかったものだけ、ダイヤルを回して入れてください。回さないものは入りません</p>
+        <div class="field vtf-time">
+          <label for="vtTime">はかった時間</label>
+          <input type="time" id="vtTime">
         </div>
+        <div id="vtDials"></div>
         <p class="out-label">きのう、お風呂かシャワーに入りましたか?(どちらかを押す)</p>
         <div class="bath-row" id="bathRow">
           <button type="button" class="dest-btn" data-bath="bath"><i class="ti ti-bath"></i>お風呂</button>
@@ -267,6 +245,7 @@
   let byWho = {};                        // 誰が選んだか(スタッフが変えたものは青)
   let outRecs = [];                      // きょうの「外出」「もどり」(この人の分)
   let vitals = [];                       // きょうのバイタル(この人の分)
+  let vtDials = null;                    // 体温・血圧・脈拍のダイヤル(Vitals.dials)
   let bath = null;                       // 前日の入浴(bath / shower)
 
   // 外出の行き先。押すとすぐ「外出」を記録する(日々の記録の kind「外出」、コメントに name)
@@ -372,7 +351,7 @@
   // ===== バイタル =====
   function resetVitalForm() {
     $('vtTime').value = nowTime();
-    ['vtTemp', 'vtHigh', 'vtLow', 'vtPulse'].forEach(function (id) { $(id).value = ''; });
+    vtDials.reset();
     bath = null;
     App.setStatus($('vtStatus'), '');
   }
@@ -403,14 +382,13 @@
     }).join('');
   }
 
-  // 数の欄を読む(空なら null)
-  function num(id) { const v = $(id).value.trim(); return v === '' ? null : Number(v); }
 
   async function onVitalSave() {
     const st = $('vtStatus');
-    const temp = num('vtTemp'), hi = num('vtHigh'), lo = num('vtLow'), pulse = num('vtPulse');
+    const d = vtDials.get();
+    const temp = d.temperature, hi = d.bp_high, lo = d.bp_low, pulse = d.pulse;
     if (!$('vtTime').value) return App.setStatus(st, 'はかった時間を入れてください', 'err');
-    if (temp === null && hi === null && lo === null && pulse === null && !bath) return App.setStatus(st, 'はかった値を入れてください', 'err');
+    if (temp === null && hi === null && lo === null && pulse === null && !bath) return App.setStatus(st, 'はかったもののダイヤルを回してください', 'err');
     if ((hi === null) !== (lo === null)) return App.setStatus(st, '血圧は上と下の両方を入れてください', 'err');
     const btn = $('vtSave');
     btn.disabled = true;
@@ -628,6 +606,7 @@
     active: 'family',
     onReady: async function () {
       await Promise.all([Rooms.load(), StaffDay.loadMasters()]);
+      vtDials = Vitals.dials($('vtDials'));
 
       $('houseChips').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-house]');

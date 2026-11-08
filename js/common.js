@@ -21,7 +21,7 @@
   // ready: false の画面はポータルに「準備中」で表示され、タブには出ない。
   const PAGES = [
     { key: 'index',      file: 'index.html',      icon: 'ti-home-heart', label: 'ポータル',   sub: '',                       ready: true, portal: false },
-    { key: 'family',     file: 'family.html',     icon: 'ti-device-mobile-message', label: '利用者さんの画面', sub: '日課チェック・外出・バイタル・食事数などができる利用者さん用', ready: true },
+    { key: 'family',     file: 'family.html',     icon: 'ti-device-mobile-message', label: '利用者さんの画面', sub: '外出・バイタルなどの入力できる利用者さん用', ready: true },
     { key: 'records',    file: 'records.html',    icon: 'ti-notebook',   label: '日々の記録', sub: '食事・外出・お薬の記録', ready: true },
     { key: 'shifts',     file: 'shifts.html',     icon: 'ti-calendar-time', label: '勤務表',  sub: '1か月のシフト・個人の勤務', ready: true },
     { key: 'meals',      file: 'meals.html',      icon: 'ti-tools-kitchen-2', label: '食数管理', sub: 'ハウスごとの食べる・食べない', ready: true },
