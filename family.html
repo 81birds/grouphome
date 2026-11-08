@@ -11,27 +11,30 @@
   <link rel="stylesheet" href="css/common.css">
   <style>
     /* ----- 利用者さんを選ぶ ----- */
-    .person-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    @media (min-width: 520px) { .person-grid { grid-template-columns: repeat(3, 1fr); } }
+    /* 名前のチップ(ハウスのチップの 1.5 倍くらいの小さめ) */
+    .person-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
     .person-btn {
       font-family: var(--font-base); text-align: left; cursor: pointer;
-      padding: 12px; min-height: 56px;
+      padding: 5px 10px; min-height: 40px;
       border: 1px solid var(--color-border); border-radius: var(--radius-md);
       background: var(--color-surface-alt); color: var(--color-text);
     }
-    .person-btn .p-name { display: block; font-size: 15px; font-weight: 700; }
-    .person-btn .p-room { display: block; font-size: 11px; color: var(--color-text-muted); }
+    .person-btn .p-name { display: block; font-size: 13px; font-weight: 700; line-height: 1.35; }
+    .person-btn .p-room { display: block; font-size: 10px; line-height: 1.3; color: var(--color-text-muted); }
     .person-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
     .person-btn.active { border-color: var(--color-primary); background: var(--color-primary-soft); box-shadow: inset 0 0 0 1px var(--color-primary); }
     .pick-label { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin: 0 0 6px; }
     .pick-label + .chips { margin-bottom: 0; }
     #personBox { margin-top: 14px; }
 
+    /* 「利用者さんを選ぶ」の右に、サンプルの説明 */
+    .pick-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 14px; margin-bottom: 14px; }
+    .pick-head h2 { margin: 0; flex-shrink: 0; }
     .sample-note {
-      display: flex; gap: 6px; align-items: flex-start;
+      flex: 1 1 260px; display: flex; gap: 6px; align-items: flex-start;
       font-size: 12px; line-height: 1.6; color: var(--color-text-muted);
       background: var(--color-surface-alt); border-radius: var(--radius-sm);
-      padding: 8px 10px; margin: -6px 0 14px;
+      padding: 6px 10px; margin: 0;
     }
     .sample-note i { font-size: 16px; color: var(--color-primary-dark); margin-top: 1px; }
 
@@ -39,7 +42,7 @@
     .me-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
     .me-bar .me-icon { font-size: 40px; color: var(--color-primary-dark); }
     .me-bar .me-name { font-size: 20px; font-weight: 700; line-height: 1.3; }
-    .me-bar .me-place { font-size: 12px; color: var(--color-text-muted); }
+    .me-bar .me-place { font-size: 16px; font-weight: 700; color: var(--color-text-muted); }  /* 名前の 0.8 倍くらい */
 
     /* ----- 外出・もどり ----- */
     .out-state {
@@ -125,9 +128,11 @@
         </h1>
         <p>管理者ビューです。ハウスと名前を選ぶと、その利用者さんの画面が下に出ます</p>
       </div>
-      <p class="sample-note"><i class="ti ti-info-circle"></i>これはサンプルです。ためしに見られるよう、いまはすべての機能を同じ合言葉(同じ ID)で使えます。本番では、利用者さんごとにログインして、自分の画面だけが見られるようにします。</p>
       <div class="card">
-        <h2><i class="ti ti-user-search"></i>利用者さんを選ぶ</h2>
+        <div class="pick-head">
+          <h2><i class="ti ti-user-search"></i>利用者さんを選ぶ</h2>
+          <p class="sample-note"><i class="ti ti-info-circle"></i><span>これはサンプルです。ためしに見られるよう、いまはすべての機能を同じ合言葉(同じ ID)で使えます。本番では、利用者さんごとにログインして、自分の画面だけが見られるようにします。</span></p>
+        </div>
         <p class="pick-label"><i class="ti ti-building-community"></i> ハウス</p>
         <div class="chips" id="houseChips"></div>
         <div id="personBox" hidden>

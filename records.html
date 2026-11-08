@@ -59,8 +59,12 @@
       font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer;
     }
     .visit-toggle:hover { background: var(--color-bg); }
-    .visit-chev { transition: transform .15s; }
-    .visit-toggle[aria-expanded="true"] .visit-chev { transform: rotate(90deg); }
+    /* 右はしの「ひらく / とじる」 */
+    .visit-open {
+      margin-left: auto; flex-shrink: 0;
+      padding: 2px 10px; border: 1px solid var(--color-border); border-radius: 999px;
+      background: var(--color-surface); font-size: 12px; font-weight: 700; color: var(--color-primary-dark);
+    }
     .visit-box .tl-scale, .visit-box .tl-row { grid-template-columns: 76px 1fr; }
     .visit-box .tl-row { padding: 3px 0; }
     .visit-box .tl-name { font-size: 12px; }
@@ -297,7 +301,7 @@
       <div class="visit-box" id="visitCard" hidden>
         <h3 class="visit-head">
           <button type="button" class="visit-toggle" id="visitToggle" aria-expanded="false" aria-controls="visitList">
-            <i class="ti ti-chevron-right visit-chev"></i><i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span>
+            <i class="ti ti-users-group"></i><span id="visitTitle">本日のスタッフ</span><span class="visit-sum" id="visitSum"></span><span class="visit-open" id="visitOpenLabel">ひらく</span>
           </button>
         </h3>
         <div class="tl" id="visitList" hidden></div>
@@ -620,6 +624,7 @@
     visitOpen = open;
     $('visitToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
     $('visitList').hidden = !open;
+    $('visitOpenLabel').textContent = open ? 'とじる' : 'ひらく';
   }
   $('visitToggle').addEventListener('click', () => setVisitOpen(!visitOpen));
 

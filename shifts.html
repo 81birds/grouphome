@@ -444,7 +444,7 @@
     function houseShort(id) {
       const h = byId(M.houses, id);
       if (!h) return '?';
-      return h.short_name || h.name.replace(/の家$|ホーム$/, '').slice(0, 4);
+      return h.short_name || h.name.replace(/の家$|ハウス$|ホーム$/, '').slice(0, 4);
     }
     function staffShort(id) {
       const s = byId(M.staff, id);
@@ -940,7 +940,7 @@
 
     function byId(list, id) { return list.find(function (x) { return x.id === id; }); }
     function activeHouses() { return M.houses.filter(function (h) { return h.is_active; }); }
-    function houseLabel(h) { return h.short_name || h.name.replace(/の家$|ホーム$/, '').slice(0, 4); }
+    function houseLabel(h) { return h.short_name || h.name.replace(/の家$|ハウス$|ホーム$/, '').slice(0, 4); }
     function myShifts() { return state.shifts.filter(function (s) { return s.staff_id === state.staffId; }); }
     function todaysAt(houseId) { return myShifts().filter(function (s) { return s.house_id === houseId && s.work_date === state.date; }); }
     function typeFor(start, end) {
