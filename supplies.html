@@ -18,7 +18,10 @@
     .sup-row:first-child { border-top: none; }
     .sup-row.changed { background: var(--color-work-soft); margin: 0 -8px; padding: 8px; border-radius: var(--radius-sm); }
     .sup-name { flex: 1 1 150px; min-width: 0; font-size: 14px; font-weight: 500; }
-    .sup-ctrl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .sup-ctrl { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-left: auto; }
+    /* 「発注」と + − はいっしょに並べる(はなれて改行しない) */
+    .order { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+    .order-label { font-size: 12px; font-weight: 700; color: var(--color-text-muted); white-space: nowrap; }
     .sup-help { font-size: 11px; color: var(--color-text-muted); margin: -6px 0 6px; }
     /* 在庫のチップ: 足りない(基準より少ない)は赤、ちょうど基準はオレンジ、足りているは緑 */
     .stock-chip {
@@ -125,7 +128,7 @@
         <span class="page-icon"><i class="ti ti-package"></i></span>
         備品管理
       </h1>
-      <p>施設の在庫を見て、使ったら「使った」を押します。足りないものは本部にお願いし、本部は全施設の在庫を見て手配します</p>
+      <p>施設の在庫を見て、使ったら「使った」を押します。足りないものは本部に発注し、本部は全施設の在庫を見て手配します</p>
     </div>
 
     <div class="tabs">
@@ -153,7 +156,7 @@
       <div class="save-bar" id="saveBar" hidden>
         <span class="msg" id="saveMsg"></span>
         <button type="button" class="btn btn-ghost" id="resetBtn"><i class="ti ti-arrow-back-up"></i>もとにもどす</button>
-        <button type="button" class="btn" id="saveBtn"><i class="ti ti-send"></i>本部にお願いする</button>
+        <button type="button" class="btn" id="saveBtn"><i class="ti ti-send"></i>本部に発注する</button>
       </div>
     </div>
 
@@ -161,7 +164,7 @@
     <div id="panel-hq" class="tab-panel">
       <div class="mode-switch" id="hqSwitch" role="group" aria-label="本部の管理の切り替え">
         <button type="button" data-mode="stocks" class="active"><i class="ti ti-packages"></i>在庫の一覧</button>
-        <button type="button" data-mode="requests"><i class="ti ti-clipboard-list"></i>お願いの一覧</button>
+        <button type="button" data-mode="requests"><i class="ti ti-clipboard-list"></i>受注一覧</button>
         <button type="button" data-mode="items"><i class="ti ti-list-details"></i>備品リスト</button>
       </div>
 
@@ -256,7 +259,7 @@
     '洗面所': 'ti-droplet', '洗濯': 'ti-wash-machine', '衛生': 'ti-first-aid-kit', 'ゴミ': 'ti-trash',
   };
   const STATUS = {
-    requested: { label: 'お願い中', next: 'ordered', nextLabel: '手配した', icon: 'ti-truck' },
+    requested: { label: '受注', next: 'ordered', nextLabel: '手配した', icon: 'ti-truck' },
     ordered:   { label: '手配済み', next: 'delivered', nextLabel: '届けた', icon: 'ti-circle-check' },
     delivered: { label: '届けた', back: 'ordered' },
   };
@@ -333,7 +336,7 @@
   function requestsOf(hid, iid, status) {
     return requests.filter(function (q) { return q.house_id === hid && q.item_id === iid && q.status === status; });
   }
-  // お願い中の数(画面で変えたものがあればそちら)
+  // 発注中(本部では受注)の数
   function savedQty(iid) {
     const q = requestsOf(house, iid, 'requested')[0];
     return q ? q.quantity : 0;
@@ -358,7 +361,7 @@
     $('houseFilter').querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.filter === houseFilter); });
 
     const shown = houseFilter === 'low' ? active.filter(function (it) { return isLow(house, it); }) : active;
-    const help = '<p class="sup-help">在庫のチップを押すと数を直せます。「使った」で 1 つ減ります。+ − は本部にお願いする数です</p>';
+    const help = '<p class="sup-help">在庫のチップを押すと数を直せます。「使った」で 1 つ減ります。「発注」の + − は本部に発注する数です</p>';
     $('houseItems').innerHTML = groupByPlace(shown).map(function (g) {
       return '<div class="card"><h2><i class="ti ' + placeIcon(g.place) + '"></i>' + esc(g.place) + '</h2>' + help + '<ul class="sup-list">' +
         g.items.map(houseRow).join('') + '</ul></div>';
@@ -373,7 +376,7 @@
     const stock = stockOf(house, it.id);
     const used = usages.filter(function (u) { return u.house_id === house && u.item_id === it.id; }).length;
     const tags = [];
-    if (savedQty(it.id)) tags.push('<span class="sup-tag requested">お願い中 ' + savedQty(it.id) + '</span>');
+    if (savedQty(it.id)) tags.push('<span class="sup-tag requested">発注中 ' + savedQty(it.id) + '</span>');
     requestsOf(house, it.id, 'ordered').forEach(function (r) { tags.push('<span class="sup-tag ordered">手配済み ' + r.quantity + '</span>'); });
     requestsOf(house, it.id, 'delivered').forEach(function (r) { tags.push('<span class="sup-tag delivered">' + md(r.delivered_at) + ' 届いた ' + r.quantity + '</span>'); });
     if (used) tags.push('<span class="sup-tag ordered">きょう ' + used + ' 回使った</span>');
@@ -383,11 +386,11 @@
       '<button type="button" class="stock-chip stock-' + stockLevel(stock, it) + '" data-stock="' + esc(it.id) + '" title="押すと在庫の数を直せます" aria-label="' + esc(it.name) + ' 在庫 ' + stock + '。押すと数を直せます">' +
         '在庫 ' + stock + '<small>最低 ' + it.min_stock + '</small></button>' +
       '<button type="button" class="btn btn-ghost btn-sm use-btn" data-use="' + esc(it.id) + '"' + (stock ? '' : ' disabled') + '><i class="ti ti-hand-finger"></i>使った</button>' +
-      '<div class="stepper">' +
+      '<div class="order"><span class="order-label">発注</span><div class="stepper">' +
         '<button type="button" data-item="' + esc(it.id) + '" data-step="-1"' + (q ? '' : ' disabled') + ' aria-label="' + esc(it.name) + 'を 1 つ減らす"><i class="ti ti-minus"></i></button>' +
         '<span class="qty' + (q ? '' : ' zero') + '">' + q + '</span>' +
         '<button type="button" data-item="' + esc(it.id) + '" data-step="1" aria-label="' + esc(it.name) + 'を 1 つ増やす"><i class="ti ti-plus"></i></button>' +
-      '</div></div></li>';
+      '</div></div></div></li>';
   }
   function rerenderRow(iid) {
     const li = $('houseItems').querySelector('[data-row="' + iid + '"]');
@@ -462,7 +465,7 @@
     const n = function (s) { return mine.filter(function (q) { return q.status === s; }).length; };
     const lows = items.filter(function (it) { return it.is_active && isLow(house, it); }).length;
     $('houseSum').innerHTML = (lows ? '<span class="low">最低ストックより少ない ' + lows + ' 品</span>' : '足りない備品はありません') +
-      '・お願い中 ' + n('requested') + ' 品・手配済み ' + n('ordered') + ' 品・届いた(2週間) ' + n('delivered') + ' 品';
+      '・発注中 ' + n('requested') + ' 品・手配済み ' + n('ordered') + ' 品・届いた(2週間) ' + n('delivered') + ' 品';
   }
 
   function renderSaveBar() {
@@ -498,7 +501,7 @@
       });
       draft = {};
       await reload();
-      App.setStatus($('houseStatus'), houseName(house) + 'のお願いを本部に送りました', 'ok');
+      App.setStatus($('houseStatus'), houseName(house) + 'の発注を本部に送りました', 'ok');
     } catch (err) {
       console.error(err);
       App.setStatus($('houseStatus'), '送れませんでした。通信状況を確認してください', 'err');
@@ -626,7 +629,7 @@
     b.disabled = true;
     try {
       if (b.dataset.void) {
-        if (!confirm('このお願いを取り消しますか?')) { b.disabled = false; return; }
+        if (!confirm('この受注を取り消しますか?')) { b.disabled = false; return; }
         await App.rpc('void_supply_request', { p_id: b.dataset.void });
       } else {
         await App.rpc('set_supply_request_status', { p_ids: b.dataset.ids.split(','), p_status: b.dataset.to });

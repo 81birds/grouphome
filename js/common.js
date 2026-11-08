@@ -32,7 +32,7 @@
     { key: 'staff',      file: 'staff.html',      icon: 'ti-id-badge-2', label: 'スタッフDB', sub: 'スタッフ一覧・所属施設', ready: true },
     { key: 'houses',     file: 'houses.html',     icon: 'ti-building-community', label: '施設DB', sub: '施設一覧・住所・定員', ready: true },
     { key: 'settings',   file: 'settings.html',   icon: 'ti-settings',   label: '設定',       sub: '合言葉などの設定',       ready: false },
-    { key: 'supplies',   file: 'supplies.html',   icon: 'ti-package',    label: '備品管理',   sub: '施設のお願い・本部の手配', ready: true },
+    { key: 'supplies',   file: 'supplies.html',   icon: 'ti-package',    label: '備品管理',   sub: '施設の発注・本部の手配', ready: true },
   ];
 
   // ----- 上部のタブ -----
