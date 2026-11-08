@@ -459,25 +459,27 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
 .vtf-time input { font-size: 18px; padding: 8px 10px; }
 
 /* ===== バイタルのダイヤル(js/vitals.js の Vitals.dials) ===== */
-.vd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.vd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .vd-block {
   border: 1px solid var(--color-primary); border-radius: var(--radius-md);
-  background: var(--color-surface); padding: 6px 8px 8px;
+  background: var(--color-surface); padding: 8px 12px 12px;
 }
-.vd-head { display: flex; align-items: center; gap: 6px; min-height: 30px; }
-.vd-label { font-size: 13px; font-weight: 700; }
-.vd-val { margin-left: auto; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-primary-dark); }
+.vd-head { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.vd-label { font-size: 15px; font-weight: 700; }
+.vd-val { margin-left: auto; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-primary-dark); }
 .vd-val.alert { color: var(--color-danger); }
 .vd-clear {
-  width: 28px; height: 28px; flex-shrink: 0; padding: 0; cursor: pointer;
+  width: 34px; height: 34px; flex-shrink: 0; padding: 0; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   border: 1px solid var(--color-border); border-radius: 999px;
-  background: var(--color-surface-alt); color: var(--color-text-muted); font-size: 14px;
+  background: var(--color-surface-alt); color: var(--color-text-muted); font-size: 16px;
 }
+/* ダイヤルは大きく。左右の余白(枠の中のダイヤルの外)を触ればページが動く */
 .vd-wheel {
-  --vd-h: 34px;
-  position: relative; display: flex; align-items: center; justify-content: center; gap: 2px;
+  --vd-h: 48px;
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 4px;
   height: calc(var(--vd-h) * 3);
+  max-width: 260px; margin: 4px auto 0;
   user-select: none; -webkit-user-select: none;
 }
 .vd-band {
@@ -485,7 +487,7 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
   border-radius: var(--radius-sm); background: var(--color-primary-soft); pointer-events: none;
 }
 .vd-col {
-  position: relative; width: 54px; height: 100%;
+  position: relative; flex: 1 1 0; max-width: 92px; height: 100%;
   overflow-y: scroll; scroll-snap-type: y mandatory;
   scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   padding: var(--vd-h) 0;
@@ -496,14 +498,15 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
 .vd-item {
   height: var(--vd-h); display: flex; align-items: center; justify-content: center;
   scroll-snap-align: center; cursor: pointer;
-  font-size: 18px; font-variant-numeric: tabular-nums; color: var(--color-text-muted);
+  font-size: 22px; font-variant-numeric: tabular-nums; color: var(--color-text-muted);
 }
-.vd-item.sel { color: var(--color-text); font-weight: 700; font-size: 22px; }
-.vd-sep { position: relative; font-size: 20px; font-weight: 700; color: var(--color-text-muted); }
-.vd-unit { position: relative; font-size: 12px; color: var(--color-text-muted); margin-left: 2px; }
+.vd-item.sel { color: var(--color-text); font-weight: 700; font-size: 30px; }
+/* ダイヤルのあいだの「.」「/」と単位を触っても、ページが動かないように */
+.vd-sep { position: relative; font-size: 26px; font-weight: 700; color: var(--color-text-muted); touch-action: none; }
+.vd-unit { position: relative; font-size: 14px; color: var(--color-text-muted); margin-left: 2px; touch-action: none; }
 /* 「入れない」のあいだは、うすい色(回すと入る) */
 .vd-block.off { border-color: var(--color-border); border-style: dashed; background: var(--color-surface-alt); }
-.vd-block.off .vd-val { font-size: 11px; font-weight: 500; color: var(--color-text-muted); }
+.vd-block.off .vd-val { font-size: 12px; font-weight: 500; color: var(--color-text-muted); }
 .vd-block.off .vd-clear { visibility: hidden; }
 .vd-block.off .vd-wheel { opacity: .4; }
 .vd-block.off .vd-band { background: var(--color-border); }

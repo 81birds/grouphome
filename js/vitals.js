@@ -62,7 +62,7 @@
     }).join('');
 
     function blockOf(key) { return box.querySelector('.vd-block[data-key="' + key + '"]'); }
-    function itemH(col) { return (col.firstElementChild && col.firstElementChild.offsetHeight) || 34; }
+    function itemH(col) { return (col.firstElementChild && col.firstElementChild.offsetHeight) || 48; }
     function idx(col) {
       const n = col.children.length;
       return Math.max(0, Math.min(n - 1, Math.round(col.scrollTop / itemH(col))));
