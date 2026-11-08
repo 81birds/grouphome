@@ -90,6 +90,8 @@
     .req-table .act { text-align: right; white-space: nowrap; width: 1%; }
     .req-table .houses { font-size: 12px; color: var(--color-text-muted); }
     .req-table .date { font-size: 11px; color: var(--color-text-muted); white-space: nowrap; width: 1%; }
+    .req-table .st-cell { white-space: nowrap; width: 1%; }
+    .req-table .act .btn + .btn { margin-left: 4px; }
     .status-chips button .n { margin-left: 4px; font-size: 11px; opacity: 0.8; }
     /* 在庫の一覧(備品 × 施設) */
     .stock-table { width: 100%; min-width: 560px; border-collapse: collapse; }
@@ -273,7 +275,12 @@
   let draft = {};         // 施設の入力で変えた数 { item_id: 数 }
   let houseFilter = 'all';
   let hqMode = 'stocks';
-  let hqStatus = 'requested';
+  // 受注一覧の表示: open = 受注と手配済み(いっしょに管理する)/ delivered = 届けた
+  const VIEWS = {
+    open:      { label: '受注・手配済み', statuses: ['requested', 'ordered'] },
+    delivered: { label: '届けた(2週間)', statuses: ['delivered'] },
+  };
+  let hqStatus = 'open';
   let stockFilter = 'all';
   let lastUse = null;     // 取り消せる最後の「使った」
 
@@ -563,21 +570,21 @@
   }
 
   function renderRequests() {
-    $('statusChips').innerHTML = Object.keys(STATUS).map(function (s) {
-      const n = requests.filter(function (q) { return q.status === s; }).length;
-      return '<button type="button" data-status="' + s + '"' + (s === hqStatus ? ' class="active"' : '') + '>' +
-        STATUS[s].label + (s === 'delivered' ? '(2週間)' : '') + '<span class="n">' + n + '</span></button>';
+    $('statusChips').innerHTML = Object.keys(VIEWS).map(function (v) {
+      const n = requests.filter(function (q) { return VIEWS[v].statuses.indexOf(q.status) >= 0; }).length;
+      return '<button type="button" data-status="' + v + '"' + (v === hqStatus ? ' class="active"' : '') + '>' +
+        VIEWS[v].label + '<span class="n">' + n + '</span></button>';
     }).join('');
-    const st = STATUS[hqStatus];
-    const list = requests.filter(function (q) { return q.status === hqStatus; });
-    $('sumTitle').textContent = 'まとめ(' + st.label + '・全施設)';
+    const view = VIEWS[hqStatus];
+    const list = requests.filter(function (q) { return view.statuses.indexOf(q.status) >= 0; });
+    $('sumTitle').textContent = 'まとめ(' + view.label + '・全施設)';
 
-    // まとめ: 備品ごとの合計(備品リストの順)
+    // まとめ: 備品ごとの合計(備品リストの順)。受注と手配済みは分けて数え、それぞれまとめて進められる
     const byItem = {};
     list.forEach(function (q) { (byItem[q.item_id] = byItem[q.item_id] || []).push(q); });
     const its = items.filter(function (it) { return byItem[it.id]; });
     if (!its.length) {
-      $('sumTable').innerHTML = '<tr><td class="empty-msg">' + st.label + 'の備品はありません</td></tr>';
+      $('sumTable').innerHTML = '<tr><td class="empty-msg">' + view.label + 'の備品はありません</td></tr>';
     } else {
       let t = '<thead><tr><th>商品</th><th class="qty">合計</th><th>施設ごと</th><th class="act"></th></tr></thead><tbody>';
       groupByPlace(its).forEach(function (g) {
@@ -586,33 +593,43 @@
           const qs = byItem[it.id];
           const total = qs.reduce(function (a, q) { return a + q.quantity; }, 0);
           t += '<tr><td>' + itemLabel(it) + '</td><td class="qty">' + total + '</td>' +
-            '<td class="houses">' + qs.map(function (q) { return esc(houseName(q.house_id)) + ' ' + q.quantity; }).join('・') + '</td>' +
-            '<td class="act">' + actionButtons(qs.map(function (q) { return q.id; }), true) + '</td></tr>';
+            '<td class="houses">' + qs.map(function (q) {
+              return esc(houseName(q.house_id)) + ' ' + q.quantity + (view.statuses.length > 1 ? statusTag(q.status) : '');
+            }).join('・') + '</td>' +
+            '<td class="act">' + view.statuses.map(function (s) {
+              const ids = qs.filter(function (q) { return q.status === s; }).map(function (q) { return q.id; });
+              return ids.length ? actionButtons(ids, true, s) : '';
+            }).join('') + '</td></tr>';
         });
       });
       $('sumTable').innerHTML = t + '</tbody>';
     }
 
-    // 施設ごと
+    // 施設ごと。受注 → 手配済み の順、同じ状態の中は備品リストの順
+    const WHEN = { requested: 'requested_at', ordered: 'ordered_at', delivered: 'delivered_at' };
     const hids = houses.map(function (h) { return h.id; }).filter(function (id) { return list.some(function (q) { return q.house_id === id; }); });
     $('hqHouseCards').innerHTML = hids.map(function (hid) {
       const qs = list.filter(function (q) { return q.house_id === hid; });
       const order = function (q) { const it = itemOf(q.item_id); return it ? it.sort_order : 0; };
-      qs.sort(function (a, b) { return order(a) - order(b); });
-      const when = hqStatus === 'requested' ? 'requested_at' : hqStatus === 'ordered' ? 'ordered_at' : 'delivered_at';
+      qs.sort(function (a, b) { return view.statuses.indexOf(a.status) - view.statuses.indexOf(b.status) || order(a) - order(b); });
       return '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(houseName(hid)) + '</h2>' +
         '<div class="table-scroll"><table class="req-table"><tbody>' + qs.map(function (q) {
           const it = itemOf(q.item_id);
           return '<tr><td>' + (it ? itemLabel(it) : '') + (it ? '<div class="houses">' + esc(it.place) + '</div>' : '') + '</td>' +
-            '<td class="qty">' + q.quantity + '</td><td class="date">' + md(q[when]) + '</td>' +
-            '<td class="act">' + actionButtons([q.id], false) + '</td></tr>';
+            (view.statuses.length > 1 ? '<td class="st-cell">' + statusTag(q.status) + '</td>' : '') +
+            '<td class="qty">' + q.quantity + '</td><td class="date">' + md(q[WHEN[q.status]]) + '</td>' +
+            '<td class="act">' + actionButtons([q.id], false, q.status) + '</td></tr>';
         }).join('') + '</tbody></table></div></div>';
     }).join('');
   }
 
+  function statusTag(status) {
+    return '<span class="sup-tag ' + status + '">' + STATUS[status].label + '</span>';
+  }
+
   // 次へ進めるボタン(届けたは「もどす」)。施設ごとの行には取消も付ける
-  function actionButtons(ids, all) {
-    const st = STATUS[hqStatus];
+  function actionButtons(ids, all, status) {
+    const st = STATUS[status];
     const data = ' data-ids="' + esc(ids.join(',')) + '"';
     if (st.next) {
       return '<button type="button" class="btn btn-sm"' + data + ' data-to="' + st.next + '"><i class="ti ' + st.icon + '"></i>' +

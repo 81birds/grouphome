@@ -22,6 +22,10 @@
     .person-btn .p-name { display: block; font-size: 15px; font-weight: 700; }
     .person-btn .p-room { display: block; font-size: 11px; color: var(--color-text-muted); }
     .person-btn:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+    .person-btn.active { border-color: var(--color-primary); background: var(--color-primary-soft); box-shadow: inset 0 0 0 1px var(--color-primary); }
+    .pick-label { font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin: 0 0 6px; }
+    .pick-label + .chips { margin-bottom: 0; }
+    #personBox { margin-top: 14px; }
 
     .sample-note {
       display: flex; gap: 6px; align-items: flex-start;
@@ -36,7 +40,6 @@
     .me-bar .me-icon { font-size: 40px; color: var(--color-primary-dark); }
     .me-bar .me-name { font-size: 20px; font-weight: 700; line-height: 1.3; }
     .me-bar .me-place { font-size: 12px; color: var(--color-text-muted); }
-    .me-bar .spacer { flex: 1; }
 
     /* ----- 外出・もどり ----- */
     .out-state {
@@ -113,24 +116,25 @@
 <div id="mainContent" hidden>
   <div class="wrap">
 
-    <!-- ① ハウスと利用者さんを選ぶ -->
-    <div id="pickView" hidden>
+    <!-- ① ハウスと利用者さんを選ぶ(管理者ビュー。本番は利用者さんごとのログインなので、この選ぶところはない) -->
+    <div id="pickView">
       <div class="page-header">
         <h1>
           <span class="page-icon"><i class="ti ti-device-mobile-message"></i></span>
           利用者さんの画面
         </h1>
-        <p>ハウスと、あなたの名前を選んでください</p>
+        <p>管理者ビューです。ハウスと名前を選ぶと、その利用者さんの画面が下に出ます</p>
       </div>
       <p class="sample-note"><i class="ti ti-info-circle"></i>これはサンプルです。ためしに見られるよう、いまはすべての機能を同じ合言葉(同じ ID)で使えます。本番では、利用者さんごとにログインして、自分の画面だけが見られるようにします。</p>
       <div class="card">
-        <h2><i class="ti ti-building-community"></i>ハウス</h2>
+        <h2><i class="ti ti-user-search"></i>利用者さんを選ぶ</h2>
+        <p class="pick-label"><i class="ti ti-building-community"></i> ハウス</p>
         <div class="chips" id="houseChips"></div>
-      </div>
-      <div class="card" id="personCard" hidden>
-        <h2><i class="ti ti-users"></i>お名前</h2>
-        <div class="person-grid" id="personGrid"></div>
-        <div id="personMsg" class="empty-msg" hidden>このハウスに入居している利用者さんがいません</div>
+        <div id="personBox" hidden>
+          <p class="pick-label"><i class="ti ti-users"></i> お名前</p>
+          <div class="person-grid" id="personGrid"></div>
+          <div id="personMsg" class="empty-msg" hidden>このハウスに入居している利用者さんがいません</div>
+        </div>
       </div>
     </div>
 
@@ -142,8 +146,6 @@
           <div class="me-name" id="meName"></div>
           <div class="me-place" id="mePlace"></div>
         </div>
-        <span class="spacer"></span>
-        <button type="button" class="btn btn-ghost btn-sm" id="backBtn"><i class="ti ti-arrow-left"></i>もどる</button>
       </div>
 
       <!-- 本日のスタッフ -->
@@ -157,6 +159,33 @@
         <h2><i class="ti ti-calendar-event"></i>本日の予定</h2>
         <ul class="plan-list" id="planList"></ul>
         <div class="empty-msg" id="planEmpty" hidden>きょうの予定はありません</div>
+      </div>
+
+      <!-- 外出・もどり(日々の記録に「外出」「もどり」として残る) -->
+      <div class="card">
+        <h2><i class="ti ti-door-exit"></i>外出・もどり</h2>
+        <div class="out-state" id="outState"></div>
+
+        <div id="goBox">
+          <p class="out-label">どこへ行きますか?</p>
+          <div class="dest-grid" id="destGrid"></div>
+          <input type="text" id="destOther" placeholder="行き先(なくてもよい)" hidden>
+          <button type="button" class="btn btn-block out-btn" id="goBtn" disabled><i class="ti ti-walk"></i>外出する</button>
+        </div>
+        <div id="backBox" hidden>
+          <button type="button" class="btn btn-block out-btn" id="returnBtn"><i class="ti ti-home"></i>もどりました</button>
+        </div>
+        <div id="outStatus" class="status-msg center"></div>
+
+        <ul class="out-hist" id="outHist"></ul>
+      </div>
+
+      <!-- 食事表 -->
+      <div class="card">
+        <h2><i class="ti ti-tools-kitchen-2"></i>食事表</h2>
+        <p class="meal-note">○ = 食べる、× = 食べない。押すたびに切り替わります。平日の昼食はありません。青い色はスタッフが変えたものです</p>
+        <table class="meal-table" id="mealTable"></table>
+        <div id="mealStatus" class="status-msg center"></div>
       </div>
 
       <!-- バイタル(バイタルの画面 vitals.html で見る) -->
@@ -193,33 +222,6 @@
         <button type="button" class="btn btn-block out-btn" id="vtSave"><i class="ti ti-check"></i>記録する</button>
         <div id="vtStatus" class="status-msg center"></div>
         <ul class="out-hist vt-hist" id="vtHist"></ul>
-      </div>
-
-      <!-- 外出・もどり(日々の記録に「外出」「もどり」として残る) -->
-      <div class="card">
-        <h2><i class="ti ti-door-exit"></i>外出・もどり</h2>
-        <div class="out-state" id="outState"></div>
-
-        <div id="goBox">
-          <p class="out-label">どこへ行きますか?</p>
-          <div class="dest-grid" id="destGrid"></div>
-          <input type="text" id="destOther" placeholder="行き先(なくてもよい)" hidden>
-          <button type="button" class="btn btn-block out-btn" id="goBtn" disabled><i class="ti ti-walk"></i>外出する</button>
-        </div>
-        <div id="backBox" hidden>
-          <button type="button" class="btn btn-block out-btn" id="returnBtn"><i class="ti ti-home"></i>もどりました</button>
-        </div>
-        <div id="outStatus" class="status-msg center"></div>
-
-        <ul class="out-hist" id="outHist"></ul>
-      </div>
-
-      <!-- 食事表 -->
-      <div class="card">
-        <h2><i class="ti ti-tools-kitchen-2"></i>食事表</h2>
-        <p class="meal-note">○ = 食べる、× = 食べない。押すたびに切り替わります。平日の昼食はありません。青い色はスタッフが変えたものです</p>
-        <table class="meal-table" id="mealTable"></table>
-        <div id="mealStatus" class="status-msg center"></div>
       </div>
     </div>
 
@@ -273,10 +275,11 @@
     return out;
   }
 
-  // ===== ① 選ぶ =====
+  // ===== ① 選ぶ(いつも上に出す) =====
+  // まだ人を選んでいないとき: 下のその人の画面は出さない
   function showPick() {
+    meId = null;
     $('homeView').hidden = true;
-    $('pickView').hidden = false;
     renderHouses();
     renderPeople();
     history.replaceState(null, '', location.pathname);
@@ -287,11 +290,12 @@
     }).join('') || '<span class="muted text-sm">ハウスが登録されていません</span>';
   }
   function renderPeople() {
-    $('personCard').hidden = !houseId;
+    $('personBox').hidden = !houseId;
     if (!houseId) return;
     const people = peopleOfHouse(houseId);
     $('personGrid').innerHTML = people.map(function (x) {
-      return '<button type="button" class="person-btn" data-resident="' + esc(x.resident.id) + '">' +
+      const on = x.resident.id === meId;
+      return '<button type="button" class="person-btn' + (on ? ' active' : '') + '" data-resident="' + esc(x.resident.id) + '" aria-pressed="' + on + '">' +
         '<span class="p-name">' + esc(x.resident.name) + ' さん</span>' +
         '<span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span></button>';
     }).join('');
@@ -299,7 +303,7 @@
   }
 
   // ===== ② その人の画面 =====
-  async function showHome(residentId) {
+  async function showHome(residentId, scroll) {
     const p = Rooms.resident(residentId);
     const cur = p ? Rooms.currentOf(residentId, today) : null;
     if (!cur) { showPick(); return; }     // いま入居していない人は選びなおし
@@ -308,11 +312,13 @@
     try { localStorage.setItem(ME_KEY, meId); } catch (e) { /* noop */ }
     history.replaceState(null, '', location.pathname + '?resident=' + encodeURIComponent(meId));
 
-    $('pickView').hidden = true;
     $('homeView').hidden = false;
+    renderHouses();
+    renderPeople();
     $('meName').textContent = p.name + ' さん';
     $('mePlace').textContent = Rooms.placeText(cur);
-    window.scrollTo(0, 0);
+    // 名前を押したときは、その人の画面へ(選ぶところは上に残る)
+    if (scroll) $('homeView').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     dest = null;
     $('destOther').value = '';
@@ -562,17 +568,13 @@
       $('houseChips').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-house]');
         if (!b) return;
+        if (b.dataset.house === houseId) return;
         houseId = b.dataset.house;
-        renderHouses();
-        renderPeople();
+        showPick();   // ほかのハウスにしたら、名前を選びなおす
       });
       $('personGrid').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-resident]');
-        if (b) showHome(b.dataset.resident);
-      });
-      $('backBtn').addEventListener('click', function () {
-        try { localStorage.removeItem(ME_KEY); } catch (e) { /* noop */ }
-        showPick();
+        if (b && b.dataset.resident !== meId) showHome(b.dataset.resident, true);
       });
       $('mealTable').addEventListener('click', onMealClick);
       $('destGrid').addEventListener('click', function (e) {

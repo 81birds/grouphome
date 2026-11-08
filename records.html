@@ -67,6 +67,11 @@
     .visit-box .tl-track { height: 18px; }
     .visit-box .tl-time { font-size: 10px; margin-top: 1px; }
     .visit-box .empty-msg { padding: 8px; font-size: 12px; }
+    /* すべてのハウスのときは、ハウスごとに分けて出す */
+    .visit-house + .visit-house { margin-top: 10px; }
+    .visit-house-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--color-primary-dark); margin: 4px 0 2px; }
+    .person-house { grid-column: 1 / -1; font-size: 12px; font-weight: 700; color: var(--color-primary-dark); margin: 6px 0 0; }
+    .person-house:first-child { margin-top: 0; }
     .person-btn.active .p-room { color: var(--color-work-dark); }
     .person-btn.active .p-count { background: var(--color-surface); color: var(--color-work-dark); }
 
@@ -452,7 +457,7 @@
   const KINDS = KIND_GROUPS.reduce(function (a, g) { return a.concat(g.kinds); }, []);
   // 今はチップにないが、前の記録に残っている内容のアイコン
   const OLD_ICONS = { '出勤': 'ti-briefcase' };
-  const HOUSE_KEY = 'gh_records_house';
+  const ALL = 'all';   // 施設のチップの「すべてのハウス」(はじめはこれ)
   const ITEM_H = 40;
   const MIN_STEP = 10;          // 分は 10 分きざみ
 
@@ -540,10 +545,20 @@
     return Rooms.houses.filter(function (h) { return h.is_active; });
   }
   function renderHouses() {
-    $('houseChips').innerHTML = activeHouses().map(function (h) {
+    const hs = activeHouses();
+    $('houseChips').innerHTML = (hs.length ? [{ id: ALL, name: 'すべてのハウス' }] : []).concat(hs).map(function (h) {
       return '<button type="button" data-house="' + esc(h.id) + '"' + (h.id === houseId ? ' class="active"' : '') + '>' + esc(h.name) + '</button>';
     }).join('') || '<span class="muted text-sm">施設が登録されていません</span>';
   }
+
+  // 記録・スタッフの施設。すべてのハウスのときは、その人がその日に入居している部屋の施設
+  function houseOfResident(rid) {
+    const a = rid ? Rooms.currentOf(rid, date) : null;
+    const r = a ? Rooms.room(a.room_id) : null;
+    return r ? r.house_id : null;
+  }
+  function recordHouse() { return houseId === ALL ? houseOfResident(residentId) : houseId; }
+  function shownHouses() { return houseId === ALL ? activeHouses() : activeHouses().filter(function (h) { return h.id === houseId; }); }
 
   // ===== 日にち =====
   function renderDate() {
@@ -556,11 +571,12 @@
   // ===== いまの施設・日にち(上の帯とダイアログに出す) =====
   // 施設と日にちの 1 行
   function ctxLine(person) {
-    const h = Rooms.houses.find(function (x) { return x.id === houseId; });
+    const hid = houseId === ALL ? houseOfResident(residentId) : houseId;
+    const h = Rooms.houses.find(function (x) { return x.id === hid; });
     const wd = '日月火水木金土'.charAt(new Date(date + 'T00:00:00Z').getUTCDay());
     const today = App.todayJST();
     const rel = date === today ? ' <span class="today">きょう</span>' : date === App.todayJST(-1) ? ' <span class="past">きのう</span>' : date < today ? ' <span class="past">過去の日</span>' : '';
-    return '<div class="ctx-line"><i class="ti ti-building-community"></i>' + esc(h ? h.name : '施設を選んでください') +
+    return '<div class="ctx-line"><i class="ti ti-building-community"></i>' + esc(h ? h.name : houseId === ALL ? 'すべてのハウス' : '施設を選んでください') +
       '<span class="sep">・</span><i class="ti ti-calendar"></i>' + (+date.slice(5, 7)) + '/' + (+date.slice(8, 10)) + '(' + wd + ')' + rel +
       (person ? '<span class="sep">・</span><i class="ti ti-user"></i>' + esc(person.name) + ' さん' : '') + '</div>';
   }
@@ -611,21 +627,36 @@
     $('visitCard').hidden = !houseId;
     if (!houseId) return;
     $('visitTitle').textContent = StaffDay.title(date);
-    $('visitSum').textContent = StaffDay.render($('visitList'), houseId, date);
+    if (houseId !== ALL) { $('visitSum').textContent = StaffDay.render($('visitList'), houseId, date); return; }
+    // すべてのハウス: ハウスごとに帯を出す
+    const hs = activeHouses();
+    $('visitList').innerHTML = hs.map(function (h) {
+      return '<div class="visit-house"><div class="visit-house-name"><i class="ti ti-building-community"></i>' + esc(h.name) +
+        '<span class="visit-sum"></span></div><div class="tl"></div></div>';
+    }).join('');
+    $('visitList').querySelectorAll('.visit-house').forEach(function (box, i) {
+      const sum = StaffDay.render(box.querySelector('.tl'), hs[i].id, date);
+      box.querySelector('.visit-sum').textContent = sum;
+    });
+    $('visitSum').textContent = hs.length + ' ハウス';
   }
 
 
   // ===== 利用者 =====
   // その日にこの施設のどこかの部屋に入居している人(部屋の順)
   // 部屋ごとの枠。入居している人がいなければ resident は null(空室)
+  // すべてのハウスのときは、ハウスの順にハウスの名前(house)を挟む
   function roomSlots() {
     if (!houseId) return [];
     const out = [];
-    Rooms.roomsOf(houseId, true).forEach(function (room) {
-      const a = Rooms.occupantOf(room.id, date);
-      const p = a ? Rooms.resident(a.resident_id) : null;
-      if (!p && !room.is_active) return;   // 使っていない部屋は出さない
-      out.push({ resident: p, room: room });
+    shownHouses().forEach(function (h) {
+      if (houseId === ALL) out.push({ house: h });
+      Rooms.roomsOf(h.id, true).forEach(function (room) {
+        const a = Rooms.occupantOf(room.id, date);
+        const p = a ? Rooms.resident(a.resident_id) : null;
+        if (!p && !room.is_active) return;   // 使っていない部屋は出さない
+        out.push({ resident: p, room: room });
+      });
     });
     return out;
   }
@@ -637,6 +668,7 @@
     if (residentId && !people.some(function (x) { return x.resident.id === residentId; })) residentId = null;
     // 部屋の数だけ並べる。人がいない部屋は「空室」
     $('personGrid').innerHTML = slots.map(function (x) {
+      if (x.house) return '<div class="person-house"><i class="ti ti-building-community"></i> ' + esc(x.house.name) + '</div>';
       if (!x.resident) {
         return '<div class="person-btn vacant"><span class="p-name">空室</span><span class="p-room">' + esc(Rooms.roomName(x.room)) + '</span></div>';
       }
@@ -649,7 +681,7 @@
         '</button>';
     }).join('');
     const msg = $('personMsg');
-    msg.hidden = slots.length > 0;
+    msg.hidden = slots.some(function (x) { return x.room; });
     msg.textContent = 'この施設には部屋が登録されていません。施設DB の画面で部屋を追加してください';
   }
 
@@ -762,7 +794,12 @@
   }
 
   async function loadRecords() {
-    records = houseId ? await App.rpc('get_daily_records', { p_house_id: houseId, p_date: date }) : [];
+    // すべてのハウスのときは、ハウスごとに読んでまとめる
+    const lists = await Promise.all(shownHouses().map(function (h) {
+      return App.rpc('get_daily_records', { p_house_id: h.id, p_date: date });
+    }));
+    records = [].concat.apply([], lists.map(function (x) { return x || []; }));
+    sortRecords();
     try {
       vitals = houseId ? await App.rpc('get_vitals', { p_from: date, p_to: date }) : [];
     } catch (err) {
@@ -774,7 +811,6 @@
   async function selectHouse(id) {
     houseId = id;
     residentId = null;
-    try { localStorage.setItem(HOUSE_KEY, id); } catch (e) { /* 保存できなくても続ける */ }
     renderHouses();
     try {
       await loadRecords();
@@ -929,7 +965,7 @@
 
   function addRecords(kind, time, note) {
     return App.rpc('add_daily_records', {
-      p_resident_id: residentId, p_house_id: houseId, p_date: date, p_time: time, p_kinds: [kind], p_note: note,
+      p_resident_id: residentId, p_house_id: recordHouse(), p_date: date, p_time: time, p_kinds: [kind], p_note: note,
     });
   }
 
@@ -1118,13 +1154,9 @@
       const n = nowRounded();
       savedH = n[0]; savedM = n[1];
 
-      // 前回選んだ施設(施設が 1 つだけならそれ)
-      const houses = activeHouses();
-      let last = null;
-      try { last = localStorage.getItem(HOUSE_KEY); } catch (e) { /* noop */ }
-      const start = houses.find(function (h) { return h.id === last; }) || (houses.length === 1 ? houses[0] : null);
+      // はじめは「すべてのハウス」
       renderHouses();
-      if (start) await selectHouse(start.id);
+      if (activeHouses().length) await selectHouse(ALL);
     },
   });
 </script>
