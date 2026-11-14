@@ -139,6 +139,25 @@
       }
       .phone-frame .card { padding-left: 14px; padding-right: 14px; }
     }
+    /* PC(広い画面): 左上にスマホの枠、右上に選ぶところ(スクロールしても右上に残る) */
+    .phone-empty { display: none; }
+    @media (min-width: 900px) {
+      .fam-wrap {
+        max-width: 1100px; margin: 0;
+        display: grid; grid-template-columns: 410px minmax(0, 560px); gap: 0 28px; align-items: start;
+      }
+      #homeView, .phone-empty { grid-column: 1; grid-row: 1; }
+      #pickView { grid-column: 2; grid-row: 1; position: sticky; top: calc(var(--gtool-h) + 20px); }
+      .phone-frame { margin: 0; }
+      /* まだ選んでいないときは、からの枠を出しておく */
+      .phone-empty { display: block; }
+      #homeView:not([hidden]) ~ .phone-empty { display: none; }
+      .phone-empty .phone-frame {
+        min-height: 560px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+        color: var(--color-text-muted); font-size: 14px; font-weight: 700; text-align: center;
+      }
+      .phone-empty .phone-frame i { font-size: 40px; }
+    }
   </style>
 </head>
 <body>
@@ -151,7 +170,7 @@
 </div>
 
 <div id="mainContent" hidden>
-  <div class="wrap">
+  <div class="wrap fam-wrap">
 
     <!-- ① ハウスと利用者さんを選ぶ(管理者ビュー。本番は利用者さんごとのログインなので、この選ぶところはない) -->
     <div id="pickView">
@@ -160,7 +179,7 @@
           <span class="page-icon"><i class="ti ti-device-mobile-message"></i></span>
           利用者さんの画面
         </h1>
-        <p>管理者ビューです。ハウスと名前を選ぶと、その利用者さんの画面が下に出ます</p>
+        <p>管理者ビューです。ハウスと名前を選ぶと、その利用者さんの画面が出ます</p>
       </div>
       <div class="card">
         <div class="pick-head">
@@ -246,6 +265,12 @@
         <ul class="out-hist vt-hist" id="vtHist"></ul>
       </div>
       </div><!-- /.phone-frame -->
+    </div>
+
+    <!-- PC でまだ選んでいないとき: からのスマホの枠 -->
+    <div class="phone-empty" aria-hidden="true">
+      <p class="phone-caption"><i class="ti ti-device-mobile"></i>スマホでの見え方</p>
+      <div class="phone-frame"><i class="ti ti-arrow-big-right"></i>右でハウスと名前を選ぶと<br>ここに出ます</div>
     </div>
 
   </div>
@@ -342,8 +367,8 @@
     renderPeople();
     $('meName').textContent = p.name + ' さん';
     $('mePlace').textContent = Rooms.placeText(cur);
-    // 名前を押したときは、その人の画面へ(選ぶところは上に残る)
-    if (scroll) $('homeView').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 名前を押したときは、その人の画面へ(選ぶところは上に残る)。PC は横に並ぶので動かさない
+    if (scroll && !window.matchMedia('(min-width: 900px)').matches) $('homeView').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     editOutId = null;
     App.setStatus($('outStatus'), '');
