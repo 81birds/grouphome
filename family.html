@@ -114,6 +114,31 @@
       border: 1px solid var(--color-border); border-radius: var(--radius-sm);
     }
     .meal-none { font-size: 12px; color: var(--color-text-muted); }
+
+    /* ----- スマホビュー ----- */
+    /* PC で見るときは、その人の画面をスマホの枠に入れて、スマホの幅で見せる。スマホではそのまま */
+    .phone-caption { display: none; }
+    @media (min-width: 600px) {
+      .phone-caption {
+        display: flex; align-items: center; justify-content: center; gap: 4px;
+        font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin: 6px 0 8px;
+      }
+      .phone-caption i { font-size: 16px; }
+      .phone-frame {
+        position: relative;
+        max-width: 390px; margin: 0 auto;
+        padding: 34px 10px 24px;
+        background: var(--color-bg);
+        border: 10px solid #2b2f2e; border-radius: 44px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+      }
+      /* 上のスピーカー */
+      .phone-frame::before {
+        content: ""; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+        width: 72px; height: 6px; border-radius: 3px; background: #2b2f2e;
+      }
+      .phone-frame .card { padding-left: 14px; padding-right: 14px; }
+    }
   </style>
 </head>
 <body>
@@ -154,6 +179,8 @@
 
     <!-- ② その人の画面 -->
     <div id="homeView" hidden>
+      <p class="phone-caption"><i class="ti ti-device-mobile"></i>スマホでの見え方</p>
+      <div class="phone-frame">
       <div class="me-bar">
         <i class="ti ti-user-circle me-icon"></i>
         <div>
@@ -218,6 +245,7 @@
         <div id="vtStatus" class="status-msg center"></div>
         <ul class="out-hist vt-hist" id="vtHist"></ul>
       </div>
+      </div><!-- /.phone-frame -->
     </div>
 
   </div>
