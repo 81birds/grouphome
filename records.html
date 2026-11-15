@@ -175,6 +175,29 @@
     }
     .new-btn { margin-top: 12px; }
 
+    /* ----- PC ビュー / スマホビューの切り替え(幅 600px 以上で出す) ----- */
+    .view-switch { display: none; }
+    @media (min-width: 600px) {
+      .view-switch { display: flex; }
+      /* スマホビュー: スマホの幅(枠つき)で 1 列に並べる */
+      body.view-phone .wrap.wide { max-width: 410px; }
+      body.view-phone .rec-layout {
+        display: block;
+        padding: 34px 10px 24px; background: var(--color-bg);
+        border: 10px solid #2b2f2e; border-radius: 44px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+        position: relative;
+      }
+      body.view-phone .rec-layout::before {
+        content: ""; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+        width: 72px; height: 6px; border-radius: 3px; background: #2b2f2e;
+      }
+      body.view-phone .rec-layout .card { padding-left: 12px; padding-right: 12px; }
+      body.view-phone .person-grid { grid-template-columns: repeat(3, 1fr); }
+      body.view-phone .rec-main .rec-list li { font-size: 14px; padding: 8px 2px; }
+      body.view-phone .person-btn .p-name { font-size: 13px; }
+    }
+
     /* ----- きょうの日課 ----- */
     .rt-today { background: var(--color-surface-alt); border-radius: var(--radius-md); padding: 8px 10px; margin-bottom: 12px; }
     .rt-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--color-text-muted); margin-bottom: 4px; }
@@ -292,6 +315,12 @@
         日々の記録
       </h1>
       <p>施設と利用者さんを選ぶと、その日の記録が出ます。「新しい入力」で時刻と内容を選んで記録します</p>
+    </div>
+
+    <!-- PC ビュー / スマホビュー(PC で見るときに切り替える) -->
+    <div class="mode-switch view-switch" id="viewSwitch" role="group" aria-label="表示の切り替え">
+      <button type="button" data-view="pc"><i class="ti ti-device-desktop"></i>PC</button>
+      <button type="button" data-view="phone"><i class="ti ti-device-mobile"></i>スマホ</button>
     </div>
 
     <div class="rec-layout">
@@ -857,11 +886,39 @@
   function selectResident(id) {
     if (id !== residentId) $('newNote').value = '';   // コメントはその人だけのもの
     residentId = id;
+    // すべてのハウスから選んだときは、施設のチップをその人のハウスにする
+    // (記録はすべてのハウスの分を読んであるので、読み直さない)
+    if (houseId === ALL) {
+      const hid = houseOfResident(id);
+      if (hid) {
+        houseId = hid;
+        renderHouses();
+        renderVisits();
+        renderCtx();
+      }
+    }
     App.setStatus($('listStatus'), '');
     renderPeople();
     renderList();
-    // PC は記録が右に並んで見えるので、スクロールしない
-    if (!window.matchMedia('(min-width: 1000px)').matches) $('listCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // PC ビューで 2 列のときは記録が右に並んで見えるので、スクロールしない
+    if (!twoColumns()) $('listCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ===== PC ビュー / スマホビュー =====
+  const VIEW_KEY = 'gh_records_view';
+  let view = 'pc';
+  function setView(v) {
+    view = v === 'phone' ? 'phone' : 'pc';
+    document.body.classList.toggle('view-phone', view === 'phone');
+    $('viewSwitch').querySelectorAll('button').forEach(function (b) {
+      const on = b.dataset.view === view;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    try { localStorage.setItem(VIEW_KEY, view); } catch (e) { /* noop */ }
+  }
+  function twoColumns() {
+    return view === 'pc' && window.matchMedia('(min-width: 1000px)').matches;
   }
 
   // ===== 入力のダイアログ =====
@@ -1186,6 +1243,15 @@
       $('dateInput').addEventListener('change', function () { changeDate(this.value); });
 
       renderDate();
+
+      // PC ビュー / スマホビュー(この端末で前に選んだもの)
+      let v0 = 'pc';
+      try { v0 = localStorage.getItem(VIEW_KEY) || 'pc'; } catch (e) { /* noop */ }
+      setView(v0);
+      $('viewSwitch').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-view]');
+        if (b) setView(b.dataset.view);
+      });
 
       // はじめの時刻は「いま」
       const n = nowRounded();
