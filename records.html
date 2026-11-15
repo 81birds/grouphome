@@ -808,7 +808,9 @@
       const hit = items.find(function (it) {
         if (fromRoutine.has(it)) return false;
         if (it.v) return rt.content === 'バイタル';
-        if (it.r.kind !== rt.content) return false;
+        // 「通所もどり」など、もどりの日課は「もどり」の記録でも済み(通所の「↓」で一緒に入るのは「もどり」)
+        const same = it.r.kind === rt.content || (it.r.kind === 'もどり' && rt.content.indexOf('もどり') >= 0);
+        if (!same) return false;
         return !rt.staffOnly || String(it.r.created_at || '') > medLast;
       });
       if (hit) {
