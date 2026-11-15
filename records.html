@@ -187,6 +187,7 @@
     .rt-today .t { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .rt-today .t small { font-size: 11px; font-weight: 500; color: var(--color-text-muted); margin-left: 2px; }
     .rt-today .c { flex: 1; min-width: 0; }
+    .rt-today .c small { display: block; font-size: 11px; color: var(--color-text-muted); }
     /* 「↓」: 予定の時刻で下の記録に入れる */
     .rt-go { min-width: 44px; min-height: 36px; padding: 4px 12px; font-size: 18px; }
     /* 日課と記録のあいだの「新しい入力」 */
@@ -481,6 +482,7 @@
   let records = [];             // 選んだ施設・日の記録
   let vitals = [];              // 選んだ日のバイタル(全員分。この施設の人だけ使う)
   let picked = new Set();       // 選んでいる内容(1 つだけ)
+  let medWaiting = [];          // きょうの日課で、まだ記録していないお薬(空包確認はこれが空になってから)
 
   const $ = function (id) { return document.getElementById(id); };
   const esc = App.escapeHtml;
@@ -766,13 +768,18 @@
 
     // きょうの日課。同じ内容の記録がその日にあれば記録済みとして日課の一覧から外し、
     // その記録(日課 1 つにつき 1 件)に「日課」の印を付ける
+    // 空包確認(お薬の日課のあと)は、その日のお薬がぜんぶ記録に入るまで日課に残す。
+    // 前から入っている空包確認の記録は、お薬をぜんぶ記録したところで、この日課の分として結びつく
     const rts = Routines.ofDay(residentId, date);
     const fromRoutine = new Set();
+    medWaiting = [];
     const todo = rts.filter(function (rt) {
+      if (rt.staffOnly && medWaiting.length) return true;
       const hit = items.find(function (it) {
         return !fromRoutine.has(it) && (it.v ? rt.content === 'バイタル' : it.r.kind === rt.content);
       });
       if (hit) fromRoutine.add(hit);
+      else if (rt.med && !rt.staffOnly) medWaiting.push(rt.content);
       return !hit;
     });
     // 日課がない日も出して、プロファイルの日課へ行けるようにする
@@ -785,7 +792,8 @@
       : '記録済みの日課が ' + doneN + ' 件あります(下の記録に「日課」の印)';
     $('rtEditLink').href = 'profile.html?resident=' + encodeURIComponent(residentId) + '&from=records#routines';
     $('rtTodayList').innerHTML = todo.map(function (rt) {
-      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '<small>頃予定</small></span><span class="c">' + esc(rt.content) + '</span>' +
+      const wait = rt.staffOnly && medWaiting.length ? '<small>お薬をぜんぶ記録したあとに</small>' : '';
+      return '<li><span class="t">' + esc(Routines.time(rt.routine_time)) + '<small>頃予定</small></span><span class="c">' + esc(rt.content) + wait + '</span>' +
         '<button type="button" class="btn btn-sm rt-go" data-routine="' + esc(rt.id) + '" title="予定の時刻で記録する" aria-label="' + esc(rt.content) + ' を予定の時刻で記録する"><i class="ti ti-arrow-down"></i></button></li>';
     }).join('');
     const routineMark = '<span class="rec-routine"><i class="ti ti-calendar-repeat"></i>日課</span>';
@@ -870,6 +878,11 @@
   async function recordFromRoutine(id, btn) {
     const rt = Routines.find(id);
     if (!rt || !residentId || routineSaving) return;
+    // 空包確認は、お薬をぜんぶ記録してから
+    if (rt.staffOnly && medWaiting.length) {
+      App.setStatus($('listStatus'), '先に ' + medWaiting.join('・') + ' を記録してください', 'err');
+      return;
+    }
     const t = Routines.time(rt.routine_time);
     const chip = KINDS.find(function (k) { return k.name === rt.content; });
     // バイタルは値がないと記録できないので、その時刻で入力のダイアログを開く
