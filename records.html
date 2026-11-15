@@ -769,17 +769,24 @@
     // きょうの日課。同じ内容の記録がその日にあれば記録済みとして日課の一覧から外し、
     // その記録(日課 1 つにつき 1 件)に「日課」の印を付ける
     // 空包確認(お薬の日課のあと)は、その日のお薬がぜんぶ記録に入るまで日課に残す。
-    // 前から入っている空包確認の記録は、お薬をぜんぶ記録したところで、この日課の分として結びつく
+    // お薬をぜんぶ記録しても、自動では済みにしない(おわたししたが、確認はまだのことがある)。
+    // 済みになるのは、お薬の記録より後に入れた空包確認の記録があるときだけ(前から入っている記録とは結びつけない)
     const rts = Routines.ofDay(residentId, date);
     const fromRoutine = new Set();
+    let medLast = '';               // 日課のお薬の記録のうち、いちばん後に入れたもの(created_at)
     medWaiting = [];
     const todo = rts.filter(function (rt) {
       if (rt.staffOnly && medWaiting.length) return true;
       const hit = items.find(function (it) {
-        return !fromRoutine.has(it) && (it.v ? rt.content === 'バイタル' : it.r.kind === rt.content);
+        if (fromRoutine.has(it)) return false;
+        if (it.v) return rt.content === 'バイタル';
+        if (it.r.kind !== rt.content) return false;
+        return !rt.staffOnly || String(it.r.created_at || '') > medLast;
       });
-      if (hit) fromRoutine.add(hit);
-      else if (rt.med && !rt.staffOnly) medWaiting.push(rt.content);
+      if (hit) {
+        fromRoutine.add(hit);
+        if (rt.med && !rt.staffOnly && String(hit.r.created_at || '') > medLast) medLast = String(hit.r.created_at || '');
+      } else if (rt.med && !rt.staffOnly) medWaiting.push(rt.content);
       return !hit;
     });
     // 日課がない日も出して、プロファイルの日課へ行けるようにする
