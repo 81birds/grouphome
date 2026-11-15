@@ -161,7 +161,7 @@
           '<td class="edit"><span class="icon-btn" aria-hidden="true"><i class="ti ti-pencil"></i></span></td>' +
           '</tr>';
       }).join('');
-      return '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>' +
+      return '<div class="card' + (houseId !== ALL ? ' card-picked' : '') + '"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>' +
         (people.length
           ? '<table class="med-table"><thead><tr><th class="name">お名前</th>' +
               Meds.TIMINGS.map(function (t) { return '<th>' + esc(t.label) + '</th>'; }).join('') +

@@ -65,8 +65,8 @@
     <div class="chips house-pick" id="visitHouses"></div>
 
     <!-- 部屋と入居者 -->
-    <div class="card" id="roomCard">
-      <h2><i class="ti ti-door"></i>部屋と入居者</h2>
+    <div class="card card-picked" id="roomCard">
+      <h2><i class="ti ti-door"></i><span id="roomTitle">部屋と入居者</span></h2>
       <p class="room-sum" id="roomSum" style="margin:-8px 0 8px;"></p>
       <ul class="room-list" id="roomList"></ul>
       <form id="roomAddForm" class="room-add" novalidate>
@@ -304,6 +304,9 @@
     const sum = document.getElementById('roomSum');
     document.getElementById('roomCard').hidden = !currentHouseId;
     if (!currentHouseId) return;
+    // 見出しに選んでいる施設の名前(チップと同じオレンジ)
+    const ch = houses.find(function (h) { return h.id === currentHouseId; });
+    document.getElementById('roomTitle').textContent = (ch ? ch.name + 'の' : '') + '部屋と入居者';
 
     const today = Rooms.today();
     const rooms = Rooms.roomsOf(currentHouseId, true);

@@ -110,6 +110,8 @@
 
   let date = App.todayJST();
   let houseSel = 'all';   // 'all' か ハウスの id
+  // ハウスを 1 つ選んでいるときは、そのカードをチップと同じオレンジに
+  function picked() { return houseSel !== 'all' ? ' card-picked' : ''; }
   let rows = [];          // その日のバイタル(全員)
 
   function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
@@ -162,7 +164,7 @@
     const today = App.todayJST();
     const people = peopleOfWeek(h.id, ds);
     const n = rows.filter(function (r) { return people.some(function (p) { return p.resident.id === r.resident_id; }); }).length;
-    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '<span class="vt-sum">' + n + ' 件</span></h2>';
+    let t = '<div class="card' + picked() + '"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '<span class="vt-sum">' + n + ' 件</span></h2>';
     if (!people.length) return t + '<div class="empty-msg">この期間に入居している利用者さんはいません</div></div>';
     t += '<table class="vw-table"><thead><tr><th class="name"></th>' + ds.map(function (d) {
       return '<th class="' + Meals.dayClass(d) + (d === today ? ' today' : '') + '">' + Meals.dateLabel(d).replace('(', '<br>(') + '</th>';
@@ -192,7 +194,7 @@
   function houseCard(h) {
     const people = peopleOfHouse(h.id);
     const done = people.filter(function (p) { return rows.some(function (r) { return r.resident_id === p.resident.id && r.measured_date === date; }); }).length;
-    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) +
+    let t = '<div class="card' + picked() + '"><h2><i class="ti ti-building-community"></i>' + esc(h.name) +
       '<span class="vt-sum">入力 ' + done + ' / ' + people.length + '人</span></h2>';
     if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
     t += '<table class="vt-table"><thead><tr><th class="name"></th><th class="t">時間</th><th>体温</th><th>血圧</th><th>脈拍</th><th class="bath">入浴<br>(前日)</th></tr></thead><tbody>';

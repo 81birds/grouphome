@@ -287,7 +287,7 @@
   // 1日のハウス: 利用者さん × 食事(押して変えられる)
   function houseDay(h) {
     const people = peopleOfHouse(h.id, date);
-    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>';
+    let t = '<div class="card card-picked"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>';
     if (!people.length) return t + '<div class="empty-msg">この日に入居している利用者さんはいません</div></div>';
     // 平日も昼食の列は出し、「-」をグレーで
     const meals = Meals.KINDS;
@@ -310,7 +310,7 @@
   function houseWeek(h, ds) {
     const today = App.todayJST();
     const people = peopleOfWeek(h.id, ds);
-    let t = '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '(1週間)</h2>';
+    let t = '<div class="card card-picked"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '(1週間)</h2>';
     if (!people.length) return t + '<div class="empty-msg">この週に入居している利用者さんはいません</div></div>';
     t += LEGEND + '<div class="week-scroll"><table class="week-table"><thead><tr><th class="name"></th>' +
       ds.map(function (d) {
