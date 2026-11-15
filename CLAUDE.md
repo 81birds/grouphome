@@ -26,6 +26,7 @@ myshift.html      前のブックマーク用。shifts.html の「個人の勤�
 records.html      日々の記録(施設→本日のスタッフを表示→利用者→その日の記録→「新しい入力」のダイアログで時刻ホイール・内容チップ・コメント。スマホ向け)
 family.html       利用者さんの画面。管理者ビューとして、上にハウスと名前の選択をいつも出し、その下にその人の画面(1 ページ): 本日のスタッフ・本日の予定(日課)・外出・もどり・食事表(○×)・バイタル。スマホ向け。PC(幅 600px 以上)では、その人の画面をスマホの枠(.phone-frame、幅 390px)に入れて見せる。幅 900px 以上では左上にスマホの枠、右上に選ぶところ(sticky)
 vitals.html       バイタル。「1日 / 過去1週間」で、日付とハウスを選んで、利用者さんが入れた体温・血圧・脈拍・前日の入浴を見る。目安を外れた値は赤。「1日」の表の「入力」からスタッフも入れられる
+medication.html   服薬。ハウスごとに利用者さんの朝・昼・夕・寝る前のお薬(A〜D)と空包確認の表。行を押すとダイアログで設定する
 supplies.html     備品管理。タブで「施設の入力(施設を選んで、在庫のチップ・「使った」・「発注」の + −)」「本部の管理(在庫の一覧・受注一覧・備品リスト)」を切り替え(?tab=hq で本部の管理)
 meals.html        食数管理。「1日 / 1週間(月〜日)」と「まとめ / 各ハウス」を切り替えて、○ の数と利用者さんごとの ○×(スタッフも変えられる)
 css/common.css    全画面共通のデザイン(色・部品)
@@ -35,6 +36,7 @@ js/rooms.js       部屋と入居の共通処理(window.Rooms)。houses.html・r
 js/staffday.js    本日のスタッフ(その日・その施設の勤務の帯。window.StaffDay)。records.html・family.html で使う
 js/meals.js       食事の予定の共通処理(window.Meals)。family.html・meals.html で使う(日付の表示にも)
 js/routines.js    日課の共通処理(window.Routines。その日の日課・曜日の表示)。profile.html・family.html・records.html で使う
+js/meds.js        服薬の共通処理(window.Meds。お薬の時間 TIMINGS・空包確認 CHECK、お薬を日課の形にする routinesOf)。medication.html・records.html・family.html で使う
 js/vitals.js      バイタルの共通処理(window.Vitals。表示と注意の目安 LIMITS、スタッフ用の入力ダイアログ openForm)。family.html・vitals.html・records.html で使う
 sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 ```
@@ -147,6 +149,15 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 体温・血圧・脈拍はダイヤル(ホイール)で入れる(`Vitals.dials`。利用者さんの画面とスタッフ用ダイアログで共通)。範囲とはじめの値は `js/vitals.js` の `DIALS`(体温 34〜42・血圧 上 60〜220 / 下 30〜140・脈拍 30〜180)。はじめは「入れない」(うすい色)で、回すか値を押すと入る。× で入れないにもどす
 - 注意の目安は `js/vitals.js` の `LIMITS`(体温 37.5℃ 以上など)。医療の判断ではなく、気づくための目安
 - 記録は消さない。間違いは `void_vital` で取り消す(voided_at)
+
+## 服薬のルール
+
+- お薬は `resident_medications`(resident_id・timing・medicines)。timing は morning / noon / evening / bedtime で、1 人・1 つの時間に 1 行。medicines は A〜D の配列で、空ならその時間のお薬はない(行は消さない)
+- 空包確認は `resident_med_settings.empty_check`(1 人 1 行)。スタッフだけが服薬(medication.html)で決める
+- 保存は `save_medications` で 1 人分(4 つの時間と空包確認)をまとめて
+- お薬は日課の形にして `Routines.ofDay` に混ぜる(`Meds.routinesOf`。meds.js を読みこんだ画面だけ)。内容は「朝のお薬(A・C)」、時刻は `js/meds.js` の `TIMINGS`(朝 7:30・昼 12:30・夕 18:30・寝る前 20:30)。「寝る前」と書くのは、「就寝」を入れると就寝と同じく最後に並ぶため
+- 空包確認は 1 日 1 回 21:00 の「お薬空包確認」(日々の記録の内容のチップと同じ名前)。お薬がある人で empty_check のときだけ。日々の記録の「きょうの日課」だけに出し、利用者さんの画面には出さない(`Routines.ofDay(id, date, { staff: false })`)。「↓」で記録すると、その人のお薬の時間の「〇〇薬 確認」がコメントに入る
+- サンプルは `sql/2026-11-15_medications_sample.sql`(入居中の約 7 割がお薬あり・うち 2 割が朝昼夕、ほかは昼夕・2 割は寝る前も。お薬はランダム)
 
 ## 食事の予定のルール
 

@@ -438,6 +438,7 @@
 <script src="js/common.js"></script>
 <script src="js/rooms.js"></script>
 <script src="js/staffday.js"></script>
+<script src="js/meds.js"></script>
 <script src="js/routines.js"></script>
 <script src="js/vitals.js"></script>
 <script>
@@ -488,6 +489,7 @@
     const k = KINDS.find(function (x) { return x.name === name; });
     if (k) return k.icon;
     if (OLD_ICONS[name]) return OLD_ICONS[name];
+    if (Meds.isMedContent(name)) return 'ti-pill';
     // 日課から記録したもの
     return Routines.list.some(function (r) { return r.content === name; }) ? 'ti-calendar-check' : 'ti-point';
   }
@@ -866,7 +868,7 @@
   // 日課の「↓」: 予定の時刻と内容のまま記録する(時刻やコメントは、記録の鉛筆で直す)
   let routineSaving = false;
   async function recordFromRoutine(id, btn) {
-    const rt = Routines.list.find(function (x) { return x.id === id; });
+    const rt = Routines.find(id);
     if (!rt || !residentId || routineSaving) return;
     const t = Routines.time(rt.routine_time);
     const chip = KINDS.find(function (k) { return k.name === rt.content; });
@@ -890,7 +892,8 @@
     let done = [];
     let failed = false;
     try {
-      done = done.concat(await addRecords(rt.content, t, null) || []);
+      // 空包確認は、その人のお薬の時間の「〇〇薬 確認」をコメントに入れる
+      done = done.concat(await addRecords(rt.content, t, rt.note || null) || []);
       if (tb) done = done.concat(await addRecords('もどり', tb, null) || []);
     } catch (err) {
       console.error(err);
@@ -1097,7 +1100,8 @@
     active: 'records',
     onReady: async function () {
       await Promise.all([Rooms.load(), StaffDay.loadMasters(), StaffDay.loadShifts(date),
-        Routines.load().catch(function (err) { console.error(err); Routines.list = []; })]);
+        Routines.load().catch(function (err) { console.error(err); Routines.list = []; }),
+        Meds.load().catch(function () { /* お薬が読めなくても記録はできる */ })]);
       $('rtTodayList').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-routine]');
         if (b) recordFromRoutine(b.dataset.routine, b);
@@ -1105,7 +1109,7 @@
       // プロファイルで日課を変えて「もどる」で帰ってきたとき、ブラウザが前の画面をそのまま出すことがあるので読み直す
       window.addEventListener('pageshow', async function (e) {
         if (!e.persisted) return;
-        try { await Routines.load(); } catch (err) { console.error(err); return; }
+        try { await Promise.all([Routines.load(), Meds.load()]); } catch (err) { console.error(err); return; }
         if (residentId) renderList();
       });
 

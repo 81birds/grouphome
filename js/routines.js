@@ -1,5 +1,6 @@
 // =====================================================
 // 利用者さんの日課の共通処理(profile.html・family.html・records.html で使う)
+//   お薬(js/meds.js)を読みこんだ画面では、ofDay にお薬も入る
 //   読み込み順: common.js のあと
 //   DB は resident_routines(routine_time・content・weekdays)。weekdays は 0 = 日 … 6 = 土、空なら毎日
 // =====================================================
@@ -42,9 +43,17 @@
     },
 
     // ある人のその日の日課(時間の順。起床が最初・就寝が最後)
-    ofDay: function (residentId, date) {
+    // meds.js を読みこんだ画面では、お薬(服薬の設定)も日課として混ぜる。
+    // opts.staff が false なら、スタッフだけの日課(空包確認)は出さない(利用者さんの画面)
+    ofDay: function (residentId, date, opts) {
+      const meds = window.Meds ? window.Meds.routinesOf(residentId, opts) : [];
       return R.list.filter(function (r) { return r.resident_id === residentId && R.on(r, date); })
+        .concat(meds)
         .sort(function (a, b) { return R.compare(a.content, a.routine_time, b.content, b.routine_time); });
+    },
+    // id から日課を探す(お薬の日課も)
+    find: function (id) {
+      return R.list.find(function (r) { return r.id === id; }) || (window.Meds ? window.Meds.findRoutine(id) : null);
     },
 
     // 「毎日」「平日」「土日」「月・水・金」

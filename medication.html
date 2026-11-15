@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>服薬</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .house-chips { margin-bottom: 8px; }
+    .med-sum { font-size: 13px; color: var(--color-text-muted); margin: 0; }
+    .med-sum b { font-size: 16px; color: var(--color-primary-dark); }
+    .med-times { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--color-text-muted); margin: 6px 0 0; }
+
+    /* ----- ハウスごとの表(行を押すと、その人のお薬のダイアログ) ----- */
+    .med-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+    .med-table th, .med-table td { padding: 7px 2px; text-align: center; border-bottom: 1px solid var(--color-border); }
+    .med-table thead th { font-size: 11px; color: var(--color-text-muted); white-space: normal; line-height: 1.3; }
+    .med-table th.name { width: 30%; text-align: left; padding-left: 4px; }
+    .med-table td.name { text-align: left; padding-left: 4px; font-weight: 700; }
+    .med-table td.name small { display: block; font-size: 10px; font-weight: 400; color: var(--color-text-muted); }
+    .med-table th.edit, .med-table td.edit { width: 34px; }
+    .med-table tbody tr { cursor: pointer; }
+    .med-table tbody tr:hover td { background: var(--color-primary-soft); }
+    .med-table tbody tr:last-child td { border-bottom: none; }
+    .med-cell { font-weight: 700; color: var(--color-primary-dark); font-variant-numeric: tabular-nums; }
+    .med-none { color: var(--color-text-muted); opacity: .6; }
+    .chk-on { font-size: 18px; color: var(--color-primary-dark); }
+
+    /* ----- ダイアログ ----- */
+    .mp-row { padding: 10px 0; border-bottom: 1px solid var(--color-border); }
+    .mp-row:last-of-type { border-bottom: none; }
+    .mp-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+    .mp-head b { font-size: 15px; }
+    .mp-head small { font-size: 12px; color: var(--color-text-muted); }
+    .mp-head .mp-state { margin-left: auto; font-size: 12px; color: var(--color-text-muted); }
+    .mp-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .mp-btns button {
+      font-family: var(--font-base); font-size: 18px; font-weight: 700; cursor: pointer;
+      height: 44px; border-radius: var(--radius-md);
+      border: 1px solid var(--color-border); background: var(--color-surface-alt); color: var(--color-text-muted);
+    }
+    .mp-btns button.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+    .mp-check {
+      display: flex; align-items: flex-start; gap: 10px; margin-top: 12px;
+      padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-surface-alt);
+      font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .mp-check input { margin-top: 3px; flex-shrink: 0; }
+    .mp-check small { display: block; font-size: 12px; font-weight: 400; color: var(--color-text-muted); margin-top: 2px; }
+    .mp-note { font-size: 12px; color: var(--color-text-muted); margin: 0 0 4px; }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-pill"></i></span>
+        服薬
+      </h1>
+      <p>利用者さんごとに、朝・昼・夕・寝る前のお薬(A〜D)と、空包確認を決めます。お薬は日々の記録の「きょうの日課」と、利用者さんの画面の「本日の予定」に出ます。空包確認はスタッフの日課なので、日々の記録だけに出ます</p>
+    </div>
+
+    <div class="card">
+      <div class="chips house-chips" id="houseChips"></div>
+      <p class="med-sum" id="medSum"></p>
+      <p class="med-times" id="medTimes"></p>
+      <div id="loadStatus" class="status-msg"></div>
+    </div>
+
+    <div id="houseCards"></div>
+  </div>
+</div>
+
+<!-- その人のお薬のダイアログ -->
+<div id="medModal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="medTitle">
+    <div class="modal-head">
+      <h2 id="medTitle"></h2>
+      <button type="button" class="icon-btn" id="medClose" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    </div>
+    <p class="mp-note">飲むお薬を押して選びます(いくつでも)。もう一度押すと外れます</p>
+    <div id="mpRows"></div>
+    <label class="mp-check">
+      <input type="checkbox" id="mpCheck">
+      <span>空包確認を日課に入れる(スタッフ)
+        <small>日々の記録の「きょうの日課」に「お薬空包確認」が出ます(<span id="mpCheckTime"></span>頃)。利用者さんの画面には出ません</small>
+      </span>
+    </label>
+    <div id="medStatus" class="status-msg"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="medCancel">やめる</button>
+      <button type="button" class="btn" id="medSave"><i class="ti ti-check"></i>保存する</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/rooms.js"></script>
+<script src="js/meds.js"></script>
+<script>
+  const $ = function (id) { return document.getElementById(id); };
+  const esc = App.escapeHtml;
+  const ALL = 'all';
+  const HOUSE_KEY = 'gh_medication_house';
+
+  let today = App.todayJST();
+  let houseId = ALL;
+  let editId = null;      // ダイアログで直している利用者さん
+  let editMeds = null;    // ダイアログの中の選択 { morning: Set, ... }
+
+  function activeHouses() { return Rooms.houses.filter(function (h) { return h.is_active; }); }
+  function shownHouses() {
+    return houseId === ALL ? activeHouses() : activeHouses().filter(function (h) { return h.id === houseId; });
+  }
+  // その日にハウスの部屋に入居している人(部屋の順)
+  function peopleOfHouse(hid) {
+    const out = [];
+    Rooms.roomsOf(hid, true).forEach(function (room) {
+      const a = Rooms.occupantOf(room.id, today);
+      const p = a ? Rooms.resident(a.resident_id) : null;
+      if (p) out.push({ resident: p, room: room });
+    });
+    return out;
+  }
+
+  // ===== 一覧 =====
+  function render() {
+    $('houseChips').innerHTML = [{ id: ALL, name: 'すべてのハウス' }].concat(activeHouses()).map(function (h) {
+      return '<button type="button" data-house="' + esc(h.id) + '"' + (h.id === houseId ? ' class="active"' : '') + '>' + esc(h.name) + '</button>';
+    }).join('');
+
+    let total = 0, withMed = 0;
+    $('houseCards').innerHTML = shownHouses().map(function (h) {
+      const people = peopleOfHouse(h.id);
+      total += people.length;
+      const rows = people.map(function (x) {
+        const id = x.resident.id;
+        const o = Meds.of(id);
+        if (Meds.has(id)) withMed++;
+        return '<tr data-resident="' + esc(id) + '">' +
+          '<td class="name">' + App.nameSan(x.resident.name) + '<small>' + esc(Rooms.roomName(x.room)) + '</small></td>' +
+          Meds.TIMINGS.map(function (t) {
+            return o[t.key].length ? '<td class="med-cell">' + esc(Meds.medsText(o[t.key])) + '</td>' : '<td class="med-none">—</td>';
+          }).join('') +
+          '<td>' + (Meds.has(id) && Meds.emptyCheck(id) ? '<i class="ti ti-clipboard-check chk-on" aria-label="空包確認あり"></i>' : '<span class="med-none">—</span>') + '</td>' +
+          '<td class="edit"><span class="icon-btn" aria-hidden="true"><i class="ti ti-pencil"></i></span></td>' +
+          '</tr>';
+      }).join('');
+      return '<div class="card"><h2><i class="ti ti-building-community"></i>' + esc(h.name) + '</h2>' +
+        (people.length
+          ? '<table class="med-table"><thead><tr><th class="name">お名前</th>' +
+              Meds.TIMINGS.map(function (t) { return '<th>' + esc(t.label) + '</th>'; }).join('') +
+              '<th>空包<br>確認</th><th class="edit"></th></tr></thead><tbody>' + rows + '</tbody></table>'
+          : '<div class="empty-msg">このハウスに入居している利用者さんがいません</div>') +
+        '</div>';
+    }).join('');
+
+    $('medSum').innerHTML = 'お薬がある人 <b>' + withMed + '</b> 人 / ' + total + ' 人';
+    $('medTimes').innerHTML = Meds.TIMINGS.map(function (t) { return '<span>' + esc(t.label) + ' ' + esc(t.time) + '頃</span>'; }).join('') +
+      '<span>空包確認 ' + esc(Meds.CHECK.time) + '頃</span>';
+  }
+
+  // ===== ダイアログ =====
+  function openMed(id) {
+    const p = Rooms.resident(id);
+    if (!p) return;
+    editId = id;
+    const o = Meds.of(id);
+    editMeds = {};
+    Meds.TIMINGS.forEach(function (t) { editMeds[t.key] = new Set(o[t.key]); });
+    $('medTitle').innerHTML = '<i class="ti ti-pill"></i>' + App.nameSan(p.name) + 'のお薬';
+    $('mpCheck').checked = Meds.has(id) ? Meds.emptyCheck(id) : true;
+    $('mpCheckTime').textContent = Meds.CHECK.time;
+    App.setStatus($('medStatus'), '');
+    renderRows();
+    $('medModal').hidden = false;
+  }
+  function closeMed() { $('medModal').hidden = true; editId = null; }
+
+  function renderRows() {
+    $('mpRows').innerHTML = Meds.TIMINGS.map(function (t) {
+      const set = editMeds[t.key];
+      return '<div class="mp-row"><div class="mp-head"><b>' + esc(t.label) + '</b><small>' + esc(t.time) + '頃</small>' +
+        '<span class="mp-state">' + (set.size ? esc(Meds.medsText(Meds.MEDICINES.filter(function (m) { return set.has(m); }))) : 'なし') + '</span></div>' +
+        '<div class="mp-btns">' + Meds.MEDICINES.map(function (m) {
+          const on = set.has(m);
+          return '<button type="button" data-timing="' + t.key + '" data-med="' + m + '"' + (on ? ' class="on"' : '') + ' aria-pressed="' + on + '">' + m + '</button>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+
+  async function saveMed() {
+    if (!editId) return;
+    const btn = $('medSave');
+    const arr = function (k) { return Meds.MEDICINES.filter(function (m) { return editMeds[k].has(m); }); };
+    btn.disabled = true;
+    try {
+      await App.rpc('save_medications', {
+        p_resident_id: editId,
+        p_morning: arr('morning'), p_noon: arr('noon'), p_evening: arr('evening'), p_bedtime: arr('bedtime'),
+        p_empty_check: $('mpCheck').checked,
+      });
+      await Meds.load();
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('medStatus'), '保存できませんでした。通信状況を確認してください', 'err');
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+    const p = Rooms.resident(editId);
+    closeMed();
+    render();
+    App.setStatus($('loadStatus'), (p ? p.name + ' さんの' : '') + 'お薬を保存しました', 'ok');
+  }
+
+  App.boot({
+    active: 'medication',
+    onReady: async function () {
+      await Rooms.load();
+      try { await Meds.load(); } catch (err) {
+        App.setStatus($('loadStatus'), 'お薬のデータを読み込めませんでした', 'err');
+      }
+      try { const h = localStorage.getItem(HOUSE_KEY); if (h && (h === ALL || activeHouses().some(function (x) { return x.id === h; }))) houseId = h; } catch (e) { /* noop */ }
+      render();
+
+      $('houseChips').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-house]');
+        if (!b) return;
+        houseId = b.dataset.house;
+        try { localStorage.setItem(HOUSE_KEY, houseId); } catch (err) { /* noop */ }
+        App.setStatus($('loadStatus'), '');
+        render();
+      });
+      $('houseCards').addEventListener('click', function (e) {
+        const tr = e.target.closest('tr[data-resident]');
+        if (tr) openMed(tr.dataset.resident);
+      });
+      $('mpRows').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-med]');
+        if (!b) return;
+        const set = editMeds[b.dataset.timing];
+        if (set.has(b.dataset.med)) set.delete(b.dataset.med); else set.add(b.dataset.med);
+        renderRows();
+      });
+      $('medSave').addEventListener('click', saveMed);
+      $('medCancel').addEventListener('click', closeMed);
+      $('medClose').addEventListener('click', closeMed);
+      $('medModal').addEventListener('click', function (e) { if (e.target === this) closeMed(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('medModal').hidden) closeMed(); });
+    },
+  });
+</script>
+</body>
+</html>

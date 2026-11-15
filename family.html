@@ -283,6 +283,7 @@
 <script src="js/staffday.js"></script>
 <script src="js/meals.js"></script>
 <script src="js/vitals.js"></script>
+<script src="js/meds.js"></script>
 <script src="js/routines.js"></script>
 <script>
   const DAYS = 14;                       // 食事表は今日から 2 週間
@@ -390,9 +391,12 @@
       console.error(err);
       Routines.list = [];
     }
+    // お薬も本日の予定に出す(読めなくても、ほかの予定は出す)
+    try { await Meds.load(meId); } catch (err) { /* noop */ }
   }
   function renderRoutines() {
-    const list = Routines.ofDay(meId, today);
+    // 空包確認はスタッフの日課なので、利用者さんの画面には出さない
+    const list = Routines.ofDay(meId, today, { staff: false });
     const now = nowTime();
     $('planList').innerHTML = list.map(function (r) {
       const t = Routines.time(r.routine_time);
