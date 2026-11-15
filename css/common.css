@@ -254,7 +254,12 @@ body.no-nav { padding-top: 20px; }
   cursor: pointer;
 }
 .chips button:hover { background: var(--color-primary-soft); color: var(--color-primary-dark); }
-.chips button.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+/* 選んでいるチップ(ハウスなど)は、日々の記録の選んだ利用者さんと同じオレンジ。どこを選んでいるか分かりやすく */
+.chips button.active {
+  background: var(--color-work-soft); border-color: var(--color-work); color: var(--color-work-dark);
+  box-shadow: inset 0 0 0 1px var(--color-work); font-weight: 700;
+}
+.chips button.active:hover { background: var(--color-work-soft); color: var(--color-work-dark); }
 
 /* ===== 表 ===== */
 .table-scroll { overflow-x: auto; }

@@ -53,6 +53,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 色・角丸・影は `css/common.css` の CSS 変数(`--color-primary` など)だけを使う。ページに色コードを直接書かない
 - 使う部品: `.card`(h2 にアイコン)、`.btn` / `.btn-ghost` / `.btn-danger` / `.btn-sm`、`.tabs` + `.tab-btn`、`.chips`、`.add-row` + `.field`、`.compact-table`、`.status-msg`、`.empty-msg`
 - 共通部品で足りないときは `common.css` に追加する。1 画面だけで使うものはその画面の `<style>` に書いてよい
+- 選んでいるもの(`.chips` のハウスのチップ・利用者さんのボタン)は、どの画面もオレンジ(`--color-work` の枠・`--color-work-soft` の背景)にする
 - アイコンは Tabler Icons(`<i class="ti ti-xxx"></i>`)
 - 画面の文言はやさしい日本語。スタッフは PC だけでなくスマホ・タブレットでも使うので、幅 360px でも崩れないようにする
 - ページ見出しは `.page-header`(`.page-icon` + h1 + 説明の p)
