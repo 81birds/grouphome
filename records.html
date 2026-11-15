@@ -457,11 +457,10 @@
       { name: '通所',   icon: 'ti-bus',  note: '元気に通所しました', back: true },
       { name: 'もどり', icon: 'ti-home', note: '無事にもどりました' },
     ] },
-    { name: 'お薬', cls: 'med', kinds: [
+    // お薬は服薬(medication.html)で決めて「きょうの日課」から記録するので、チップには置かない
+    { name: 'からだ', cls: 'med', kinds: [
       // バイタルは押すと別のダイアログで体温・血圧などを入れる(vitals に入る。日々の記録の行にはならない)
       { name: 'バイタル',     icon: 'ti-heartbeat',       vital: true },
-      { name: 'お薬おわたし', icon: 'ti-pill',            note: 'お薬をおわたししました' },
-      { name: 'お薬空包確認', icon: 'ti-clipboard-check', note: '朝食前後薬 確認\n昼食前後薬 確認\n夕食前後薬 確認\n就寝薬 確認' },
     ] },
     { name: '会話・くらし', cls: 'talk', kinds: [
       { name: 'たのしい雑談', icon: 'ti-mood-smile',      note: '楽しくおしゃべりしました' },
@@ -471,7 +470,7 @@
   ];
   const KINDS = KIND_GROUPS.reduce(function (a, g) { return a.concat(g.kinds); }, []);
   // 今はチップにないが、前の記録に残っている内容のアイコン
-  const OLD_ICONS = { '出勤': 'ti-briefcase' };
+  const OLD_ICONS = { '出勤': 'ti-briefcase', 'お薬おわたし': 'ti-pill', 'お薬空包確認': 'ti-clipboard-check' };
   const ALL = 'all';   // 施設のチップの「すべてのハウス」(はじめはこれ)
   const ITEM_H = 40;
   const MIN_STEP = 10;          // 分は 10 分きざみ
