@@ -20,7 +20,7 @@
 | バイタル | `vitals.html` | 利用者さんが自分の画面で入れた体温・血圧・脈拍・前日の入浴を、1日か過去1週間で、日付とハウスごとに見る。目安を外れた値は赤。スタッフも入力できる | ✅ |
 | 服薬 | `medication.html` | ハウスごとに、利用者さんの朝・昼・夕・寝る前のお薬と空包確認を設定。お薬は日々の記録の「きょうの日課」に出て、そこから記録する | ✅ |
 | 備品管理 | `supplies.html` | 「施設の入力」で在庫を見て「使った」を押し、足りないものを本部に発注(スマホ向け)。「本部の管理」で全施設の在庫・受注一覧・備品リスト | ✅ |
-| 開発者 | `dev.html` | サンプルデータにもどすボタン、変更の履歴(自分か見た人かがわかる)、この README の表示 | ✅ |
+| 開発者 | `dev.html` | 管理者パスワードで守る(タブとタイルに鍵マーク)。サンプルデータにもどすボタン、変更の履歴(自分か見た人かがわかる)、この README の表示 | ✅ |
 | 申し送り | — | スタッフ間の連絡 | 準備中 |
 | 設定 | — | 合言葉などの設定 | 準備中 |
 
@@ -49,6 +49,14 @@
    ```
 
    合言葉を変えるときも同じ SQL を実行します。各端末で一度ログアウトされます
+
+   開発者の画面(`dev.html`)の管理者パスワードも、同じように SQL Editor で登録します(合言葉とは別。変えるときも同じ)
+
+   ```sql
+   insert into demo.admin_secret (id, passcode_hash)
+   values (1, extensions.crypt('ここに管理者パスワード', extensions.gen_salt('bf')))
+   on conflict (id) do update set passcode_hash = excluded.passcode_hash;
+   ```
 
 4. **Project Settings → API Keys** の Project URL と Publishable key を `js/config.js` に書く
 

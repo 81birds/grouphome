@@ -33,6 +33,14 @@
     .demo-table tr.flash td { animation: demo-flash 1.6s ease-out; }
     @keyframes demo-flash { from { background: var(--color-primary-soft); } to { background: transparent; } }
 
+    /* ----- 管理者パスワード ----- */
+    .lock-card { max-width: 420px; margin: 24px auto; text-align: center; }
+    .lock-card .lock-big { font-size: 40px; color: var(--color-work-dark); }
+    .lock-card p { font-size: 13px; color: var(--color-text-muted); margin: 6px 0 14px; }
+    .lock-card .lock-row { display: flex; gap: 8px; }
+    .lock-card input { flex: 1; min-width: 0; font-size: 16px; }
+    .page-header .lock-btn { margin-top: 8px; }
+
     /* ----- 変更の履歴 ----- */
     .me-box {
       display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px;
@@ -90,9 +98,23 @@
         <span class="page-icon"><i class="ti ti-code"></i></span>
         開発者
       </h1>
-      <p>サンプルデータにもどすボタンと、変更の履歴、このアプリの概要(README)です</p>
+      <p>サンプルデータにもどすボタンと、変更の履歴、このアプリの概要(README)です。管理者パスワードで守っています</p>
+      <button type="button" class="btn btn-ghost btn-sm lock-btn" id="lockBtn" hidden><i class="ti ti-lock"></i>ロックする</button>
     </div>
 
+    <!-- 管理者パスワード -->
+    <form class="card lock-card" id="lockForm" hidden novalidate>
+      <i class="ti ti-lock lock-big"></i>
+      <h2 style="justify-content:center;">管理者パスワード</h2>
+      <p>この画面は管理者だけが使えます。管理者パスワードを入れてください</p>
+      <div class="lock-row">
+        <input type="password" id="adminInput" autocomplete="current-password" aria-label="管理者パスワード">
+        <button type="submit" class="btn" id="adminBtn"><i class="ti ti-lock-open"></i>開く</button>
+      </div>
+      <div id="adminStatus" class="status-msg"></div>
+    </form>
+
+    <div id="adminContent" hidden>
     <!-- サンプルデータにもどす -->
     <div class="card">
       <h2><i class="ti ti-database-import"></i>サンプルデータにもどす</h2>
@@ -139,6 +161,7 @@
       <h2><i class="ti ti-file-description"></i>このアプリについて(README)</h2>
       <div class="readme" id="readme"><p class="empty-msg">読み込んでいます...</p></div>
     </div>
+    </div><!-- /#adminContent -->
   </div>
 </div>
 
@@ -169,7 +192,7 @@
 
   // ===== サンプルデータの件数 =====
   async function loadInfo() {
-    const rows = await App.rpc('get_demo_info');
+    const rows = await adminRpc('get_demo_info');
     const saved = rows.map(function (r) { return r.saved_at; }).filter(Boolean).sort().pop();
     const restored = rows.length ? rows[0].restored_at : null;
     const by = rows.length && rows[0].restored_by === 'button' ? '(ボタン)' : '(自動)';
@@ -208,7 +231,7 @@
     App.setStatus($('resetStatus'), '');
     showResult('busy', 'ti-loader-2 spin', 'もどしています...', '数秒かかります。このままお待ちください');
     try {
-      const r = await App.rpc('reset_demo_data');
+      const r = await adminRpc('reset_demo_data');
       // 画面ごとに覚えている選択(ハウスなど)はそのまま使える(ID は同じにもどる)
       const d = new Date();
       const n = r && r.daily_records != null ? '日々の記録 ' + r.daily_records + ' 件など、' : '';
@@ -275,7 +298,7 @@
 
   async function loadLog() {
     try {
-      logRows = await App.rpc('get_change_log', { p_limit: 300 });
+      logRows = await adminRpc('get_change_log', { p_limit: 300 });
       App.setStatus($('logStatus'), '');
       renderLog();
     } catch (e) {
@@ -305,9 +328,73 @@
     }
   }
 
+  // ===== 管理者パスワード =====
+  // 開発者の画面の関数は、合言葉に加えて管理者パスワード(input_admin)を確かめる
+  async function adminRpc(fn, params) {
+    try {
+      return await App.rpc(fn, Object.assign({ input_admin: App.getAdmin() }, params || {}));
+    } catch (e) {
+      if (/管理者パスワード/.test(e.message || '')) { App.clearAdmin(); showLock(e.message); }
+      throw e;
+    }
+  }
+
+  function showLock(msg) {
+    $('adminContent').hidden = true;
+    $('lockBtn').hidden = true;
+    $('lockForm').hidden = false;
+    App.setStatus($('adminStatus'), msg || '', msg ? 'err' : '');
+    App.renderNav('dev');
+    $('adminInput').focus();
+  }
+
+  let opened = false;
+  function showContent() {
+    $('lockForm').hidden = true;
+    $('adminContent').hidden = false;
+    $('lockBtn').hidden = false;
+    App.renderNav('dev');
+    if (opened) return;
+    opened = true;
+    loadReadme();
+    loadLog();
+    loadInfo().catch(function (e) {
+      console.error(e);
+      $('resetBtn').disabled = true;
+      App.setStatus($('resetStatus'), 'サンプルデータの情報を読み込めませんでした: ' + (e.message || e), 'err');
+    });
+  }
+
+  async function onAdminSubmit(e) {
+    e.preventDefault();
+    const code = $('adminInput').value;
+    if (!code) { App.setStatus($('adminStatus'), '管理者パスワードを入れてください', 'err'); return; }
+    $('adminBtn').disabled = true;
+    App.setStatus($('adminStatus'), '確認しています...');
+    try {
+      await App.rpc('check_admin', { input_admin: code });
+      App.saveAdmin(code);
+      $('adminInput').value = '';
+      // 管理者パスワードを入れた端末は「自分」にする(DB に付けるヘッダーは読みこんだときに決まるので、読み直す)
+      if (!App.isDevDevice()) { App.setDevDevice(true); location.reload(); return; }
+      App.setStatus($('adminStatus'), '');
+      showContent();
+    } catch (err) {
+      console.error(err);
+      App.setStatus($('adminStatus'), err.message || '確認できませんでした', 'err');
+    } finally {
+      $('adminBtn').disabled = false;
+    }
+  }
+
   App.boot({
     active: 'dev',
     onReady: async function () {
+      $('lockForm').addEventListener('submit', onAdminSubmit);
+      $('lockBtn').addEventListener('click', function () {
+        App.clearAdmin();
+        showLock();
+      });
       $('resetBtn').addEventListener('click', onReset);
       renderMe();
       $('meBox').addEventListener('click', function (e) {
@@ -328,14 +415,15 @@
         renderLog();
       });
       $('logReload').addEventListener('click', loadLog);
-      loadReadme();
-      loadLog();
+
+      // 前に入れた管理者パスワードがあれば確かめて開く。なければ鍵の画面
+      if (!App.getAdmin()) { showLock(); return; }
       try {
-        await loadInfo();
+        await App.rpc('check_admin', { input_admin: App.getAdmin() });
+        showContent();
       } catch (e) {
-        console.error(e);
-        $('resetBtn').disabled = true;
-        App.setStatus($('resetStatus'), 'サンプルデータの情報を読み込めませんでした: ' + (e.message || e), 'err');
+        App.clearAdmin();
+        showLock(/管理者パスワード/.test(e.message || '') ? e.message : '確認できませんでした。もう一度入れてください');
       }
     },
   });

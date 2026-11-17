@@ -109,6 +109,9 @@ body.no-nav { padding-top: 20px; }
 }
 .gtool-tab span { overflow: hidden; text-overflow: ellipsis; }
 .gtool-tab i { font-size: 14px; flex: 0 0 auto; }
+/* 管理者パスワードが必要な画面の鍵マーク(タブとポータルのタイル) */
+.lock-mark { font-size: 12px !important; color: var(--color-work-dark); margin-left: 2px; }
+.tile-label .lock-mark { font-size: 14px !important; vertical-align: -1px; margin-left: 4px; }
 .gtool-tab:hover:not(.active) { background: var(--color-surface); color: var(--color-text); }
 .gtool-tab.active {
   background: var(--color-bg);

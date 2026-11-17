@@ -200,6 +200,13 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - サンプルデータを作り直したら、SQL Editor で `select * from demo.save_snapshot('サンプルデータの今日');` を実行して保存し直す(画面からは保存させない)
 - `demo.restore` は削除の命令を含むので、作り直すときはコネクタではなく SQL Editor で実行してもらう(コネクタでは確認画面が出せず拒否される)
 
+## 管理者パスワードのルール
+
+- 開発者の画面(dev.html)は、合言葉とは別の管理者パスワードで守る。ハッシュは `demo.admin_secret`(SQL Editor で登録。パスワードそのものはコード・SQL ファイル・コミットに書かない)
+- 開発者の画面の関数(`get_demo_info`・`reset_demo_data`・`get_change_log`)は `input_admin` も受け、`public.check_admin` で確かめる
+- `PAGES` で `lock: true` の画面は、上部タブとポータルのタイルに鍵マーク(`App.lockIcon`。入力済みのブラウザは開いた鍵)。管理者パスワードは localStorage `gh_admin` に保存し、「ロックする」で消す
+- 管理者パスワードを入れたブラウザは、変更の履歴で「自分」になる(`gh_dev_device` = 1)
+
 ## 変更の履歴のルール
 
 - 画面から追加・変更・取消したものは、トリガー `zz_change_log`(`demo.log_change`)が `demo.change_log` に残す。対象は `demo.tables()` のテーブル。新しいテーブルを足したら、トリガーも付ける

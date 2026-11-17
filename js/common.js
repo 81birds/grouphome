@@ -64,8 +64,28 @@
     { key: 'houses',     file: 'houses.html',     icon: 'ti-building-community', label: '施設DB', sub: '施設一覧・住所・定員', ready: true },
     { key: 'settings',   file: 'settings.html',   icon: 'ti-settings',   label: '設定',       sub: '合言葉などの設定',       ready: false },
     { key: 'supplies',   file: 'supplies.html',   icon: 'ti-package',    label: '備品管理',   sub: '施設の発注・本部の手配', ready: true },
-    { key: 'dev',        file: 'dev.html',        icon: 'ti-code',       label: '開発者',     sub: 'アプリの概要・ダミーデータにもどす', ready: true },
+    { key: 'dev',        file: 'dev.html',        icon: 'ti-code',       label: '開発者',     sub: 'アプリの概要・変更の履歴・サンプルデータにもどす', ready: true, lock: true },
   ];
+
+  // ----- 管理者パスワード(lock: true の画面。開発者の画面) -----
+  // 合言葉とは別。正しく入れたブラウザには保存し、鍵を開いた印にする
+  const ADMIN_KEY = 'gh_admin';
+  function getAdmin() {
+    try { return localStorage.getItem(ADMIN_KEY) || ''; } catch (e) { return ''; }
+  }
+  function saveAdmin(code) {
+    try { localStorage.setItem(ADMIN_KEY, code); } catch (e) { /* noop */ }
+  }
+  function clearAdmin() {
+    try { localStorage.removeItem(ADMIN_KEY); } catch (e) { /* noop */ }
+  }
+  // タブ・タイルの鍵マーク(開いていれば開いた鍵)
+  function lockIcon(p) {
+    if (!p.lock) return '';
+    const open = !!getAdmin();
+    return '<i class="ti ' + (open ? 'ti-lock-open' : 'ti-lock') + ' lock-mark" title="' +
+      (open ? '管理者パスワード入力済み' : '管理者パスワードが必要です') + '"></i>';
+  }
 
   // ----- 上部のタブ -----
   function renderNav(activeKey) {
@@ -76,7 +96,7 @@
     nav.innerHTML = PAGES.filter(function (p) { return p.ready; }).map(function (p) {
       const active = p.key === activeKey ? ' active' : '';
       return '<a href="' + p.file + '" class="gtool-tab' + active + '">' +
-        '<i class="ti ' + p.icon + '"></i><span>' + escapeHtml(p.label) + '</span></a>';
+        '<i class="ti ' + p.icon + '"></i><span>' + escapeHtml(p.label) + '</span>' + lockIcon(p) + '</a>';
     }).join('');
   }
 
@@ -198,6 +218,10 @@
     config: cfg,
     PAGES: PAGES,
     deviceId: deviceId,
+    getAdmin: getAdmin,
+    saveAdmin: saveAdmin,
+    clearAdmin: clearAdmin,
+    lockIcon: lockIcon,
     isDevDevice: isDevDevice,
     setDevDevice: setDevDevice,
     boot: boot,

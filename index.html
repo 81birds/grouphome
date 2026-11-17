@@ -58,7 +58,7 @@
           const no = String(i + 1).padStart(2, '0');
           return '<a href="' + p.file + '" class="icon-tile' + disabled + '">' +
             '<div class="icon-circle"><i class="ti ' + p.icon + '"></i></div>' +
-            '<div class="tile-label"><span class="tile-no">' + no + '</span>' + App.escapeHtml(p.label) + '</div>' +
+            '<div class="tile-label"><span class="tile-no">' + no + '</span>' + App.escapeHtml(p.label) + App.lockIcon(p) + '</div>' +
             '<div class="tile-sub">' + App.escapeHtml(p.sub) + '</div>' + soon +
             '</a>';
         }).join('');
