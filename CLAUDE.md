@@ -28,7 +28,7 @@ family.html       利用者さんの画面。管理者ビューとして、上�
 vitals.html       バイタル。「1日 / 過去1週間」で、日付とハウスを選んで、利用者さんが入れた体温・血圧・脈拍・前日の入浴を見る。目安を外れた値は赤。「1日」の表の「入力」からスタッフも入れられる
 medication.html   服薬。ハウスごとに利用者さんの朝・昼・夕・寝る前のお薬(A〜D)と空包確認の表。行を押すとダイアログで設定する
 supplies.html     備品管理。タブで「施設の入力(施設を選んで、在庫のチップ・「使った」・「発注」の + −)」「本部の管理(在庫の一覧・受注一覧・備品リスト)」を切り替え(?tab=hq で本部の管理)
-dev.html          開発者。README.md を表示(marked + DOMPurify)し、「ダミーデータにもどす」ボタン(reset_demo_data)と保存したダミーデータ・いまのデータの件数
+dev.html          開発者。README.md を表示(marked + DOMPurify)し、「サンプルデータにもどす」ボタン(reset_demo_data)と保存したサンプルデータ・いまのデータの件数
 meals.html        食数管理。「1日 / 1週間(月〜日)」と「まとめ / 各ハウス」を切り替えて、○ の数と利用者さんごとの ○×(スタッフも変えられる)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
@@ -190,13 +190,13 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 本部の管理の「在庫の一覧」は備品 × 施設の表。「足りないものがある備品だけ」で絞れる
 - 記録は消さない。間違いは `void_supply_request` で取り消す(voided_at)
 
-## ダミーデータ(ポートフォリオ用)のルール
+## サンプルデータ(ポートフォリオ用)のルール
 
-- ダミーデータを `demo.snapshots`(テーブルごとに jsonb)に保存している。`demo.meta.base_date` はダミーデータの「今日」(記録はその前日まで)。`demo` スキーマには anon・authenticated の権限を付けない
-- `demo.restore` が対象のテーブルを消して保存したデータを入れ直す(デモ用なので、ここだけは物理削除。合言葉の `app_secret` は対象外)。毎日 3:00(日本時間)に pg_cron(`demo-restore-daily`)で動き、開発者の画面(dev.html)の「ダミーデータにもどす」(`reset_demo_data`)からも呼べる
+- サンプルデータを `demo.snapshots`(テーブルごとに jsonb)に保存している。`demo.meta.base_date` はサンプルデータの「今日」(記録はその前日まで)。`demo` スキーマには anon・authenticated の権限を付けない
+- `demo.restore` が対象のテーブルを消して保存したデータを入れ直す(デモ用なので、ここだけは物理削除。合言葉の `app_secret` は対象外)。毎日 3:00(日本時間)に pg_cron(`demo-restore-daily`)で動き、開発者の画面(dev.html)の「サンプルデータにもどす」(`reset_demo_data`)からも呼べる
 - もどすときは日付(date と timestamptz の列すべて)を 7 の倍数の日数ずらして今日に合わせる(曜日を変えないため)。ずらしきれない 0〜6 日分は、日々の記録とバイタルを 1 週間前から写して埋める
 - 対象のテーブルは `demo.tables()`(親が先)。新しいテーブルを足したら、ここにも足す(引数のない関数を作り直すだけ)。新しい列は保存したデータになければ既定値になる
-- ダミーデータを作り直したら、SQL Editor で `select * from demo.save_snapshot('ダミーデータの今日');` を実行して保存し直す(画面からは保存させない)
+- サンプルデータを作り直したら、SQL Editor で `select * from demo.save_snapshot('サンプルデータの今日');` を実行して保存し直す(画面からは保存させない)
 - `demo.restore` は削除の命令を含むので、作り直すときはコネクタではなく SQL Editor で実行してもらう(コネクタでは確認画面が出せず拒否される)
 
 ## 個人情報の扱い

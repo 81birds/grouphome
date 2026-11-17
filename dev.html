@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
   <link rel="stylesheet" href="css/common.css">
   <style>
-    /* ----- ダミーデータ ----- */
+    /* ----- サンプルデータ ----- */
     .demo-lead { font-size: 13px; line-height: 1.7; margin: 0 0 12px; }
     .demo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .demo-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
@@ -20,6 +20,18 @@
     .demo-table .diff { color: var(--color-work-dark); font-weight: 700; }
     .demo-table small { font-size: 11px; color: var(--color-text-muted); margin-left: 4px; }
     .demo-saved { font-size: 12px; color: var(--color-text-muted); margin: 8px 0 0; }
+    /* もどしたあとの知らせ(押したことがはっきりわかるように大きく出す) */
+    .demo-result {
+      display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; padding: 10px 12px;
+      border-radius: var(--radius-md); font-size: 14px; font-weight: 700; line-height: 1.6;
+    }
+    .demo-result i { font-size: 20px; flex: 0 0 auto; }
+    .demo-result small { display: block; font-size: 12px; font-weight: 400; }
+    .demo-result.ok { background: var(--color-primary-soft); color: var(--color-primary-dark); }
+    .demo-result.busy { background: var(--color-surface-alt); color: var(--color-text-muted); }
+    .demo-result.err { background: var(--color-danger-soft); color: var(--color-danger); }
+    .demo-table tr.flash td { animation: demo-flash 1.6s ease-out; }
+    @keyframes demo-flash { from { background: var(--color-primary-soft); } to { background: transparent; } }
 
     /* ----- README ----- */
     .readme { font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
@@ -54,22 +66,23 @@
         <span class="page-icon"><i class="ti ti-code"></i></span>
         開発者
       </h1>
-      <p>このアプリの概要(README)と、ダミーデータにもどすボタンです</p>
+      <p>このアプリの概要(README)と、サンプルデータにもどすボタンです</p>
     </div>
 
-    <!-- ダミーデータにもどす -->
+    <!-- サンプルデータにもどす -->
     <div class="card">
-      <h2><i class="ti ti-database-import"></i>ダミーデータにもどす</h2>
+      <h2><i class="ti ti-database-import"></i>サンプルデータにもどす</h2>
       <p class="demo-lead">
-        このアプリには、架空のダミーデータ(利用者さん・スタッフ・勤務表・日々の記録など)が入っています。
+        このアプリには、架空のサンプルデータ(利用者さん・スタッフ・勤務表・日々の記録など)が入っています。
         自由に追加・変更・取り消しをして試してください。
-        毎日 3:00 に自動でダミーデータにもどります。このボタンを押すと、いますぐもどせます(合言葉はそのままです)。
+        毎日 3:00 に自動でサンプルデータにもどります。このボタンを押すと、いますぐもどせます(合言葉はそのままです)。
         もどすときは日付を今日に合わせてずらすので(曜日は同じ)、いつ見ても昨日までの記録と先の勤務表が入っています。
       </p>
       <div class="demo-actions">
-        <button type="button" class="btn btn-danger" id="resetBtn"><i class="ti ti-restore"></i>ダミーデータにもどす</button>
+        <button type="button" class="btn btn-danger" id="resetBtn"><i class="ti ti-restore"></i>サンプルデータにもどす</button>
         <button type="button" class="btn btn-ghost btn-sm" id="reloadBtn"><i class="ti ti-refresh"></i>件数を読み直す</button>
       </div>
+      <div id="resetResult" class="demo-result" hidden role="status"></div>
       <div id="resetStatus" class="status-msg"></div>
       <p class="demo-saved" id="savedAt"></p>
       <div class="table-scroll">
@@ -110,18 +123,18 @@
       d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
   }
 
-  // ===== ダミーデータの件数 =====
+  // ===== サンプルデータの件数 =====
   async function loadInfo() {
     const rows = await App.rpc('get_demo_info');
     const saved = rows.map(function (r) { return r.saved_at; }).filter(Boolean).sort().pop();
     const restored = rows.length ? rows[0].restored_at : null;
     const by = rows.length && rows[0].restored_by === 'button' ? '(ボタン)' : '(自動)';
-    $('savedAt').textContent = !saved ? 'ダミーデータがまだ保存されていません'
-      : 'ダミーデータを保存した日時: ' + fmtDateTime(saved) +
+    $('savedAt').textContent = !saved ? 'サンプルデータがまだ保存されていません'
+      : 'サンプルデータを保存した日時: ' + fmtDateTime(saved) +
         (restored ? ' / 最後にもどした日時: ' + fmtDateTime(restored) + by : '');
     $('resetBtn').disabled = !saved;
     $('demoTable').innerHTML =
-      '<thead><tr><th>データ</th><th class="num">ダミーデータ</th><th class="num">いまのデータ</th></tr></thead><tbody>' +
+      '<thead><tr><th>データ</th><th class="num">サンプル</th><th class="num">いまのデータ</th></tr></thead><tbody>' +
       rows.map(function (r) {
         const s = r.saved_count == null ? '—' : String(r.saved_count);
         const c = String(r.current_count);
@@ -132,21 +145,36 @@
       }).join('') + '</tbody>';
   }
 
+  function showResult(kind, icon, title, sub) {
+    const box = $('resetResult');
+    box.className = 'demo-result ' + kind;
+    box.innerHTML = '<i class="ti ' + icon + '"></i><div>' + esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>';
+    box.hidden = false;
+  }
+
   async function onReset() {
-    if (!confirm('いまのデータをすべて消して、ダミーデータにもどします。よろしいですか?')) return;
+    if (!confirm('いまのデータをすべて消して、サンプルデータにもどします。よろしいですか?')) return;
     const btn = $('resetBtn');
+    const label = btn.innerHTML;
     btn.disabled = true;
-    App.setStatus($('resetStatus'), 'もどしています...');
+    btn.innerHTML = '<i class="ti ti-loader-2 spin"></i>もどしています...';
+    App.setStatus($('resetStatus'), '');
+    showResult('busy', 'ti-loader-2 spin', 'もどしています...', '数秒かかります。このままお待ちください');
     try {
-      await App.rpc('reset_demo_data');
+      const r = await App.rpc('reset_demo_data');
       // 画面ごとに覚えている選択(ハウスなど)はそのまま使える(ID は同じにもどる)
-      App.setStatus($('resetStatus'), 'ダミーデータにもどしました', 'ok');
+      const d = new Date();
+      const n = r && r.daily_records != null ? '日々の記録 ' + r.daily_records + ' 件など、' : '';
+      showResult('ok', 'ti-circle-check', 'サンプルデータにもどしました(' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ')',
+        n + 'すべてのデータを入れ直しました。ほかの画面を開くと、もどった内容が出ます');
       await loadInfo();
+      $('demoTable').querySelectorAll('tbody tr').forEach(function (tr) { tr.classList.add('flash'); });
     } catch (e) {
       console.error(e);
-      App.setStatus($('resetStatus'), 'もどせませんでした: ' + (e.message || e), 'err');
+      showResult('err', 'ti-alert-triangle', 'もどせませんでした', e.message || String(e));
     } finally {
       btn.disabled = false;
+      btn.innerHTML = label;
     }
   }
 
@@ -185,7 +213,7 @@
       } catch (e) {
         console.error(e);
         $('resetBtn').disabled = true;
-        App.setStatus($('resetStatus'), 'ダミーデータの情報を読み込めませんでした: ' + (e.message || e), 'err');
+        App.setStatus($('resetStatus'), 'サンプルデータの情報を読み込めませんでした: ' + (e.message || e), 'err');
       }
     },
   });
