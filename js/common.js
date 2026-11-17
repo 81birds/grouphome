@@ -11,7 +11,38 @@
   'use strict';
 
   const cfg = window.APP_CONFIG;
-  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+
+  // ----- この端末(ブラウザ)の見分け -----
+  // 開発者の画面の「変更の履歴」で、誰が変えたかを出すため、DB への呼び出しにヘッダーを付ける
+  //   x-gh-actor:  dev = 開発者の画面で「この端末は自分」にしたブラウザ / guest = それ以外(ポートフォリオを見た人)
+  //   x-gh-device: ブラウザごとの短い記号
+  const DEVICE_KEY = 'gh_device';
+  const DEV_DEVICE_KEY = 'gh_dev_device';
+  function deviceId() {
+    let id = '';
+    try { id = localStorage.getItem(DEVICE_KEY) || ''; } catch (e) { /* noop */ }
+    if (!/^[A-Z0-9]{4}$/.test(id)) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      id = '';
+      for (let i = 0; i < 4; i++) id += chars[Math.floor(Math.random() * chars.length)];
+      try { localStorage.setItem(DEVICE_KEY, id); } catch (e) { /* noop */ }
+    }
+    return id;
+  }
+  function isDevDevice() {
+    try { return localStorage.getItem(DEV_DEVICE_KEY) === '1'; } catch (e) { return false; }
+  }
+  // 変えたら画面を読み直す(ヘッダーはクライアントを作るときに決まる)
+  function setDevDevice(on) {
+    try {
+      if (on) localStorage.setItem(DEV_DEVICE_KEY, '1');
+      else localStorage.removeItem(DEV_DEVICE_KEY);
+    } catch (e) { /* noop */ }
+  }
+
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+    global: { headers: { 'x-gh-actor': isDevDevice() ? 'dev' : 'guest', 'x-gh-device': deviceId() } },
+  });
 
   // 流通ポータルと同じく、合言葉はブラウザの localStorage に保存する
   const PASSCODE_KEY = 'gh_passcode';
@@ -166,6 +197,9 @@
     sb: sb,
     config: cfg,
     PAGES: PAGES,
+    deviceId: deviceId,
+    isDevDevice: isDevDevice,
+    setDevDevice: setDevDevice,
     boot: boot,
     rpc: rpc,
     renderNav: renderNav,

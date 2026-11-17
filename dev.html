@@ -33,6 +33,30 @@
     .demo-table tr.flash td { animation: demo-flash 1.6s ease-out; }
     @keyframes demo-flash { from { background: var(--color-primary-soft); } to { background: transparent; } }
 
+    /* ----- 変更の履歴 ----- */
+    .me-box {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px;
+      padding: 8px 10px; border-radius: var(--radius-md); background: var(--color-surface-alt); font-size: 13px;
+    }
+    .me-box .me-label { font-weight: 700; }
+    .me-box .btn { margin-left: auto; }
+    .log-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .log-head .chips { margin-bottom: 0; }
+    .log-head .btn { margin-left: auto; }
+    .log-list { margin-top: 10px; max-height: 520px; overflow-y: auto; }
+    .log-day { position: sticky; top: 0; z-index: 1; background: var(--color-surface); font-size: 12px; font-weight: 700; color: var(--color-primary-dark); padding: 6px 2px 4px; border-bottom: 1px solid var(--color-border); }
+    .log-row { display: grid; grid-template-columns: 3.2em auto 1fr; gap: 2px 8px; align-items: baseline; padding: 6px 2px; border-bottom: 1px dashed var(--color-border); font-size: 13px; }
+    .log-row .t { font-variant-numeric: tabular-nums; color: var(--color-text-muted); font-size: 12px; }
+    .log-row .what { min-width: 0; overflow-wrap: anywhere; }
+    .log-row .what b { font-weight: 700; margin-right: 4px; }
+    .log-row .what .op-void { color: var(--color-danger); }
+    .log-row .what small { font-size: 11px; color: var(--color-text-muted); margin-right: 4px; }
+    .who { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+    .who.dev   { background: var(--color-primary-soft); color: var(--color-primary-dark); }
+    .who.guest { background: var(--color-staff-soft); color: var(--color-staff); }
+    .who.auto  { background: var(--color-surface-alt); color: var(--color-text-muted); }
+    .log-row.restore { background: var(--color-surface-alt); }
+
     /* ----- README ----- */
     .readme { font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
     .readme h1 { font-size: 20px; margin: 0 0 8px; }
@@ -66,7 +90,7 @@
         <span class="page-icon"><i class="ti ti-code"></i></span>
         開発者
       </h1>
-      <p>このアプリの概要(README)と、サンプルデータにもどすボタンです</p>
+      <p>サンプルデータにもどすボタンと、変更の履歴、このアプリの概要(README)です</p>
     </div>
 
     <!-- サンプルデータにもどす -->
@@ -81,7 +105,6 @@
       </p>
       <div class="demo-actions">
         <button type="button" class="btn btn-danger" id="resetBtn"><i class="ti ti-restore"></i>サンプルデータにもどす</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="reloadBtn"><i class="ti ti-refresh"></i>件数を読み直す</button>
       </div>
       <div id="resetResult" class="demo-result" hidden role="status"></div>
       <div id="resetStatus" class="status-msg"></div>
@@ -89,6 +112,26 @@
       <div class="table-scroll">
         <table class="demo-table" id="demoTable"></table>
       </div>
+    </div>
+
+    <!-- 変更の履歴 -->
+    <div class="card">
+      <h2><i class="ti ti-history"></i>変更の履歴</h2>
+      <p class="demo-lead">
+        画面から追加・変更・取り消しをしたものが、新しい順に出ます。
+        「自分」はこの画面で自分の端末にしたブラウザ、「見た人」はそれ以外のブラウザです(後ろの記号でブラウザを見分けます)。
+      </p>
+      <div class="me-box" id="meBox"></div>
+      <div class="log-head">
+        <div class="chips" id="logFilter">
+          <button type="button" data-who="all" class="active">すべて</button>
+          <button type="button" data-who="dev">自分</button>
+          <button type="button" data-who="guest">見た人</button>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="logReload"><i class="ti ti-refresh"></i>最新にする</button>
+      </div>
+      <div id="logStatus" class="status-msg"></div>
+      <div class="log-list" id="logList"></div>
     </div>
 
     <!-- README -->
@@ -173,12 +216,71 @@
         n + 'すべてのデータを入れ直しました。ほかの画面を開くと、もどった内容が出ます');
       await loadInfo();
       $('demoTable').querySelectorAll('tbody tr').forEach(function (tr) { tr.classList.add('flash'); });
+      loadLog();
     } catch (e) {
       console.error(e);
       showResult('err', 'ti-alert-triangle', 'もどせませんでした', e.message || String(e));
     } finally {
       btn.disabled = false;
       btn.innerHTML = label;
+    }
+  }
+
+  // ===== 変更の履歴 =====
+  const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
+  let logRows = [];
+  let logWho = 'all';
+
+  function renderMe() {
+    const dev = App.isDevDevice();
+    $('meBox').innerHTML =
+      '<i class="ti ' + (dev ? 'ti-user-check' : 'ti-device-laptop') + '"></i>' +
+      '<span>この端末: <span class="me-label">' + (dev ? '自分(開発者)' : '見た人') + '</span> ' +
+      '<span class="who ' + (dev ? 'dev' : 'guest') + '">' + (dev ? '自分 ' : '見た人 ') + esc(App.deviceId()) + '</span></span>' +
+      '<button type="button" class="btn btn-ghost btn-sm" id="meToggle">' +
+      (dev ? '<i class="ti ti-user-x"></i>自分の端末から外す' : '<i class="ti ti-user-check"></i>この端末を自分にする') + '</button>';
+  }
+
+  function whoBadge(r) {
+    if (r.actor === 'auto') return '<span class="who auto">自動</span>';
+    const dev = r.actor === 'dev';
+    return '<span class="who ' + (dev ? 'dev' : 'guest') + '">' + (dev ? '自分' : '見た人') +
+      (r.device ? ' ' + esc(r.device) : '') + '</span>';
+  }
+
+  function renderLog() {
+    const rows = logRows.filter(function (r) { return logWho === 'all' || r.actor === logWho; });
+    if (!rows.length) {
+      $('logList').innerHTML = '<p class="empty-msg">' + (logRows.length ? 'この人の変更はありません' : 'まだ変更はありません') + '</p>';
+      return;
+    }
+    let day = '';
+    $('logList').innerHTML = rows.map(function (r) {
+      const d = new Date(r.at);
+      const key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
+      let head = '';
+      if (key !== day) {
+        day = key;
+        head = '<div class="log-day">' + (d.getMonth() + 1) + '月' + d.getDate() + '日(' + WEEK[d.getDay()] + ')</div>';
+      }
+      const t = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+      const restore = r.table_name === '_restore';
+      const label = restore ? 'サンプルデータ' : (TABLE_LABELS[r.table_name] || r.table_name);
+      return head + '<div class="log-row' + (restore ? ' restore' : '') + '">' +
+        '<span class="t">' + t + '</span>' + whoBadge(r) +
+        '<span class="what"><small>' + esc(label) + '</small><b class="' + (r.op === '取消' ? 'op-void' : '') + '">' + esc(r.op) + '</b>' +
+        esc(r.summary || '') + '</span></div>';
+    }).join('');
+  }
+
+  async function loadLog() {
+    try {
+      logRows = await App.rpc('get_change_log', { p_limit: 300 });
+      App.setStatus($('logStatus'), '');
+      renderLog();
+    } catch (e) {
+      console.error(e);
+      App.setStatus($('logStatus'), '変更の履歴を読み込めませんでした: ' + (e.message || e), 'err');
     }
   }
 
@@ -207,11 +309,27 @@
     active: 'dev',
     onReady: async function () {
       $('resetBtn').addEventListener('click', onReset);
-      $('reloadBtn').addEventListener('click', function () {
-        App.setStatus($('resetStatus'), '');
-        loadInfo().catch(function (e) { console.error(e); App.setStatus($('resetStatus'), '読み込めませんでした', 'err'); });
+      renderMe();
+      $('meBox').addEventListener('click', function (e) {
+        if (!e.target.closest('#meToggle')) return;
+        const dev = App.isDevDevice();
+        const msg = dev
+          ? 'この端末を「見た人」にもどします。これから変えたものは「見た人」として残ります'
+          : 'この端末を「自分」にします。これから変えたものは「自分」として残ります(前の分は変わりません)';
+        if (!confirm(msg)) return;
+        App.setDevDevice(!dev);
+        location.reload();   // DB に付けるヘッダーは読みこんだときに決まるので、読み直す
       });
+      $('logFilter').addEventListener('click', function (e) {
+        const b = e.target.closest('button[data-who]');
+        if (!b) return;
+        logWho = b.dataset.who;
+        $('logFilter').querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); });
+        renderLog();
+      });
+      $('logReload').addEventListener('click', loadLog);
       loadReadme();
+      loadLog();
       try {
         await loadInfo();
       } catch (e) {

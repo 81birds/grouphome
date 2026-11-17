@@ -28,7 +28,7 @@ family.html       利用者さんの画面。管理者ビューとして、上�
 vitals.html       バイタル。「1日 / 過去1週間」で、日付とハウスを選んで、利用者さんが入れた体温・血圧・脈拍・前日の入浴を見る。目安を外れた値は赤。「1日」の表の「入力」からスタッフも入れられる
 medication.html   服薬。ハウスごとに利用者さんの朝・昼・夕・寝る前のお薬(A〜D)と空包確認の表。行を押すとダイアログで設定する
 supplies.html     備品管理。タブで「施設の入力(施設を選んで、在庫のチップ・「使った」・「発注」の + −)」「本部の管理(在庫の一覧・受注一覧・備品リスト)」を切り替え(?tab=hq で本部の管理)
-dev.html          開発者。README.md を表示(marked + DOMPurify)し、「サンプルデータにもどす」ボタン(reset_demo_data)と保存したサンプルデータ・いまのデータの件数
+dev.html          開発者。「サンプルデータにもどす」ボタン(reset_demo_data)と件数、変更の履歴(get_change_log。自分 / 見た人)、README.md の表示(marked + DOMPurify)
 meals.html        食数管理。「1日 / 1週間(月〜日)」と「まとめ / 各ハウス」を切り替えて、○ の数と利用者さんごとの ○×(スタッフも変えられる)
 css/common.css    全画面共通のデザイン(色・部品)
 js/config.js      アプリ名と Supabase の URL / publishable key
@@ -199,6 +199,13 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
 - 対象のテーブルは `demo.tables()`(親が先)。新しいテーブルを足したら、ここにも足す(引数のない関数を作り直すだけ)。新しい列は保存したデータになければ既定値になる
 - サンプルデータを作り直したら、SQL Editor で `select * from demo.save_snapshot('サンプルデータの今日');` を実行して保存し直す(画面からは保存させない)
 - `demo.restore` は削除の命令を含むので、作り直すときはコネクタではなく SQL Editor で実行してもらう(コネクタでは確認画面が出せず拒否される)
+
+## 変更の履歴のルール
+
+- 画面から追加・変更・取消したものは、トリガー `zz_change_log`(`demo.log_change`)が `demo.change_log` に残す。対象は `demo.tables()` のテーブル。新しいテーブルを足したら、トリガーも付ける
+- 誰が変えたかは、`js/common.js` が supabase-js のヘッダーに付ける `x-gh-actor`(dev / guest)と `x-gh-device`(ブラウザごとの 4 文字)で見分ける。開発者の画面の「この端末を自分にする」で localStorage `gh_dev_device` = 1 にすると dev
+- 画面を通らない変更(SQL Editor・pg_cron。ヘッダーがない)と、サンプルデータにもどすときの入れ直し(`demo.restoring`)は残さない。もどしたことは 1 行で残す(自動は auto)
+- 内容の文は `demo.summarize`(施設・利用者さん・日付・時刻・内容・コメント)
 
 ## 個人情報の扱い
 
