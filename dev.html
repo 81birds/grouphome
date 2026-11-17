@@ -77,6 +77,7 @@
         自由に追加・変更・取り消しをして試してください。
         毎日 3:00 に自動でサンプルデータにもどります。このボタンを押すと、いますぐもどせます(合言葉はそのままです)。
         もどすときは日付を今日に合わせてずらすので(曜日は同じ)、いつ見ても昨日までの記録と先の勤務表が入っています。
+        下の表で、もどした直後から数が変わったデータはオレンジで出ます。
       </p>
       <div class="demo-actions">
         <button type="button" class="btn btn-danger" id="resetBtn"><i class="ti ti-restore"></i>サンプルデータにもどす</button>
@@ -134,11 +135,14 @@
         (restored ? ' / 最後にもどした日時: ' + fmtDateTime(restored) + by : '');
     $('resetBtn').disabled = !saved;
     $('demoTable').innerHTML =
-      '<thead><tr><th>データ</th><th class="num">サンプル</th><th class="num">いまのデータ</th></tr></thead><tbody>' +
+      '<thead><tr><th>データ</th><th class="num">もどした直後</th><th class="num">いまのデータ</th></tr></thead><tbody>' +
       rows.map(function (r) {
-        const s = r.saved_count == null ? '—' : String(r.saved_count);
+        // もどすときに日付を今日に合わせ、空いた日を 1 週間前から写して埋めるので、
+        // 保存したときの件数ではなく「もどした直後の件数」と比べる(差 = もどしたあとに変わったもの)
+        const base = r.restored_count != null ? r.restored_count : r.saved_count;
+        const s = base == null ? '—' : String(base);
         const c = String(r.current_count);
-        const diff = r.saved_count != null && Number(r.current_count) !== Number(r.saved_count);
+        const diff = base != null && Number(r.current_count) !== Number(base);
         return '<tr><td>' + esc(TABLE_LABELS[r.table_name] || r.table_name) + '<small>' + esc(r.table_name) + '</small></td>' +
           '<td class="num">' + esc(s) + '</td>' +
           '<td class="num' + (diff ? ' diff' : '') + '">' + esc(c) + '</td></tr>';
