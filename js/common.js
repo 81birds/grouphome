@@ -33,6 +33,7 @@
     { key: 'houses',     file: 'houses.html',     icon: 'ti-building-community', label: '施設DB', sub: '施設一覧・住所・定員', ready: true },
     { key: 'settings',   file: 'settings.html',   icon: 'ti-settings',   label: '設定',       sub: '合言葉などの設定',       ready: false },
     { key: 'supplies',   file: 'supplies.html',   icon: 'ti-package',    label: '備品管理',   sub: '施設の発注・本部の手配', ready: true },
+    { key: 'dev',        file: 'dev.html',        icon: 'ti-code',       label: '開発者',     sub: 'アプリの概要・ダミーデータにもどす', ready: true },
   ];
 
   // ----- 上部のタブ -----

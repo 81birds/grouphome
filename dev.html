@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>開発者</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    /* ----- ダミーデータ ----- */
+    .demo-lead { font-size: 13px; line-height: 1.7; margin: 0 0 12px; }
+    .demo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .demo-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .demo-table th, .demo-table td { border-bottom: 1px solid var(--color-border); padding: 6px 4px; font-size: 13px; text-align: left; }
+    .demo-table thead th { font-size: 11px; color: var(--color-text-muted); font-weight: 500; }
+    .demo-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; width: 6em; }
+    .demo-table .diff { color: var(--color-work-dark); font-weight: 700; }
+    .demo-table small { font-size: 11px; color: var(--color-text-muted); margin-left: 4px; }
+    .demo-saved { font-size: 12px; color: var(--color-text-muted); margin: 8px 0 0; }
+
+    /* ----- README ----- */
+    .readme { font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+    .readme h1 { font-size: 20px; margin: 0 0 8px; }
+    .readme h2 { font-size: 16px; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); }
+    .readme h3 { font-size: 14px; margin: 16px 0 6px; }
+    .readme p, .readme ul, .readme ol { margin: 0 0 10px; }
+    .readme ul, .readme ol { padding-left: 1.4em; }
+    .readme code { font-size: 12px; background: var(--color-surface-alt); padding: 1px 5px; border-radius: var(--radius-sm); }
+    .readme pre { background: var(--color-surface-alt); padding: 10px 12px; border-radius: var(--radius-md); overflow-x: auto; }
+    .readme pre code { background: none; padding: 0; }
+    .readme .table-scroll { margin: 0 0 12px; }
+    .readme table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
+    .readme th, .readme td { border-bottom: 1px solid var(--color-border); padding: 6px 4px; text-align: left; vertical-align: top; }
+    .readme th { font-size: 12px; color: var(--color-text-muted); font-weight: 500; }
+    .readme a { color: var(--color-primary-dark); }
+  </style>
+</head>
+<body>
+
+<nav id="gtoolBar"></nav>
+
+<div id="loadingScreen" class="loading-screen">
+  <i class="ti ti-loader-2 spin"></i>
+  <div>確認しています...</div>
+</div>
+
+<div id="mainContent" hidden>
+  <div class="wrap wide">
+    <div class="page-header">
+      <h1>
+        <span class="page-icon"><i class="ti ti-code"></i></span>
+        開発者
+      </h1>
+      <p>このアプリの概要(README)と、ダミーデータにもどすボタンです</p>
+    </div>
+
+    <!-- ダミーデータにもどす -->
+    <div class="card">
+      <h2><i class="ti ti-database-import"></i>ダミーデータにもどす</h2>
+      <p class="demo-lead">
+        このアプリには、架空のダミーデータ(利用者さん・スタッフ・勤務表・日々の記録など)が入っています。
+        自由に追加・変更・取り消しをして試してください。
+        毎日 3:00 に自動でダミーデータにもどります。このボタンを押すと、いますぐもどせます(合言葉はそのままです)。
+        もどすときは日付を今日に合わせてずらすので(曜日は同じ)、いつ見ても昨日までの記録と先の勤務表が入っています。
+      </p>
+      <div class="demo-actions">
+        <button type="button" class="btn btn-danger" id="resetBtn"><i class="ti ti-restore"></i>ダミーデータにもどす</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="reloadBtn"><i class="ti ti-refresh"></i>件数を読み直す</button>
+      </div>
+      <div id="resetStatus" class="status-msg"></div>
+      <p class="demo-saved" id="savedAt"></p>
+      <div class="table-scroll">
+        <table class="demo-table" id="demoTable"></table>
+      </div>
+    </div>
+
+    <!-- README -->
+    <div class="card">
+      <h2><i class="ti ti-file-description"></i>このアプリについて(README)</h2>
+      <div class="readme" id="readme"><p class="empty-msg">読み込んでいます...</p></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/common.js"></script>
+<script>
+  const $ = function (id) { return document.getElementById(id); };
+  const esc = App.escapeHtml;
+
+  // テーブルの名前(画面に出す日本語)
+  const TABLE_LABELS = {
+    houses: '施設', residents: '利用者さん', shift_types: '勤務区分', supply_items: '備品リスト',
+    staff: 'スタッフ', rooms: '部屋', shifts: '勤務', room_assignments: '入居の記録',
+    daily_records: '日々の記録', meal_plans: '食事の予定', vitals: 'バイタル', resident_routines: '日課',
+    resident_medications: 'お薬', resident_med_settings: '空包確認の設定',
+    supply_requests: '備品の発注', supply_stocks: '備品の在庫', supply_usages: '備品を使った記録',
+  };
+
+  function fmtDateTime(s) {
+    const d = new Date(s);
+    if (isNaN(d)) return '';
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+      d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+
+  // ===== ダミーデータの件数 =====
+  async function loadInfo() {
+    const rows = await App.rpc('get_demo_info');
+    const saved = rows.map(function (r) { return r.saved_at; }).filter(Boolean).sort().pop();
+    const restored = rows.length ? rows[0].restored_at : null;
+    const by = rows.length && rows[0].restored_by === 'button' ? '(ボタン)' : '(自動)';
+    $('savedAt').textContent = !saved ? 'ダミーデータがまだ保存されていません'
+      : 'ダミーデータを保存した日時: ' + fmtDateTime(saved) +
+        (restored ? ' / 最後にもどした日時: ' + fmtDateTime(restored) + by : '');
+    $('resetBtn').disabled = !saved;
+    $('demoTable').innerHTML =
+      '<thead><tr><th>データ</th><th class="num">ダミーデータ</th><th class="num">いまのデータ</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        const s = r.saved_count == null ? '—' : String(r.saved_count);
+        const c = String(r.current_count);
+        const diff = r.saved_count != null && Number(r.current_count) !== Number(r.saved_count);
+        return '<tr><td>' + esc(TABLE_LABELS[r.table_name] || r.table_name) + '<small>' + esc(r.table_name) + '</small></td>' +
+          '<td class="num">' + esc(s) + '</td>' +
+          '<td class="num' + (diff ? ' diff' : '') + '">' + esc(c) + '</td></tr>';
+      }).join('') + '</tbody>';
+  }
+
+  async function onReset() {
+    if (!confirm('いまのデータをすべて消して、ダミーデータにもどします。よろしいですか?')) return;
+    const btn = $('resetBtn');
+    btn.disabled = true;
+    App.setStatus($('resetStatus'), 'もどしています...');
+    try {
+      await App.rpc('reset_demo_data');
+      // 画面ごとに覚えている選択(ハウスなど)はそのまま使える(ID は同じにもどる)
+      App.setStatus($('resetStatus'), 'ダミーデータにもどしました', 'ok');
+      await loadInfo();
+    } catch (e) {
+      console.error(e);
+      App.setStatus($('resetStatus'), 'もどせませんでした: ' + (e.message || e), 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ===== README =====
+  async function loadReadme() {
+    const box = $('readme');
+    try {
+      const res = await fetch('README.md', { cache: 'no-cache' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const md = await res.text();
+      box.innerHTML = DOMPurify.sanitize(marked.parse(md));
+      // 表はスマホで横にスクロールできるように包む
+      box.querySelectorAll('table').forEach(function (t) {
+        const w = document.createElement('div');
+        w.className = 'table-scroll';
+        t.parentNode.insertBefore(w, t);
+        w.appendChild(t);
+      });
+    } catch (e) {
+      console.error(e);
+      box.innerHTML = '<p class="empty-msg">README を読み込めませんでした</p>';
+    }
+  }
+
+  App.boot({
+    active: 'dev',
+    onReady: async function () {
+      $('resetBtn').addEventListener('click', onReset);
+      $('reloadBtn').addEventListener('click', function () {
+        App.setStatus($('resetStatus'), '');
+        loadInfo().catch(function (e) { console.error(e); App.setStatus($('resetStatus'), '読み込めませんでした', 'err'); });
+      });
+      loadReadme();
+      try {
+        await loadInfo();
+      } catch (e) {
+        console.error(e);
+        $('resetBtn').disabled = true;
+        App.setStatus($('resetStatus'), 'ダミーデータの情報を読み込めませんでした: ' + (e.message || e), 'err');
+      }
+    },
+  });
+</script>
+
+</body>
+</html>
