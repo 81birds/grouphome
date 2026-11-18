@@ -561,7 +561,7 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
   .modal-head h2 { font-size: 17px; }
 }
 
-/* ----- いまの施設などの帯(下にスクロールしても上に出しておく。日々の記録・備品管理) -----
+/* ----- いまの施設などの帯(下にスクロールしても上に出しておく。日々の記録) -----
    .ctx-bar に .show で出す。.working は選んでいるもの(オレンジ) */
 .ctx-bar {
   position: fixed; top: var(--gtool-h); left: 0; right: 0; z-index: 900;
