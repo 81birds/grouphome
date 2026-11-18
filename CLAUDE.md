@@ -85,6 +85,7 @@ sql/              DB の変更履歴(YYYY-MM-DD_内容.sql)
   - 関数の引数を変えるときは、古い関数を `alter function ... rename to xxx_unused_日付` にして権限を外す
   - どうしても削除が必要なときは、SQL を渡して SQL Editor で実行してもらう
 - 合言葉そのもの、service_role / secret key は、コード・SQL ファイル・コミットに絶対に書かない。`config.js` に書くのは publishable key だけ
+  - 例外: ポートフォリオとして公開するため、見に来た人用の合言葉だけは README の「デモ」に書く(オーナーが決めたこと)。管理者パスワードはどこにも書かない
 
 ## 勤務(シフト)のルール
 
