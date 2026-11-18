@@ -560,3 +560,27 @@ input[type="checkbox"] { accent-color: var(--color-primary); width: 16px; height
   .modal-sticky { margin: 0 -24px; padding: 0 24px 10px; }
   .modal-head h2 { font-size: 17px; }
 }
+
+/* ----- いまの施設などの帯(下にスクロールしても上に出しておく。日々の記録・備品管理) -----
+   .ctx-bar に .show で出す。.working は選んでいるもの(オレンジ) */
+.ctx-bar {
+  position: fixed; top: var(--gtool-h); left: 0; right: 0; z-index: 900;
+  display: block; width: 100%; padding: 0; cursor: pointer;
+  border: none; border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface); box-shadow: var(--shadow-md);
+  font-family: var(--font-base); text-align: left; color: var(--color-text);
+  transform: translateY(-110%); transition: transform 0.15s ease; visibility: hidden;
+}
+.ctx-bar.show { transform: none; visibility: visible; }
+.ctx-bar .inner { max-width: 1100px; margin: 0 auto; padding: 10px 12px; }
+/* 利用者さんを選んでいるときは、選んだチップと同じ薄いオレンジ */
+.ctx-bar.working { background: var(--color-work-soft); border-bottom: 2px solid var(--color-work); }
+.ctx-bar.working .ctx-line,
+.ctx-bar.working .ctx-line i,
+.ctx-bar.working .ctx-line .today,
+.ctx-bar.working .ctx-line .sep { color: var(--color-work-dark); }
+.ctx-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; }
+.ctx-line i { color: var(--color-primary-dark); }
+.ctx-line .sep { color: var(--color-text-muted); font-weight: 400; }
+.ctx-line .today { color: var(--color-primary-dark); }
+.ctx-line .past { background: var(--color-danger); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }

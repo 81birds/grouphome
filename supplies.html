@@ -79,6 +79,10 @@
       border-top: 3px solid var(--color-work);
     }
     .save-bar .msg { flex: 1; min-width: 140px; font-size: 13px; font-weight: 700; color: var(--color-work-dark); }
+    /* 上の帯に隠れないように(保存のあとなどに上へもどるとき) */
+    #houseCard { scroll-margin-top: calc(var(--gtool-h) + 10px); }
+    .ctx-bar .ctx-line .sub { font-weight: 400; }
+    .ctx-bar .ctx-line .pending { background: var(--color-work); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
     .house-sum { font-size: 12px; color: var(--color-text-muted); margin: 0; }
 
     /* ----- PC ビュー / スマホビュー(施設の入力。幅 600px 以上で切り替えを出す。はじめはスマホ) ----- */
@@ -167,8 +171,8 @@
         <button type="button" data-view="phone"><i class="ti ti-device-mobile"></i>スマホ</button>
       </div>
       <div class="house-layout">
-      <div class="card">
-        <h2><i class="ti ti-building-community"></i>施設</h2>
+      <div class="card" id="houseCard">
+        <h2><i class="ti ti-building-community"></i><span id="houseTitle">施設</span></h2>
         <div class="chips" id="houseChips"></div>
         <p class="house-sum" id="houseSum"></p>
         <div class="mode-switch" id="houseFilter" role="group" aria-label="表示する備品" style="margin:12px 0 0;">
@@ -189,6 +193,8 @@
       </div>
       </div><!-- /.house-layout -->
     </div>
+    <!-- いま入力している施設(施設のカードが上に隠れたら出す。押すと上へ) -->
+    <button type="button" class="ctx-bar working" id="ctxBar" aria-label="施設を変える(上へもどる)"><div class="inner" id="ctxBarInner"></div></button>
 
     <!-- 本部の管理 -->
     <div id="panel-hq" class="tab-panel">
@@ -382,6 +388,7 @@
   function renderHouse() {
     const hs = activeHouses();
     if (!hs.some(function (h) { return h.id === house; })) house = hs.length ? hs[0].id : null;
+    renderCtx();
     $('houseChips').innerHTML = hs.map(function (h) {
       return '<button type="button" data-house="' + esc(h.id) + '"' + (h.id === house ? ' class="active"' : '') + '>' + esc(h.name) + '</button>';
     }).join('');
@@ -506,7 +513,38 @@
   function renderSaveBar() {
     const ids = changedIds();
     $('saveBar').hidden = !ids.length;
-    $('saveMsg').textContent = ids.length + ' 品を変えました(まだ送っていません)';
+    $('saveMsg').textContent = (house ? houseName(house) + ': ' : '') + ids.length + ' 品を変えました(まだ送っていません)';
+    renderCtx();
+  }
+
+  // ===== いま入力している施設(カードの見出しと上の帯) =====
+  // 日々の記録と同じく、下にスクロールしても、どの施設の入力かがいつも見えるようにする
+  function renderCtx() {
+    $('houseCard').classList.toggle('card-picked', !!house);
+    $('houseTitle').textContent = house ? houseName(house) : '施設';
+    const n = changedIds().length;
+    $('ctxBarInner').innerHTML = house
+      ? '<div class="ctx-line"><i class="ti ti-building-community"></i>' + esc(houseName(house)) +
+        '<span class="sep">・</span><span class="sub">備品の在庫と発注</span>' +
+        (n ? '<span class="pending">発注 ' + n + ' 品 まだ送っていません</span>' : '') + '</div>'
+      : '';
+    updateCtxBar();
+  }
+  // 施設のカードが画面の上に隠れたら、上の帯を出す(施設の入力のタブのときだけ)
+  let houseCardHidden = false;
+  function updateCtxBar() {
+    const on = houseCardHidden && !!house && $('panel-house').classList.contains('active');
+    $('ctxBar').classList.toggle('show', on);
+  }
+  function watchHouseCard() {
+    if (!('IntersectionObserver' in window)) return;
+    const gtoolH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gtool-h'), 10) || 46;
+    new IntersectionObserver(function (entries) {
+      const e = entries[0];
+      // タブを切り替えて見えなくなったときは「隠れた」としない
+      houseCardHidden = !e.isIntersecting && e.boundingClientRect.bottom <= gtoolH && e.boundingClientRect.height > 0;
+      updateCtxBar();
+    }, { rootMargin: '-' + gtoolH + 'px 0px 0px 0px' }).observe($('houseCard'));
   }
 
   function onHouseClick(e) {
@@ -796,6 +834,7 @@
     document.querySelectorAll('.tab-btn').forEach(function (x) { x.classList.toggle('active', x.dataset.panel === panel); });
     document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === panel); });
     try { localStorage.setItem(TAB_KEY, panel); } catch (e) { /* noop */ }
+    updateCtxBar();
   }
 
   App.boot({
@@ -821,6 +860,8 @@
         renderHouse();
       });
       $('houseItems').addEventListener('click', onHouseClick);
+      $('ctxBar').addEventListener('click', function () { $('houseCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      watchHouseCard();
       $('toastUndo').addEventListener('click', onUndoUse);
       $('houseFilter').addEventListener('click', function (e) {
         const b = e.target.closest('button[data-filter]');

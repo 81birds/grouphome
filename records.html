@@ -242,23 +242,7 @@
     }
     .rec-kind .rec-routine i { font-size: 12px; }
 
-    /* ----- いまの施設・日にち(下にスクロールしても上に出しておく) ----- */
-    .ctx-bar {
-      position: fixed; top: var(--gtool-h); left: 0; right: 0; z-index: 900;
-      display: block; width: 100%; padding: 0; cursor: pointer;
-      border: none; border-bottom: 1px solid var(--color-border);
-      background: var(--color-surface); box-shadow: var(--shadow-md);
-      font-family: var(--font-base); text-align: left; color: var(--color-text);
-      transform: translateY(-110%); transition: transform 0.15s ease; visibility: hidden;
-    }
-    .ctx-bar.show { transform: none; visibility: visible; }
-    .ctx-bar .inner { max-width: 1100px; margin: 0 auto; padding: 10px 12px; }
-    /* 利用者さんを選んでいるときは、選んだチップと同じ薄いオレンジ */
-    .ctx-bar.working { background: var(--color-work-soft); border-bottom: 2px solid var(--color-work); }
-    .ctx-bar.working .ctx-line,
-    .ctx-bar.working .ctx-line i,
-    .ctx-bar.working .ctx-line .today,
-    .ctx-bar.working .ctx-line .sep { color: var(--color-work-dark); }
+    /* いまの施設・日にちの帯(.ctx-bar・.ctx-line)は common.css */
     /* 利用者さんを選んで一覧へ移るとき、上の 2 本の帯に隠れないように */
     #listCard { scroll-margin-top: calc(var(--gtool-h) + 52px); }
     /* 「〇〇さんの記録」は、選んだ利用者さんのボタンと同じオレンジ(.card-picked。PC で右に出たとき見失わないように) */
@@ -266,11 +250,6 @@
     /* 「〇〇さんの記録を入力中です」(新しい入力のダイアログ)と、施設・日にちの行 */
     .ctx-doing { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 700; margin-bottom: 3px; }
     .ctx-doing i { font-size: 18px; }
-    .ctx-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; font-weight: 700; }
-    .ctx-line i { color: var(--color-primary-dark); }
-    .ctx-line .sep { color: var(--color-text-muted); font-weight: 400; }
-    .ctx-line .today { color: var(--color-primary-dark); }
-    .ctx-line .past { background: var(--color-danger); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 12px; }
 
     /* ダイアログの中の施設と日にち */
     .modal-ctx { margin: -6px 0 12px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--color-surface-alt); }
